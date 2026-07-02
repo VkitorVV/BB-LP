@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #0F1115;
+    color: #F5F5F5;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+}
+
+/* Map font-display to Montserrat */
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+/* Custom Barber Pole Animated Line */
+@keyframes barberPole {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 100% 100%;
+  }
+}
+
+.animate-barber-pole {
+  background: repeating-linear-gradient(
+    -45deg,
+    #151820,
+    #151820 10px,
+    #2A2F38 10px,
+    #2A2F38 20px
+  );
+  background-size: 28px 28px;
+  animation: barberPole 20s linear infinite;
+}
+
+.animate-barber-pole-glow {
+  background: repeating-linear-gradient(
+    -45deg,
+    #22c55e,
+    #22c55e 10px,
+    #152c1d 10px,
+    #152c1d 20px
+  );
+  background-size: 28px 28px;
+  animation: barberPole 15s linear infinite;
+}
+
+/* Scrollbar design */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0F1115;
+}
+::-webkit-scrollbar-thumb {
+  background: #1B1F27;
+  border: 1px solid #2A2F38;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #22c55e;
+}
+
+/* Ambient glow effects */
+.glow-green {
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.08);
+}
+.glow-gold {
+  box-shadow: 0 0 15px rgba(214, 169, 74, 0.08);
+}
+.glow-card {
+  box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.85);
+}
+
