@@ -1,6 +1,6 @@
-import type {Metadata} from 'next';
-import { Inter, Montserrat } from 'next/font/google';
-import './globals.css'; // Global styles
+import type { Metadata } from 'next';
+import { Inter, Bebas_Neue } from 'next/font/google';
+import './globals.css';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -8,10 +8,10 @@ const inter = Inter({
   display: 'swap',
 });
 
-const montserrat = Montserrat({
+const bebasNeue = Bebas_Neue({
   subsets: ['latin'],
   variable: '--font-display',
-  weight: ['400', '500', '600', '700', '800', '900'],
+  weight: '400',
   display: 'swap',
 });
 
@@ -20,13 +20,12 @@ export const metadata: Metadata = {
   description: 'Entenda a lógica dos pentes, alturas e transições com um mapa visual prático.',
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${montserrat.variable}`}>
-      <body className="font-sans antialiased bg-[#0F1115] text-[#F5F5F5]" suppressHydrationWarning>
+    <html lang="pt-BR" className={`${inter.variable} ${bebasNeue.variable}`}>
+      <body className="font-sans antialiased bg-[#0B0704] text-[#FFF4E6]" suppressHydrationWarning>
         {children}
       </body>
     </html>
   );
 }
-

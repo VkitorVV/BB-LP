@@ -1,190 +1,235 @@
 'use client';
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Check, Flame, ShieldAlert } from 'lucide-react';
-import Placeholder from './ui/Placeholder';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, Flame, X } from 'lucide-react';
+import Image from 'next/image';
+
+const CHECKOUT_BASICO_URL = "COLE_AQUI_O_LINK_DO_CHECKOUT_BASICO";
+const CHECKOUT_KIT_DESCONTO_URL = "COLE_AQUI_O_LINK_DO_CHECKOUT_KIT_COMPLETO_2490";
 
 export default function Oferta() {
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const handleCheckoutBasic = () => {
-    // Redirecionamento de checkout para plano básico
-    window.open('https://pay.hotmart.com/mock-basic', '_blank');
+    setShowUpgradeModal(true);
+  };
+
+  const handleUpgradeToKit = () => {
+    window.open(CHECKOUT_KIT_DESCONTO_URL, '_blank');
+    setShowUpgradeModal(false);
+  };
+
+  const handleContinueBasic = () => {
+    window.open(CHECKOUT_BASICO_URL, '_blank');
+    setShowUpgradeModal(false);
   };
 
   const handleCheckoutComplete = () => {
-    // Redirecionamento de checkout para plano completo
     window.open('https://pay.hotmart.com/mock-complete', '_blank');
   };
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showUpgradeModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showUpgradeModal]);
+
+  // Close modal on ESC key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowUpgradeModal(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
   return (
-    <section id="oferta" className="py-20 px-5 bg-[#151820] border-b border-[#2A2F38]">
+    <section
+      id="oferta"
+      className="py-20 px-5"
+      style={{ background: '#160D08', borderBottom: '1px solid #3A1D10' }}
+    >
       <div className="max-w-md mx-auto">
-        {/* Título de Oferta */}
-        <h2 className="text-2xl font-black text-[#F5F5F5] text-center font-display tracking-tight leading-tight uppercase">
+
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-8 w-[4px] rounded-full" style={{ background: '#F28A1A' }} />
+          <span className="badge-copper">Oferta</span>
+        </div>
+
+        <h2 className="font-display text-[2.4rem] leading-none uppercase text-[#FFF4E6] mb-3">
           Escolha o seu plano de acesso ao material
         </h2>
-        
-        <p className="text-xs text-[#B8BDC7] text-center mt-3 font-sans leading-relaxed">
-          Acesso imediato e digital. Escolha o formato ideal para você consultar no seu dia a dia na barbearia.
+        <p className="text-xs text-[#D9C3A3] mb-10 leading-relaxed">
+          Acesso imediato e digital. Escolha o formato ideal para você consultar no seu dia a dia.
         </p>
 
-        {/* Empilhamento de Planos (Mobile-First) */}
-        <div className="mt-10 space-y-8">
-          
-          {/* PLANO BÁSICO - Menos Vantajoso */}
-          <motion.div 
+        <div className="space-y-8">
+
+          {/* BASIC PLAN */}
+          <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-20px' }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="bg-[#1B1F27] border border-[#2A2F38] rounded-2xl p-6 flex flex-col justify-between"
+            className="rounded-2xl p-6 flex flex-col"
+            style={{ background: '#2A130B', border: '1px solid #5A321C' }}
           >
             <div>
-              {/* Cabeçalho */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[9px] font-mono font-black text-[#B8BDC7] uppercase tracking-wider bg-[#151820] py-1 px-2 rounded border border-[#2A2F38]">
-                    Apenas o Guia
-                  </span>
-                  <h3 className="text-lg font-black text-[#F5F5F5] uppercase font-display tracking-wide mt-2">
-                    Plano Básico
-                  </h3>
-                </div>
-              </div>
-
-              {/* Descrição Curta */}
-              <p className="text-xs text-[#B8BDC7] mt-2 leading-relaxed font-sans">
-                Acesso exclusivo ao Guia Principal Mapa do Degradê em formato digital (PDF) para consulta.
+              <span className="badge-copper mb-3 inline-block">Apenas o Guia</span>
+              <h3 className="font-display text-2xl text-[#FFF4E6] uppercase tracking-wide mb-2">
+                Plano Básico
+              </h3>
+              <p className="text-xs text-[#D9C3A3] mb-5 leading-relaxed">
+                Acesso exclusivo ao Guia Principal Mapa do Degradê em formato digital (Ebook).
               </p>
 
-              {/* Container Vazio de Mockup */}
-              <div className="my-5">
-                <Placeholder type="basic-plan" className="w-full" />
+              <div className="mb-5 rounded-xl overflow-hidden" style={{ border: '1.5px solid #5A321C', boxShadow: '0 4px 16px rgba(11,7,4,0.65)' }}>
+                <Image
+                  src="/images/oferta/mockup-plano-basico.webp"
+                  alt="Mockup do Plano Básico com o guia principal Mapa do Degradê Sem Marca"
+                  width={1000}
+                  height={1000}
+                  loading="lazy"
+                  sizes="(max-width: 768px) 80vw, 320px"
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                />
               </div>
 
-              {/* Lista curta do que recebe */}
-              <div className="space-y-2 border-t border-[#2A2F38]/50 pt-4 text-xs text-[#B8BDC7]">
-                <div className="flex items-center gap-2.5">
-                  <Check size={12} className="text-[#22C55E] shrink-0" />
-                  <span className="font-sans font-medium">Guia Digital Mapa do Degradê (PDF)</span>
+              <div className="space-y-2 pt-4" style={{ borderTop: '1px solid rgba(90,50,28,0.5)' }}>
+                <div className="flex items-center gap-2.5 text-xs text-[#D9C3A3]">
+                  <Check size={12} style={{ color: '#F28A1A' }} />
+                  <span className="font-medium">Guia Digital Mapa do Degradê (Ebook)</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-[#B8BDC7]/40">
-                  <span className="shrink-0 text-[10px] font-mono">✕</span>
-                  <span className="font-sans line-through">Tabela dos Pentes e Alturas</span>
+                <div className="flex items-center gap-2.5 text-xs text-[#D9C3A3]">
+                  <Check size={12} style={{ color: '#F28A1A' }} />
+                  <span className="font-medium">15 dias de garantia</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-[#B8BDC7]/40">
-                  <span className="shrink-0 text-[10px] font-mono">✕</span>
-                  <span className="font-sans line-through">Checklist do Corte Sem Marca</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[#B8BDC7]/40">
-                  <span className="shrink-0 text-[10px] font-mono">✕</span>
-                  <span className="font-sans line-through">Os 7 Erros Comuns</span>
-                </div>
+                {['Tabela dos Pentes e Alturas', 'Checklist do Corte Sem Marca', 'Os 7 Erros Comuns', 'Pack de Referências de Fade', 'Mini Guia de Acabamento'].map(item => (
+                  <div key={item} className="flex items-center gap-2.5 text-xs text-[#B8A688] line-through">
+                    <span className="text-[10px] font-mono shrink-0">✕</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Preços e CTA */}
-            <div className="mt-8 pt-4 border-t border-[#2A2F38]/50">
-              <p className="text-[10px] text-[#B8BDC7]/40 font-bold uppercase tracking-wider line-through">
+            <div className="mt-8 pt-4" style={{ borderTop: '1px solid rgba(90,50,28,0.5)' }}>
+              <p className="text-[10px] text-[#B8A688] font-bold uppercase tracking-wider line-through">
                 De R$ 37,00
               </p>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-xs font-mono text-[#F5F5F5] font-black">Por apenas</span>
-                <span className="text-3xl font-black text-[#F5F5F5] font-display">R$ 19,90</span>
-                <span className="text-[10px] text-[#B8BDC7]/50 font-bold">à vista</span>
+              <div className="flex items-baseline gap-1 mt-0.5 mb-5">
+                <span className="text-xs font-mono text-[#FFF4E6] font-black">Por apenas</span>
+                <span className="font-display text-3xl text-[#FFF4E6]">R$ 19,90</span>
+                <span className="text-[10px] text-[#C9B89A] font-bold">à vista</span>
               </div>
-
-              <button 
+              <button
                 onClick={handleCheckoutBasic}
-                className="w-full py-3.5 mt-5 bg-transparent text-[#22C55E] border-2 border-[#22C55E] text-xs font-black uppercase rounded-xl hover:bg-[#22C55E]/5 transition-all duration-150 cursor-pointer font-display tracking-wider"
+                className="w-full py-3.5 text-xs font-black uppercase rounded-lg tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer font-display"
+                style={{
+                  background: 'transparent',
+                  border: '2px solid #F28A1A',
+                  color: '#F28A1A',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(242,138,26,0.08)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
               >
                 Quero o Plano Básico
               </button>
             </div>
           </motion.div>
 
-          {/* PLANO COMPLETO - Extremamente Destaque e Vantajoso */}
-          <motion.div 
+          {/* COMPLETE PLAN */}
+          <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-20px' }}
             transition={{ duration: 0.3, ease: 'easeOut', delay: 0.1 }}
-            className="bg-[#1B1F27] border-2 border-[#22C55E] rounded-2xl p-6 flex flex-col justify-between relative shadow-xl shadow-[#22C55E]/5"
+            className="rounded-2xl p-6 flex flex-col relative"
+            style={{
+              background: '#1A0F04',
+              border: '2px solid #F28A1A',
+              boxShadow: '0 8px 40px rgba(242,138,26,0.12)',
+            }}
           >
-            {/* Tag de Destaque */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#22C55E] text-[#0F1115] text-[9px] font-extrabold px-4 py-1 rounded-full uppercase tracking-wider font-display flex items-center gap-1">
-              <Flame size={10} className="fill-current" /> Recomendado e mais vantajoso
+            {/* Badge */}
+            <div
+              className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-extrabold px-4 py-1 rounded-full uppercase tracking-wider font-display flex items-center gap-1"
+              style={{ background: '#F28A1A', color: '#0B0704' }}
+            >
+              <Flame size={10} className="fill-current" />
+              Recomendado e mais vantajoso
             </div>
 
             <div className="pt-2">
-              {/* Cabeçalho */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[9px] font-mono font-black text-[#D6A94A] uppercase tracking-wider bg-[#211808] py-1 px-2.5 rounded border border-[#D6A94A]/20">
-                    O Kit Completo + 5 Bônus
-                  </span>
-                  <h3 className="text-xl font-black text-[#F5F5F5] uppercase font-display tracking-wide mt-2 flex items-center gap-1.5">
-                    Kit Completo
-                  </h3>
-                </div>
-              </div>
-
-              {/* Descrição Curta */}
-              <p className="text-xs text-[#B8BDC7] mt-2 leading-relaxed font-sans">
-                O acesso completo ao guia principal mais as 5 ferramentas de bancada para usar na barbearia.
+              <span className="badge-gold mb-3 inline-block">O Kit Completo + 5 Bônus</span>
+              <h3 className="font-display text-2xl text-[#FFF4E6] uppercase tracking-wide mb-2">
+                Kit Completo
+              </h3>
+              <p className="text-xs text-[#D9C3A3] mb-5 leading-relaxed">
+                O acesso completo ao guia principal mais 5 materiais digitais de consulta.
               </p>
 
-              {/* Container Vazio de Mockup */}
-              <div className="my-5">
-                <Placeholder type="complete-plan" className="w-full" />
+              <div className="mb-5 rounded-xl overflow-hidden" style={{ border: '2px solid #F28A1A', boxShadow: '0 6px 24px rgba(242,138,26,0.18)' }}>
+                <Image
+                  src="/images/oferta/mockup-kit-completo.webp"
+                  alt="Mockup do Kit Completo com guia principal e cinco bônus"
+                  width={1400}
+                  height={1400}
+                  loading="lazy"
+                  sizes="(max-width: 768px) 92vw, 480px"
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                />
               </div>
 
-              {/* Lista completa de bônus inclusos */}
-              <div className="space-y-2.5 border-t border-[#22C55E]/20 pt-4 text-xs">
-                <p className="text-[9px] font-mono tracking-wider text-[#D6A94A] font-extrabold uppercase">
+              <div className="space-y-2.5 pt-4" style={{ borderTop: '1px solid rgba(242,138,26,0.2)' }}>
+                <p className="text-[9px] font-display tracking-wider text-[#D8A64A] font-extrabold uppercase mb-2">
                   ✓ Tudo incluso neste plano:
                 </p>
-                <div className="flex items-center gap-2.5 text-[#F5F5F5]">
-                  <Check size={12} className="text-[#22C55E] shrink-0" />
-                  <span className="font-sans font-bold">Guia Digital Mapa do Degradê (PDF)</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[#F5F5F5]">
-                  <Check size={12} className="text-[#22C55E] shrink-0" />
-                  <span className="font-sans font-bold">Bônus 1: Tabela dos Pentes e Alturas (Bancada)</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[#F5F5F5]">
-                  <Check size={12} className="text-[#22C55E] shrink-0" />
-                  <span className="font-sans font-bold">Bônus 2: Checklist do Corte Sem Marca</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[#F5F5F5]">
-                  <Check size={12} className="text-[#22C55E] shrink-0" />
-                  <span className="font-sans font-bold">Bônus 3: Guia dos 7 Erros Comuns</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[#F5F5F5]">
-                  <Check size={12} className="text-[#22C55E] shrink-0" />
-                  <span className="font-sans font-bold">Bônus 4: Pack de Referências de Fade</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[#F5F5F5]">
-                  <Check size={12} className="text-[#22C55E] shrink-0" />
-                  <span className="font-sans font-bold">Bônus 5: Mini Guia de Acabamento</span>
-                </div>
+                {[
+                  'Guia Digital Mapa do Degradê (Ebook)',
+                  '🎁 Bônus 1: Tabela dos Pentes e Alturas',
+                  '🎁 Bônus 2: Checklist do Corte Sem Marca',
+                  '🎁 Bônus 3: Guia dos 7 Erros Comuns',
+                  '🎁 Bônus 4: Pack de Referências de Fade',
+                  '🎁 Bônus 5: Mini Guia de Acabamento',
+                  'Atualizações futuras',
+                  'Acesso vitalício',
+                  '15 dias de garantia',
+                ].map(item => (
+                  <div key={item} className="flex items-center gap-2.5 text-xs text-[#FFF4E6]">
+                    <Check size={12} style={{ color: '#F28A1A' }} />
+                    <span className="font-bold">{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Preços e CTA */}
-            <div className="mt-8 pt-4 border-t border-[#22C55E]/20">
-              <p className="text-[10px] text-[#B8BDC7]/40 font-bold uppercase tracking-wider line-through">
+            <div className="mt-8 pt-4" style={{ borderTop: '1px solid rgba(242,138,26,0.2)' }}>
+              <p className="text-[10px] text-[#B8A688] font-bold uppercase tracking-wider line-through">
                 De R$ 67,00
               </p>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-xs font-mono text-[#22C55E] font-black">Por apenas</span>
-                <span className="text-3xl font-black text-[#22C55E] font-display">R$ 27,00</span>
-                <span className="text-[10px] text-[#B8BDC7]/50 font-bold">à vista</span>
+              <div className="flex items-baseline gap-1 mt-0.5 mb-2">
+                <span className="text-xs font-mono text-[#F28A1A] font-black">Por apenas</span>
+                <span className="font-display text-3xl text-[#F28A1A]">R$ 29,90</span>
+                <span className="text-[10px] text-[#C9B89A] font-bold">à vista</span>
               </div>
-
-              <button 
+              <p className="text-[11px] text-[#D8A64A] font-bold mb-5 leading-relaxed">
+                Por apenas R$10,00 a mais que o Plano Básico, você leva o guia principal e todos os 5 bônus.
+              </p>
+              <button
                 onClick={handleCheckoutComplete}
-                className="w-full py-4 mt-5 bg-[#22C55E] text-[#0F1115] text-sm font-black uppercase rounded-xl hover:bg-[#1eb053] active:scale-[0.98] transition-all duration-150 cursor-pointer font-display tracking-wider flex items-center justify-center gap-1"
+                className="w-full py-4 text-sm font-black uppercase rounded-lg tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer font-display flex items-center justify-center gap-1"
+                style={{ background: '#F28A1A', color: '#0B0704' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#D87512')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#F28A1A')}
               >
                 Quero o Kit Completo + Bônus
               </button>
@@ -193,6 +238,169 @@ export default function Oferta() {
 
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-5"
+              style={{ background: 'rgba(11,7,4,0.92)' }}
+              onClick={() => setShowUpgradeModal(false)}
+            >
+              {/* Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6"
+                style={{
+                  background: '#1A0F04',
+                  border: '2px solid #F28A1A',
+                  boxShadow: '0 12px 48px rgba(242,138,26,0.24)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="upgrade-modal-title"
+              >
+                {/* Close button */}
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                  style={{ background: 'rgba(242,138,26,0.1)', color: '#F28A1A' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(242,138,26,0.2)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(242,138,26,0.1)')}
+                  aria-label="Fechar modal"
+                >
+                  <X size={18} />
+                </button>
+
+                {/* Content */}
+                <div className="pr-6">
+                  <div
+                    className="inline-flex items-center gap-1 text-[9px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider font-display mb-4"
+                    style={{ background: '#F28A1A', color: '#0B0704' }}
+                  >
+                    <Flame size={10} className="fill-current" />
+                    Oferta especial
+                  </div>
+
+                  <h2
+                    id="upgrade-modal-title"
+                    className="font-display text-[2rem] leading-none uppercase text-[#FFF4E6] mb-3"
+                  >
+                    Espere um segundo...
+                  </h2>
+
+                  <p className="text-sm font-bold text-[#F28A1A] mb-4 leading-relaxed">
+                    Antes de continuar com o Plano Básico, você pode liberar o Kit Completo com desconto especial.
+                  </p>
+
+                  <p className="text-xs text-[#D9C3A3] mb-5 leading-relaxed">
+                    Em vez de levar apenas o guia principal, você recebe o guia completo + todos os bônus por um valor menor que o preço normal do Kit Completo.
+                  </p>
+
+                  {/* Imagem do Kit Completo */}
+                  <div className="mb-6 flex justify-center">
+                    <Image
+                      src="/images/popup/mockup-upgrade-kit-completo.webp"
+                      alt="Mockup do Kit Completo Mapa do Degradê Sem Marca com bônus inclusos"
+                      width={1000}
+                      height={1000}
+                      loading="lazy"
+                      sizes="(max-width: 768px) 82vw, 360px"
+                      className="w-full max-w-[240px] md:max-w-[340px] h-auto rounded-xl"
+                      style={{ border: '1.5px solid #5A321C', boxShadow: '0 4px 20px rgba(11,7,4,0.6)' }}
+                    />
+                  </div>
+
+                  {/* Lista de itens */}
+                  <div
+                    className="rounded-xl p-4 mb-5 space-y-2"
+                    style={{ background: '#2A130B', border: '1px solid #5A321C' }}
+                  >
+                    <p className="text-[9px] font-display tracking-wider text-[#D8A64A] font-extrabold uppercase mb-3">
+                      ✓ Tudo incluso nesta oferta:
+                    </p>
+                    {[
+                      'Guia Digital Mapa do Degradê',
+                      'Tabela dos Pentes e Alturas',
+                      'Checklist do Corte Sem Marca',
+                      'Guia dos 7 Erros Comuns',
+                      'Pack de Referências de Fade',
+                      'Mini Guia de Acabamento',
+                      'Atualizações futuras',
+                      'Acesso vitalício',
+                      '15 dias de garantia',
+                    ].map((item) => (
+                      <div key={item} className="flex items-center gap-2.5 text-xs text-[#FFF4E6]">
+                        <Check size={11} style={{ color: '#F28A1A' }} strokeWidth={3} />
+                        <span className="font-medium">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Preço */}
+                  <div
+                    className="rounded-xl p-4 mb-4 text-center"
+                    style={{ background: 'rgba(242,138,26,0.08)', border: '1px solid rgba(242,138,26,0.3)' }}
+                  >
+                    <p className="text-[10px] text-[#B8A688] font-bold uppercase tracking-wider line-through">
+                      De R$ 29,90
+                    </p>
+                    <div className="flex items-baseline justify-center gap-1 mt-1 mb-2">
+                      <span className="text-xs font-mono text-[#F28A1A] font-black">Por</span>
+                      <span className="font-display text-4xl text-[#F28A1A]">R$ 24,90</span>
+                    </div>
+                    <p className="text-[11px] text-[#D8A64A] font-bold leading-relaxed">
+                      Por apenas R$5,00 a mais que o Plano Básico, você leva o Kit Completo.
+                    </p>
+                  </div>
+
+                  {/* Botão principal */}
+                  <button
+                    onClick={handleUpgradeToKit}
+                    className="w-full py-4 text-sm font-black uppercase rounded-lg tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer font-display mb-3"
+                    style={{ background: '#F28A1A', color: '#0B0704' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#D87512')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#F28A1A')}
+                  >
+                    Quero o Kit Completo por R$ 24,90
+                  </button>
+
+                  {/* Botão secundário */}
+                  <button
+                    onClick={handleContinueBasic}
+                    className="w-full py-3 text-xs font-bold uppercase rounded-lg tracking-wider transition-all duration-150 cursor-pointer"
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(217,195,163,0.3)',
+                      color: '#D9C3A3',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(217,195,163,0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(217,195,163,0.5)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.borderColor = 'rgba(217,195,163,0.3)';
+                    }}
+                  >
+                    Não, quero continuar com o Plano Básico
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

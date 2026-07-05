@@ -7,6 +7,7 @@ import CTAIntermediario from '@/components/CTAIntermediario';
 import IdealPara from '@/components/IdealPara';
 import OQueRecebe from '@/components/OQueRecebe';
 import Bonus from '@/components/Bonus';
+import OfferCountdown from '@/components/OfferCountdown';
 import Comparativo from '@/components/Comparativo';
 import Oferta from '@/components/Oferta';
 import Garantia from '@/components/Garantia';
@@ -16,52 +17,49 @@ import Rodape from '@/components/Rodape';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#0F1115] text-[#F5F5F5] font-sans overflow-x-hidden selection:bg-[#22C55E]/10 selection:text-[#22C55E]">
-      {/* Maximum desktop containment with fluid responsive layout scaling for premium mobile-first PV */}
-      <div className="w-full max-w-lg mx-auto md:max-w-xl lg:max-w-2xl bg-[#0F1115] shadow-2xl relative border-x border-[#2A2F38]">
-        
-        {/* 1. Primeira dobra / venda imediata */}
+    <main
+      className="min-h-screen font-sans overflow-x-hidden"
+      style={{ background: '#0B0704', color: '#FFF4E6' }}
+    >
+      <div
+        className="w-full max-w-lg mx-auto md:max-w-xl lg:max-w-2xl relative"
+        style={{
+          background: '#0B0704',
+          borderLeft: '1px solid #2A130B',
+          borderRight: '1px solid #2A130B',
+          boxShadow: '0 0 80px rgba(11,7,4,0.9)',
+        }}
+      >
+        {/* 1. Hero */}
         <Hero />
-
-        {/* 2. Demonstrativo visual do produto */}
+        {/* 2. Produto por dentro */}
         <ProdutoPorDentro />
-
-        {/* 3. Benefícios objetivos */}
+        {/* 3. Benefícios */}
         <Beneficios />
-
-        {/* 4. Prova social (Instagram Stories) */}
+        {/* 4. Prova social */}
         <ProvaSocial />
-
-        {/* 5. Urgência + botão */}
+        {/* 5. CTA intermediário */}
         <CTAIntermediario />
-
-        {/* 6. Ideal para você que deseja... */}
+        {/* 6. Ideal para */}
         <IdealPara />
-
-        {/* 7. Tudo que você vai receber */}
+        {/* 7. O que recebe */}
         <OQueRecebe />
-
         {/* 8. Bônus */}
         <Bonus />
-
-        {/* 9. Comparativo de solução */}
+        {/* 9. Comparativo */}
         <Comparativo />
-
-        {/* 10. Oferta e valores */}
+        {/* 10. Countdown de oferta */}
+        <OfferCountdown />
+        {/* 11. Oferta */}
         <Oferta />
-
-        {/* 11. Garantia */}
+        {/* 12. Garantia */}
         <Garantia />
-
-        {/* 12. Como é o acesso */}
+        {/* 13. Como acessar */}
         <ComoAcessar />
-
-        {/* 13. FAQ */}
+        {/* 14. FAQ */}
         <FAQ />
-
-        {/* 14. Rodapé */}
+        {/* 15. Rodapé */}
         <Rodape />
-        
       </div>
     </main>
   );

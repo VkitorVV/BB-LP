@@ -1,8 +1,8 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  output: "export",
   reactStrictMode: true,
+  outputFileTracingRoot: require('path').join(__dirname, '../../'),
   typescript: {
     ignoreBuildErrors: false,
   },

@@ -1,78 +1,209 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
+
+/* ============================================================
+   DESIGN SYSTEM — Warm Copper / Dark Brick Palette
+   ============================================================ */
+
+:root {
+  --bg-primary:       #0B0704;
+  --bg-secondary:     #160D08;
+  --brown-brick:      #2A130B;
+  --wood-brown:       #3A1D10;
+  --copper:           #F28A1A;
+  --burnt-orange:     #C96716;
+  --aged-gold:        #D8A64A;
+  --beige:            #D9C3A3;
+  --text-primary:     #FFF4E6;
+  --text-secondary:   #BFA98A;
+  --border:           #5A321C;
+  --alert-red:        #B33A2E;
+
+  --font-display-family: 'Bebas Neue', system-ui, sans-serif;
+  --font-sans-family:    'Inter', system-ui, sans-serif;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
 
 @layer base {
   body {
-    background-color: #0F1115;
-    color: #F5F5F5;
-    font-family: var(--font-sans), system-ui, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans), var(--font-sans-family);
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
 }
 
-/* Map font-display to Montserrat */
+/* ============================================================
+   FONT UTILITY
+   ============================================================ */
+
 .font-display {
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-display), var(--font-display-family);
 }
 
-/* Custom Barber Pole Animated Line */
+/* ============================================================
+   BARBER POLE ANIMATION
+   ============================================================ */
+
 @keyframes barberPole {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 100% 100%;
-  }
+  from { background-position: 0 0; }
+  to   { background-position: 100% 100%; }
 }
 
 .animate-barber-pole {
   background: repeating-linear-gradient(
     -45deg,
-    #151820,
-    #151820 10px,
-    #2A2F38 10px,
-    #2A2F38 20px
+    #2A130B,
+    #2A130B 10px,
+    #F28A1A 10px,
+    #F28A1A 12px,
+    #2A130B 12px,
+    #2A130B 22px,
+    #C96716 22px,
+    #C96716 24px
   );
-  background-size: 28px 28px;
-  animation: barberPole 20s linear infinite;
+  background-size: 34px 34px;
+  animation: barberPole 18s linear infinite;
 }
 
-.animate-barber-pole-glow {
-  background: repeating-linear-gradient(
-    -45deg,
-    #22c55e,
-    #22c55e 10px,
-    #152c1d 10px,
-    #152c1d 20px
-  );
-  background-size: 28px 28px;
-  animation: barberPole 15s linear infinite;
-}
+/* ============================================================
+   SCROLLBAR — warm copper
+   ============================================================ */
 
-/* Scrollbar design */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #0F1115;
-}
-::-webkit-scrollbar-thumb {
-  background: #1B1F27;
-  border: 1px solid #2A2F38;
+::-webkit-scrollbar        { width: 6px; }
+::-webkit-scrollbar-track  { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb  {
+  background: var(--brown-brick);
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #22c55e;
+::-webkit-scrollbar-thumb:hover { background: var(--copper); }
+
+/* ============================================================
+   TEXTURE UTILITIES
+   ============================================================ */
+
+/* Subtle CSS grain using a repeating noise pattern */
+.texture-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  z-index: 0;
 }
 
-/* Ambient glow effects */
-.glow-green {
-  box-shadow: 0 0 15px rgba(34, 197, 94, 0.08);
-}
-.glow-gold {
-  box-shadow: 0 0 15px rgba(214, 169, 74, 0.08);
-}
-.glow-card {
-  box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.85);
+.texture-brick {
+  background-color: var(--bg-secondary);
+  background-image:
+    radial-gradient(ellipse at top left,  rgba(242,138,26,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at bottom right, rgba(216,166,74,0.03) 0%, transparent 60%);
+  position: relative;
 }
 
+.texture-wood {
+  background-color: var(--brown-brick);
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(255,244,230,0.015) 2px,
+      rgba(255,244,230,0.015) 4px
+    );
+  position: relative;
+}
+
+/* ============================================================
+   IMAGE FRAME (empty premium placeholder frames)
+   ============================================================ */
+
+.image-frame {
+  display: block;
+  width: 100%;
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border);
+  box-shadow: 0 4px 24px rgba(242, 138, 26, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.image-frame[data-featured="true"] {
+  border-color: var(--copper);
+  box-shadow: 0 4px 32px rgba(242, 138, 26, 0.14);
+}
+
+/* ============================================================
+   DIVIDER
+   ============================================================ */
+
+.divider-copper {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+  border: none;
+}
+
+/* ============================================================
+   WARM CARD GLOW HELPERS
+   ============================================================ */
+
+.glow-copper { box-shadow: 0 0 20px rgba(242,138,26,0.08); }
+.glow-gold   { box-shadow: 0 0 20px rgba(216,166,74,0.08); }
+.glow-card   { box-shadow: 0 8px 28px -8px rgba(0,0,0,0.9); }
+
+/* ============================================================
+   MARQUEE CAROUSELS
+   ============================================================ */
+
+@keyframes scroll-left {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes scroll-right {
+  0%   { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.carousel-track {
+  display: flex;
+  gap: 16px;
+  padding: 10px 0;
+  width: max-content;
+  will-change: transform;
+}
+
+.carousel-track-left {
+  animation: scroll-left 35s linear infinite;
+}
+
+.carousel-track-right {
+  animation: scroll-right 40s linear infinite;
+}
+
+/* Pause on hover — desktop only */
+@media (hover: hover) {
+  .carousel-track-left:hover,
+  .carousel-track-right:hover {
+    animation-play-state: paused;
+  }
+}
+
+/* Reduced motion — disable autoplay, allow manual scroll */
+@media (prefers-reduced-motion: reduce) {
+  .carousel-track-left,
+  .carousel-track-right {
+    animation: none !important;
+    overflow-x: auto;
+    width: 100% !important;
+    flex-wrap: nowrap;
+  }
+}
