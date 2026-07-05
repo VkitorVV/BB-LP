@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { XCircle, CheckCircle } from 'lucide-react';
 
 const comparisons = [
@@ -32,8 +33,12 @@ export default function Comparativo() {
 
         <div className="space-y-6">
           {comparisons.map((item, idx) => (
-            <div
+            <motion.div
               key={idx}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-20px' }}
+              transition={{ duration: 0.25, ease: 'easeOut', delay: idx * 0.04 }}
               className="space-y-2"
               style={{ paddingBottom: '1.5rem', borderBottom: idx < comparisons.length - 1 ? '1px solid #2A130B' : 'none' }}
             >
@@ -64,7 +69,7 @@ export default function Comparativo() {
                   <p className="text-xs text-[#FFF4E6] leading-relaxed font-bold">{item.good}</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
 

@@ -74,7 +74,11 @@ export default function Oferta() {
         <div className="space-y-8">
 
           {/* BASIC PLAN */}
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-20px' }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
             className="rounded-2xl p-6 flex flex-col"
             style={{ background: '#2A130B', border: '1px solid #5A321C' }}
           >
@@ -140,10 +144,14 @@ export default function Oferta() {
                 Quero o Plano Básico
               </button>
             </div>
-          </div>
+          </motion.div>
 
           {/* COMPLETE PLAN */}
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-20px' }}
+            transition={{ duration: 0.3, ease: 'easeOut', delay: 0.1 }}
             className="rounded-2xl p-6 flex flex-col relative"
             style={{
               background: '#1A0F04',
@@ -226,7 +234,7 @@ export default function Oferta() {
                 Quero o Kit Completo + Bônus
               </button>
             </div>
-          </div>
+          </motion.div>
 
         </div>
       </div>
