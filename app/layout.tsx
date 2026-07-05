@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="/images/hero/mockup-hero-guia-principal.webp"
           as="image"
           type="image/webp"
-          fetchpriority="high"
+          fetchPriority="high"
         />
       </head>
       <body className="font-sans antialiased bg-[#0B0704] text-[#FFF4E6]" suppressHydrationWarning>
