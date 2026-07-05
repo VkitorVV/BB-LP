@@ -69,7 +69,7 @@ export default function Bonus() {
                   width={1000}
                   height={1000}
                   loading="lazy"
-                  sizes="(max-width: 768px) 88vw, 360px"
+                  sizes="(max-width: 640px) 88vw, (max-width: 768px) 85vw, 340px"
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
               </div>

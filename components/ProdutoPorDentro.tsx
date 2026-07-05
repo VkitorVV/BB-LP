@@ -61,7 +61,7 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
                 width={900}
                 height={1200}
                 loading="lazy"
-                sizes="(max-width: 768px) 64vw, 320px"
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 45vw, 280px"
                 style={{ width: '100%', height: 'auto', display: 'block' }}
               />
             </div>

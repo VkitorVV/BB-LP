@@ -98,7 +98,7 @@ export default function Oferta() {
                   width={1000}
                   height={1000}
                   loading="lazy"
-                  sizes="(max-width: 768px) 80vw, 320px"
+                  sizes="(max-width: 640px) 80vw, (max-width: 768px) 75vw, 300px"
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
               </div>
@@ -184,7 +184,7 @@ export default function Oferta() {
                   width={1400}
                   height={1400}
                   loading="lazy"
-                  sizes="(max-width: 768px) 92vw, 480px"
+                  sizes="(max-width: 640px) 92vw, (max-width: 768px) 88vw, 460px"
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
               </div>
@@ -315,7 +315,7 @@ export default function Oferta() {
                       width={1000}
                       height={1000}
                       loading="lazy"
-                      sizes="(max-width: 768px) 82vw, 360px"
+                      sizes="(max-width: 640px) 60vw, (max-width: 768px) 70vw, 320px"
                       className="w-full max-w-[240px] md:max-w-[340px] h-auto rounded-xl"
                       style={{ border: '1.5px solid #5A321C', boxShadow: '0 4px 20px rgba(11,7,4,0.6)' }}
                     />

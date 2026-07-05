@@ -44,7 +44,7 @@ export default function OQueRecebe() {
             width={1600}
             height={1200}
             loading="lazy"
-            sizes="(max-width: 768px) 92vw, 640px"
+            sizes="(max-width: 640px) 92vw, (max-width: 768px) 88vw, 580px"
             style={{ width: '100%', height: 'auto', display: 'block' }}
           />
         </div>

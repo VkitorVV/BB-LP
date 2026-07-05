@@ -1,19 +1,22 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
 import ProdutoPorDentro from '@/components/ProdutoPorDentro';
 import Beneficios from '@/components/Beneficios';
-import ProvaSocial from '@/components/ProvaSocial';
-import CTAIntermediario from '@/components/CTAIntermediario';
-import IdealPara from '@/components/IdealPara';
-import OQueRecebe from '@/components/OQueRecebe';
-import Bonus from '@/components/Bonus';
-import OfferCountdown from '@/components/OfferCountdown';
-import Comparativo from '@/components/Comparativo';
-import Oferta from '@/components/Oferta';
-import Garantia from '@/components/Garantia';
-import ComoAcessar from '@/components/ComoAcessar';
-import FAQ from '@/components/FAQ';
-import Rodape from '@/components/Rodape';
+
+// Lazy load components below the fold
+const ProvaSocial = dynamic(() => import('@/components/ProvaSocial'), { ssr: true });
+const CTAIntermediario = dynamic(() => import('@/components/CTAIntermediario'), { ssr: true });
+const IdealPara = dynamic(() => import('@/components/IdealPara'), { ssr: true });
+const OQueRecebe = dynamic(() => import('@/components/OQueRecebe'), { ssr: true });
+const Bonus = dynamic(() => import('@/components/Bonus'), { ssr: true });
+const OfferCountdown = dynamic(() => import('@/components/OfferCountdown'), { ssr: true });
+const Comparativo = dynamic(() => import('@/components/Comparativo'), { ssr: true });
+const Oferta = dynamic(() => import('@/components/Oferta'), { ssr: true });
+const Garantia = dynamic(() => import('@/components/Garantia'), { ssr: true });
+const ComoAcessar = dynamic(() => import('@/components/ComoAcessar'), { ssr: true });
+const FAQ = dynamic(() => import('@/components/FAQ'), { ssr: true });
+const Rodape = dynamic(() => import('@/components/Rodape'), { ssr: true });
 
 export default function Home() {
   return (

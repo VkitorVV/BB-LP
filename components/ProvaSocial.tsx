@@ -54,7 +54,7 @@ export default function ProvaSocial() {
                 width={720}
                 height={1280}
                 loading="lazy"
-                sizes="(max-width: 768px) 114vw, 512px"
+                sizes="(max-width: 640px) 85vw, (max-width: 768px) 90vw, 450px"
                 style={{ width: '100%', height: 'auto', display: 'block' }}
               />
             </div>

@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   },
   // Allow access to remote image placeholder.
   images: {
+    formats: ['image/webp', 'image/avif'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -15,6 +16,13 @@ const nextConfig: NextConfig = {
         pathname: '/**', // This allows any path under the hostname
       },
     ],
+  },
+  // Optimize production bundle
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
   },
   turbopack: {},
   webpack: (config, {dev}) => {

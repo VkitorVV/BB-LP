@@ -88,7 +88,9 @@ export default function Hero() {
             width={1400}
             height={1000}
             priority
-            sizes="(max-width: 768px) 101vw, 616px"
+            fetchPriority="high"
+            loading="eager"
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 101vw, 616px"
             className="w-full h-auto rounded-2xl"
           />
         </motion.div>
