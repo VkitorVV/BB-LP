@@ -1,17 +1,17 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
-import ProdutoPorDentro from '@/components/ProdutoPorDentro';
-import Beneficios from '@/components/Beneficios';
 
-// Lazy load components below the fold
+// Lazy load ALL components below the fold with SSR preserved
+const ProdutoPorDentro = dynamic(() => import('@/components/ProdutoPorDentro'), { ssr: true });
+const Beneficios = dynamic(() => import('@/components/Beneficios'), { ssr: true });
 const ProvaSocial = dynamic(() => import('@/components/ProvaSocial'), { ssr: true });
 const CTAIntermediario = dynamic(() => import('@/components/CTAIntermediario'), { ssr: true });
 const IdealPara = dynamic(() => import('@/components/IdealPara'), { ssr: true });
 const OQueRecebe = dynamic(() => import('@/components/OQueRecebe'), { ssr: true });
 const Bonus = dynamic(() => import('@/components/Bonus'), { ssr: true });
-const OfferCountdown = dynamic(() => import('@/components/OfferCountdown'), { ssr: true });
 const Comparativo = dynamic(() => import('@/components/Comparativo'), { ssr: true });
+const OfferCountdown = dynamic(() => import('@/components/OfferCountdown'), { ssr: true });
 const Oferta = dynamic(() => import('@/components/Oferta'), { ssr: true });
 const Garantia = dynamic(() => import('@/components/Garantia'), { ssr: true });
 const ComoAcessar = dynamic(() => import('@/components/ComoAcessar'), { ssr: true });

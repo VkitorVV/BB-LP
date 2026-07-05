@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { ShieldCheck } from 'lucide-react';
 
 export default function Garantia() {
@@ -14,11 +13,7 @@ export default function Garantia() {
       <div className="max-w-md mx-auto text-center">
 
         {/* Shield badge */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
+        <div
           className="inline-flex flex-col items-center justify-center p-6 rounded-2xl w-full max-w-[260px] mx-auto mb-8"
           style={{
             background: '#160D08',
@@ -39,7 +34,7 @@ export default function Garantia() {
           <span className="text-[10px] font-bold text-[#D9C3A3] uppercase mt-1 tracking-wider">
             DE GARANTIA
           </span>
-        </motion.div>
+        </div>
 
         {/* Divider */}
         <div className="divider-copper w-24 mx-auto mb-6" />
