@@ -30,7 +30,7 @@ function windowToSince(win: string): string | null {
 function sessionStatus(lastSeen: string, pageStatus: string): 'online'|'recente'|'saiu'|'inativo' {
   const secAgo = (Date.now() - new Date(lastSeen).getTime()) / 1000;
   if (pageStatus === 'left') return 'saiu';
-  if (secAgo <= 35) return 'online';
+  if (secAgo <= 25) return 'online';
   if (secAgo <= 1800) return 'recente';
   return 'inativo';
 }
@@ -44,16 +44,16 @@ export async function GET(request: NextRequest) {
 
   const date  = searchParams.get('date')   || new Date().toISOString().split('T')[0];
   const win   = searchParams.get('window') || 'today';
-  const since = windowToSince(win);                    // null = full day
-  const now35 = new Date(Date.now() -    35_000).toISOString();
+  const since = windowToSince(win);
+  const now25  = new Date(Date.now() -    25_000).toISOString();
   const now30m = new Date(Date.now() - 30*60_000).toISOString();
 
   try {
-    // ── Ativos agora ─────────────────────────────────────────────────────
+    // ── Ativos agora (25s, não "left") ───────────────────────────────────
     const { count: activeNow } = await supabaseAdmin
       .from('funnel_sessions')
       .select('*', { count: 'exact', head: true })
-      .gte('last_seen', now35)
+      .gte('last_seen', now25)
       .neq('page_status', 'left');
 
     // ── Ativos 30min ──────────────────────────────────────────────────────
@@ -70,6 +70,12 @@ export async function GET(request: NextRequest) {
       .order('last_seen', { ascending: false });
     if (since) sq = sq.gte('last_seen', since);
     const { data: sessionData } = await sq;
+
+    // totalSessionsToday = full day count
+    const { count: totalSessionsToday } = await supabaseAdmin
+      .from('funnel_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('date', date);
 
     const sessions = ((sessionData || []) as Array<{
       session_id: string; first_seen: string; last_seen: string;
@@ -169,6 +175,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       date, window: win,
       activeNow: activeNow||0, active30m: active30m||0,
+      totalSessionsToday: totalSessionsToday||0,
       totalSessionsInWindow: totalInWindow,
       totalClicks: Object.values(checkoutClicks).reduce((a,b)=>a+b,0),
       sections, checkoutClicks,

@@ -1,329 +1,529 @@
 'use client';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface SectionRow { order:number; id:string; title:string; reached:number; percentOfHero:number; dropFromPrevious:number; }
-interface CheckoutClicks { plano_basico_popup_open:number; plano_basico:number; kit_completo:number; kit_desconto_popup:number; }
-interface MapRow { sessions:number; clicks:number; reachedOffer:number; purchases:number; revenue:number; conversionClick:number; conversionPurchase:number; }
-interface CRow extends MapRow { utmCampaign:string; }
-interface ARow extends MapRow { adsetId:string; }
-interface CreRow extends MapRow { utmContent:string; }
-type SessionStatus = 'online'|'recente'|'saiu'|'inativo';
+// ─── Types ─────────────────────────────────────────────────────────────────
+type SessionStatus = 'online' | 'recente' | 'saiu' | 'inativo';
+
+interface SectionRow {
+  order: number; id: string; title: string;
+  reached: number; percentOfHero: number; dropFromPrevious: number;
+}
+interface CheckoutClicks {
+  plano_basico_popup_open: number; plano_basico: number;
+  kit_completo: number; kit_desconto_popup: number;
+}
+interface MapRow {
+  sessions: number; clicks: number; reachedOffer: number;
+  purchases: number; revenue: number;
+  conversionClick: number; conversionPurchase: number;
+}
 interface SessionRow {
-  sessionId:string; label:string; shortId:string;
-  firstSeen:string; lastSeen:string; leftAt:string|null; pageStatus:string;
-  status:SessionStatus; secondsSinceLastSeen:number;
-  utmSource?:string; utmCampaign?:string; utmTerm?:string; utmContent?:string;
-  campaignId?:string; adsetId?:string; adId?:string; placement?:string; siteSourceName?:string;
-  maxSectionOrder:number; maxSectionTitle?:string; clicksCount:number; purchased:boolean; revenue:number;
+  sessionId: string; label: string; shortId: string;
+  firstSeen: string; lastSeen: string; leftAt: string | null;
+  pageStatus: string; status: SessionStatus;
+  secondsSinceLastSeen: number;
+  utmSource?: string; utmCampaign?: string; utmTerm?: string;
+  utmContent?: string; campaignId?: string; adsetId?: string;
+  adId?: string; placement?: string; siteSourceName?: string;
+  maxSectionOrder: number; maxSectionTitle?: string;
+  clicksCount: number; purchased: boolean; revenue: number;
 }
 interface DashData {
-  date:string; window:string;
-  activeNow:number; active30m:number; totalSessionsInWindow:number; totalClicks:number;
-  sections:SectionRow[]; checkoutClicks:CheckoutClicks;
-  purchases:{count:number;revenue:number};
-  campaigns:CRow[]; adsets:ARow[]; creatives:CreRow[];
-  sessions:SessionRow[]; showingMax:boolean; updatedAt:string;
+  date: string; window: string;
+  activeNow: number; active30m: number;
+  totalSessionsToday: number; totalSessionsInWindow: number; totalClicks: number;
+  sections: SectionRow[];
+  checkoutClicks: CheckoutClicks;
+  purchases: { count: number; revenue: number };
+  campaigns: (MapRow & { utmCampaign: string })[];
+  adsets: (MapRow & { adsetId: string })[];
+  creatives: (MapRow & { utmContent: string })[];
+  sessions: SessionRow[];
+  showingMax: boolean;
+  updatedAt: string;
 }
 interface SessionDetail {
-  session:Record<string,unknown>|null;
-  sectionsReached:Record<string,unknown>[];
-  clicks:Record<string,unknown>[];
-  purchase:Record<string,unknown>|null;
+  session: Record<string, unknown> | null;
+  sectionsReached: Record<string, unknown>[];
+  clicks: Record<string, unknown>[];
+  purchase: Record<string, unknown> | null;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt    = (n?:number|null) => (n??0).toLocaleString('pt-BR');
-const fmtBRL = (n?:number|null) => (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const fmtTime = (iso?:string|null) => iso ? new Date(iso).toLocaleTimeString('pt-BR') : '—';
-const pctCol  = (p:number) => p>=70?'#4ade80':p>=40?'#f59e0b':'#ff6b6b';
-const today   = () => new Date().toISOString().split('T')[0];
+// ─── Utils ─────────────────────────────────────────────────────────────────
+const fmt     = (n?: number | null) => (n ?? 0).toLocaleString('pt-BR');
+const fmtBRL  = (n?: number | null) => (n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtTime = (iso?: string | null) => iso ? new Date(iso).toLocaleTimeString('pt-BR') : '—';
+const todayStr = () => new Date().toISOString().split('T')[0];
+const pctColor = (p: number) => p >= 70 ? '#22c55e' : p >= 40 ? '#f59e0b' : '#ef4444';
 
-const STATUS_COLOR: Record<SessionStatus,string> = {
-  online:'#4ade80', recente:'#60a5fa', saiu:'#6b7280', inativo:'#374151',
+const STATUS_COLOR: Record<SessionStatus, string> = {
+  online: '#22c55e', recente: '#3b82f6', saiu: '#6b7280', inativo: '#374151',
 };
-const STATUS_DOT: Record<SessionStatus,string> = {
-  online:'●', recente:'●', saiu:'○', inativo:'○',
+const STATUS_LABEL: Record<SessionStatus, string> = {
+  online: '● Online', recente: '◑ Recente', saiu: '○ Saiu', inativo: '○ Inativo',
 };
 
-function secsAgo(sec:number): string {
+function secsAgo(sec: number): string {
   if (sec < 5)   return 'agora';
   if (sec < 60)  return `há ${sec}s`;
-  if (sec < 3600) return `há ${Math.floor(sec/60)}min`;
-  return `há ${Math.floor(sec/3600)}h`;
+  if (sec < 3600) return `há ${Math.floor(sec / 60)}min`;
+  return `há ${Math.floor(sec / 3600)}h`;
 }
 
 const WINDOWS = [
-  {v:'now',  l:'Agora (35s)'}, {v:'30m', l:'30 min'}, {v:'1h', l:'1 hora'},
-  {v:'2h',   l:'2 horas'},     {v:'4h',  l:'4 horas'},{v:'12h',l:'12 horas'},
-  {v:'24h',  l:'24 horas'},    {v:'today',l:'Hoje'},
+  { v: 'now',   l: 'Agora / 25s' },
+  { v: '30m',   l: '30 min' },
+  { v: '1h',    l: '1 hora' },
+  { v: '2h',    l: '2 horas' },
+  { v: '4h',    l: '4 horas' },
+  { v: '12h',   l: '12 horas' },
+  { v: '24h',   l: '24 horas' },
+  { v: 'today', l: 'Hoje (dia todo)' },
 ];
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main ──────────────────────────────────────────────────────────────────
 export default function FunilPage() {
-  const [token,setToken]     = useState('');
-  const [date,setDate]       = useState(today());
-  const [win,setWin]         = useState('today');
-  const [data,setData]       = useState<DashData|null>(null);
-  const [err,setErr]         = useState('');
-  const [loading,setLoading] = useState(false);
-  const [lu,setLu]           = useState('');
-  const [auto,setAuto]       = useState(false);
-  const [selSid,setSelSid]   = useState<string|null>(null);
-  const [detail,setDetail]   = useState<SessionDetail|null>(null);
-  const [detL,setDetL]       = useState(false);
-  const [clearTxt,setClearTxt] = useState('');
-  const [showClear,setShowClear] = useState(false);
-  const [tick,setTick]       = useState(0);
-  const ivRef  = useRef<ReturnType<typeof setInterval>|null>(null);
-  const tickIv = useRef<ReturnType<typeof setInterval>|null>(null);
+  const [token, setToken]     = useState('');
+  const [date, setDate]       = useState(todayStr());
+  const [win, setWin]         = useState('today');
+  const [data, setData]       = useState<DashData | null>(null);
+  const [err, setErr]         = useState('');
+  const [loading, setLoading] = useState(false);
+  const [lu, setLu]           = useState('');
+  const [auto, setAuto]       = useState(false);
+  const [tick, setTick]       = useState(0);
+  const [selSid, setSelSid]   = useState<string | null>(null);
+  const [detail, setDetail]   = useState<SessionDetail | null>(null);
+  const [detLoading, setDetLoading] = useState(false);
+  const [clearTxt, setClearTxt]     = useState('');
+  const [showClear, setShowClear]   = useState(false);
+  const ivRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // 1-second ticker for "visto há"
-  useEffect(()=>{ tickIv.current=setInterval(()=>setTick(p=>p+1),1000); return()=>{ if(tickIv.current) clearInterval(tickIv.current); }; },[]);
+  // 1s ticker for live "visto há"
+  useEffect(() => {
+    tickRef.current = setInterval(() => setTick(p => p + 1), 1000);
+    return () => { if (tickRef.current) clearInterval(tickRef.current); };
+  }, []);
 
-  useEffect(()=>{ const p=new URLSearchParams(window.location.search); setToken(p.get('token')||''); },[]);
+  // Read token from URL
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    setToken(p.get('token') || '');
+  }, []);
 
-  const load = useCallback(async(tok:string,d:string,w:string)=>{
-    if(!tok) return;
+  const load = useCallback(async (tok: string, d: string, w: string) => {
+    if (!tok) return;
     setLoading(true);
     try {
       const r = await fetch(`/api/funnel-dashboard?token=${encodeURIComponent(tok)}&date=${d}&window=${w}`);
-      if(r.status===401){setErr('Acesso negado.');setData(null);return;}
-      if(!r.ok){const j=await r.json().catch(()=>({})) as {error?:string}; setErr(`Erro ${r.status}${j.error?': '+j.error:''}`);return;}
+      if (r.status === 401) { setErr('Acesso negado. Token inválido.'); setData(null); return; }
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({})) as { error?: string };
+        setErr(`Erro ${r.status}${j.error ? ': ' + j.error : ''}`);
+        return;
+      }
       setData(await r.json() as DashData);
       setErr('');
       setLu(new Date().toLocaleTimeString('pt-BR'));
-    } catch(e){setErr(`Conexão: ${e instanceof Error?e.message:e}`);}
-    finally{setLoading(false);}
-  },[]);
+    } catch (e) {
+      setErr(`Conexão: ${e instanceof Error ? e.message : String(e)}`);
+    } finally { setLoading(false); }
+  }, []);
 
-  useEffect(()=>{if(token)load(token,date,win);},[token]);           // eslint-disable-line
-  useEffect(()=>{if(token)load(token,date,win);},[date,win]);        // eslint-disable-line
-  useEffect(()=>{
-    if(ivRef.current) clearInterval(ivRef.current);
-    if(auto&&token) ivRef.current=setInterval(()=>load(token,date,win),60_000);
-    return()=>{if(ivRef.current) clearInterval(ivRef.current);};
-  },[auto,token,date,win,load]);
+  useEffect(() => { if (token) load(token, date, win); }, [token]);          // eslint-disable-line
+  useEffect(() => { if (token) load(token, date, win); }, [date, win]);      // eslint-disable-line
 
-  const openDetail = useCallback(async(sid:string)=>{
-    setSelSid(sid); setDetL(true);
+  useEffect(() => {
+    if (ivRef.current) clearInterval(ivRef.current);
+    if (auto && token) ivRef.current = setInterval(() => load(token, date, win), 60_000);
+    return () => { if (ivRef.current) clearInterval(ivRef.current); };
+  }, [auto, token, date, win, load]);
+
+  const openDetail = useCallback(async (sid: string) => {
+    setSelSid(sid);
+    setDetLoading(true);
+    setDetail(null);
     try {
-      const r=await fetch(`/api/funnel-session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sid)}&date=${date}`);
+      const r = await fetch(`/api/funnel-session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sid)}&date=${date}`);
       setDetail(await r.json() as SessionDetail);
-    } catch{setDetail(null);} finally{setDetL(false);}
-  },[token,date]);
+    } catch { setDetail(null); }
+    finally { setDetLoading(false); }
+  }, [token, date]);
 
-  const closeDetail=()=>{setSelSid(null);setDetail(null);};
-  const exportData=(t:'csv'|'json')=>window.open(`/api/funnel-export?token=${encodeURIComponent(token)}&date=${date}&type=${t}`,'_blank');
-  const doClear=async()=>{
-    if(clearTxt!=='LIMPAR') return;
-    await fetch('/api/funnel-clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,date})});
-    setShowClear(false); setClearTxt(''); load(token,date,win);
+  const closeDetail = () => { setSelSid(null); setDetail(null); };
+
+  const exportData = (type: 'csv' | 'json') =>
+    window.open(`/api/funnel-export?token=${encodeURIComponent(token)}&date=${date}&type=${type}`, '_blank');
+
+  const doClear = async () => {
+    if (clearTxt !== 'LIMPAR') return;
+    await fetch('/api/funnel-clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, date }),
+    });
+    setShowClear(false);
+    setClearTxt('');
+    load(token, date, win);
   };
 
-  if(err) return <div style={s.center}><div style={s.ebox}><div style={{fontSize:32,marginBottom:12}}>🔒</div><p style={{color:'#ff6b6b',fontWeight:700,marginBottom:16}}>{err}</p><Btn onClick={()=>{setErr('');load(token,date,win);}}>Tentar novamente</Btn></div></div>;
-  if(!data) return <div style={s.center}><div style={{color:'#888'}}>{loading?'Carregando...':'Aguardando ?token=...'}</div></div>;
+  // ── Error / empty states ──────────────────────────────────────────────
+  if (err) return (
+    <div style={g.center}>
+      <div style={g.ebox}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
+        <p style={{ color: '#ef4444', fontWeight: 700, marginBottom: 16 }}>{err}</p>
+        <BtnSm onClick={() => { setErr(''); load(token, date, win); }}>Tentar novamente</BtnSm>
+      </div>
+    </div>
+  );
 
-  const totalClicks=Object.values(data.checkoutClicks).reduce((a,b)=>a+b,0);
-  const detSess = selSid ? data.sessions.find(s=>s.sessionId===selSid) : null;
+  if (!data && !loading) return (
+    <div style={g.center}>
+      <p style={{ color: '#6b7280' }}>Aguardando <code style={{ color: '#f59e0b' }}>?token=...</code> na URL</p>
+    </div>
+  );
 
+  if (!data) return (
+    <div style={g.center}>
+      <p style={{ color: '#9ca3af' }}>Carregando…</p>
+    </div>
+  );
+
+  const totalClicks = Object.values(data.checkoutClicks).reduce((a, b) => a + b, 0);
+  const detSess = selSid ? data.sessions.find(s => s.sessionId === selSid) : null;
+  void tick; // used implicitly via secsAgo call below
+
+  // ── Render ───────────────────────────────────────────────────────────
   return (
-    <div style={s.page}>
-      <div style={s.wrap}>
+    <div style={g.page}>
+      <div style={g.wrap}>
 
-        {/* Header */}
-        <div style={s.hdr}>
-          <div><h1 style={s.ttl}>FUNIL — Mapa do Degradê</h1><p style={s.sub}>Atualizado às {lu}{loading?' · carregando...':''}</p></div>
-          <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-            <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={s.inp}/>
-            <select value={win} onChange={e=>setWin(e.target.value)} style={s.inp}>
-              {WINDOWS.map(w=><option key={w.v} value={w.v}>{w.l}</option>)}
-            </select>
-            <Btn active={auto} onClick={()=>setAuto(p=>!p)}>{auto?'⟳ Auto 60s':'⟳ Auto OFF'}</Btn>
-            <Btn onClick={()=>load(token,date,win)} disabled={loading}>↺ Atualizar</Btn>
+        {/* ── Header ── */}
+        <header style={g.hdr}>
+          <div>
+            <h1 style={g.title}>FUNIL <span style={{ color: '#f59e0b' }}>—</span> Mapa do Degradê</h1>
+            <p style={g.sub}>
+              {lu ? `Atualizado às ${lu}` : 'Carregando…'}
+              {loading && <span style={{ color: '#f59e0b', marginLeft: 8 }}>⟳</span>}
+            </p>
           </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} style={g.inp} />
+            <select value={win} onChange={e => setWin(e.target.value)} style={g.inp}>
+              {WINDOWS.map(w => <option key={w.v} value={w.v}>{w.l}</option>)}
+            </select>
+            <BtnSm active={auto} onClick={() => setAuto(p => !p)}>
+              {auto ? '⟳ Auto 60s ON' : '⟳ Auto OFF'}
+            </BtnSm>
+            <BtnSm onClick={() => load(token, date, win)} disabled={loading}>
+              ↺ Atualizar
+            </BtnSm>
+          </div>
+        </header>
+
+        {/* ── Cards ── */}
+        <div style={g.cards6}>
+          <StatCard label="Ativos agora" value={fmt(data.activeNow)} color="#22c55e" hint="last_seen ≤ 25s e não saiu" />
+          <StatCard label="Ativos 30min" value={fmt(data.active30m)} color="#3b82f6" />
+          <StatCard label="Sessões hoje" value={fmt(data.totalSessionsToday)} color="#06b6d4" />
+          <StatCard label="Cliques CTA" value={fmt(totalClicks)} color="#f59e0b" />
+          <StatCard label="Compras" value={fmt(data.purchases.count)} color="#f97316" />
+          <StatCard label="Receita" value={fmtBRL(data.purchases.revenue)} color="#a855f7" />
         </div>
 
-        {/* Cards */}
-        <div style={s.cards}>
-          <Card label="● Ativos agora" value={fmt(data.activeNow)} color="#4ade80" hint="Presença confirmada nos últimos 35s"/>
-          <Card label="◑ Ativos 30min" value={fmt(data.active30m)} color="#60a5fa"/>
-          <Card label="Sessões período" value={fmt(data.totalSessionsInWindow)} color="#a78bfa"/>
-          <Card label="Cliques CTA" value={fmt(totalClicks)} color="#f59e0b"/>
-          <Card label="Compras" value={fmt(data.purchases.count)} color="#fb923c"/>
-          <Card label="Receita" value={fmtBRL(data.purchases.revenue)} color="#e879f9"/>
-        </div>
-
-        {/* Funnel */}
+        {/* ── Funil ── */}
         <Block title="Funil por Seção">
-          <table style={s.tbl}>
-            <thead><tr style={{color:'#555'}}>
-              <Th>Seção</Th><Th r>Alcançaram</Th><Th r>% Topo</Th><Th r>Drop</Th><Th>Barra</Th>
-            </tr></thead>
-            <tbody>{data.sections.map(sec=>(
-              <tr key={sec.id} style={{...s.tr, outline: sec.id==='oferta'?'1px solid rgba(242,138,26,.35)':'none'}}>
-                <Td>{sec.id==='oferta'?<span style={{color:'#F28A1A',marginRight:4}}>★</span>:null}{sec.title}</Td>
-                <Td r bold>{fmt(sec.reached)}</Td>
-                <Td r style={{color:pctCol(sec.percentOfHero)}}>{sec.percentOfHero}%</Td>
-                <Td r style={{color:sec.dropFromPrevious>30?'#ff6b6b':'#555'}}>{sec.dropFromPrevious>0?`-${sec.dropFromPrevious}%`:'—'}</Td>
-                <Td><div style={s.barBg}><div style={{...s.barFill,width:`${sec.percentOfHero}%`}}/></div></Td>
-              </tr>
-            ))}</tbody>
-          </table>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={g.tbl}>
+              <thead>
+                <tr>
+                  <TH>Seção</TH>
+                  <TH right>Alcançaram</TH>
+                  <TH right>% Topo</TH>
+                  <TH right>Drop</TH>
+                  <TH>Barra</TH>
+                </tr>
+              </thead>
+              <tbody>
+                {data.sections.map(sec => (
+                  <tr key={sec.id} style={{
+                    ...g.tr,
+                    background: sec.id === 'oferta' ? 'rgba(249,115,22,.06)' : undefined,
+                    outline:    sec.id === 'oferta' ? '1px solid rgba(249,115,22,.2)' : undefined,
+                  }}>
+                    <TD>
+                      {sec.id === 'oferta' && <span style={{ color: '#f97316', marginRight: 6 }}>★</span>}
+                      <span style={{ color: sec.id === 'oferta' ? '#fdba74' : '#e5e7eb' }}>{sec.title}</span>
+                    </TD>
+                    <TD right bold>{fmt(sec.reached)}</TD>
+                    <TD right style={{ color: pctColor(sec.percentOfHero) }}>{sec.percentOfHero}%</TD>
+                    <TD right style={{ color: sec.dropFromPrevious > 30 ? '#ef4444' : '#6b7280' }}>
+                      {sec.dropFromPrevious > 0 ? `-${sec.dropFromPrevious}%` : '—'}
+                    </TD>
+                    <TD>
+                      <div style={g.barBg}>
+                        <div style={{ ...g.barFill, width: `${Math.min(sec.percentOfHero, 100)}%` }} />
+                      </div>
+                    </TD>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Block>
 
-        {/* Checkout clicks */}
+        {/* ── Checkout clicks ── */}
         <Block title="Cliques em Checkout">
-          <div style={s.cards}>
-            {([['Básico→popup','plano_basico_popup_open'],['Kit (PV)','kit_completo'],['Kit desconto','kit_desconto_popup'],['Continua Bás.','plano_basico']] as [string,keyof typeof data.checkoutClicks][]).map(([l,k])=>(
-              <Card key={k} label={l} value={fmt(data.checkoutClicks[k]||0)} color="#60a5fa"/>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+            {([
+              ['Básico → popup', 'plano_basico_popup_open'],
+              ['Kit (PV)',        'kit_completo'],
+              ['Kit desconto',   'kit_desconto_popup'],
+              ['Continua Básico','plano_basico'],
+            ] as [string, keyof CheckoutClicks][]).map(([l, k]) => (
+              <div key={k} style={g.miniCard}>
+                <p style={g.miniLabel}>{l}</p>
+                <p style={{ ...g.miniVal, color: '#3b82f6' }}>{fmt(data.checkoutClicks[k] || 0)}</p>
+              </div>
             ))}
           </div>
         </Block>
 
-        {/* Campaigns */}
-        {data.campaigns.length>0&&<Block title="Por Campanha (utm_campaign)">
-          <Grid headers={['Campanha','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']}
-            rows={data.campaigns.map(c=>[c.utmCampaign,fmt(c.sessions),fmt(c.reachedOffer),fmt(c.clicks),fmt(c.purchases),fmtBRL(c.revenue),c.conversionClick+'%',c.conversionPurchase+'%'])}/>
-        </Block>}
-
-        {/* Adsets */}
-        {data.adsets.length>0&&<Block title="Por Conjunto (adset_id)">
-          <Grid headers={['Conjunto','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']}
-            rows={data.adsets.map(a=>[a.adsetId,fmt(a.sessions),fmt(a.reachedOffer),fmt(a.clicks),fmt(a.purchases),fmtBRL(a.revenue),a.conversionClick+'%',a.conversionPurchase+'%'])}/>
-        </Block>}
-
-        {/* Creatives */}
-        {data.creatives.length>0&&<Block title="Por Criativo (utm_content)">
-          <Grid headers={['Criativo','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']}
-            rows={data.creatives.map(c=>[c.utmContent,fmt(c.sessions),fmt(c.reachedOffer),fmt(c.clicks),fmt(c.purchases),fmtBRL(c.revenue),c.conversionClick+'%',c.conversionPurchase+'%'])}/>
-        </Block>}
-
-        {/* Users */}
-        {data.sessions.length>0&&<Block title={`Usuários Anônimos (${data.sessions.length}${data.showingMax?' — mostrando 100':''}) `}>
-          <div style={{overflowX:'auto'}}>
-            <table style={s.tbl}>
-              <thead><tr style={{color:'#555'}}>
-                <Th>Usuário</Th><Th>Status</Th><Th>1ª visita</Th><Th>Visto há</Th>
-                <Th>Campanha</Th><Th>Conjunto</Th><Th>Criativo</Th>
-                <Th>Última seção</Th><Th r>Cliques</Th><Th r>Compra</Th><Th r>Receita</Th>
-              </tr></thead>
-              <tbody>{data.sessions.map(sess=>{
-                const secAgoVal = tick >= 0 ? sess.secondsSinceLastSeen + Math.floor((Date.now()/1000) - Math.floor(Date.now()/1000)) : sess.secondsSinceLastSeen;
-                void secAgoVal;
-                const liveSeconds = sess.secondsSinceLastSeen;
-                return (
-                  <tr key={sess.sessionId} style={{...s.tr,cursor:'pointer'}} onClick={()=>openDetail(sess.sessionId)}>
-                    <Td><span style={{color:'#60a5fa',fontFamily:'monospace',fontSize:11}}>{sess.label}</span><span style={{color:'#555',fontSize:10,marginLeft:6}}>#{sess.shortId}</span></Td>
-                    <Td><span style={{color:STATUS_COLOR[sess.status],fontSize:13}}>{STATUS_DOT[sess.status]}</span> <span style={{fontSize:12,color:STATUS_COLOR[sess.status]}}>{sess.status}</span></Td>
-                    <Td style={{fontSize:11}}>{fmtTime(sess.firstSeen)}</Td>
-                    <Td style={{fontSize:11,color:'#888'}}>{secsAgo(liveSeconds)}</Td>
-                    <Td style={{fontSize:12}}>{sess.utmCampaign||'—'}</Td>
-                    <Td style={{fontSize:12}}>{sess.adsetId||'—'}</Td>
-                    <Td style={{fontSize:12}}>{sess.utmContent||'—'}</Td>
-                    <Td style={{fontSize:12}}>{sess.maxSectionTitle||'—'}</Td>
-                    <Td r>{fmt(sess.clicksCount)}</Td>
-                    <Td r>{sess.purchased?<span style={{color:'#4ade80'}}>✓</span>:'—'}</Td>
-                    <Td r style={{fontSize:12}}>{sess.revenue>0?fmtBRL(sess.revenue):'—'}</Td>
+        {/* ── USUÁRIOS ANÔNIMOS ── */}
+        <Block title={`USUÁRIOS ANÔNIMOS${data.showingMax ? ' — mostrando 100' : ` (${data.sessions.length})`}`}>
+          {data.sessions.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: 13, padding: '12px 0' }}>Nenhuma sessão no período selecionado.</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={g.tbl}>
+                <thead>
+                  <tr>
+                    <TH>Usuário</TH>
+                    <TH>Status</TH>
+                    <TH>1ª visita</TH>
+                    <TH>Visto há</TH>
+                    <TH>Campanha</TH>
+                    <TH>Conjunto</TH>
+                    <TH>Criativo</TH>
+                    <TH>Última seção</TH>
+                    <TH right>Cliques</TH>
+                    <TH right>Comprou</TH>
+                    <TH right>Receita</TH>
                   </tr>
-                );
-              })}</tbody>
-            </table>
-          </div>
-        </Block>}
+                </thead>
+                <tbody>
+                  {data.sessions.map(sess => (
+                    <tr
+                      key={sess.sessionId}
+                      style={{ ...g.tr, cursor: 'pointer' }}
+                      onClick={() => openDetail(sess.sessionId)}
+                      title="Clique para ver detalhes"
+                    >
+                      <TD>
+                        <span style={{ color: '#60a5fa', fontFamily: 'monospace', fontSize: 12 }}>{sess.label}</span>
+                        <span style={{ color: '#374151', fontSize: 10, marginLeft: 6 }}>#{sess.shortId}</span>
+                      </TD>
+                      <TD>
+                        <span style={{ color: STATUS_COLOR[sess.status], fontSize: 13 }}>
+                          {STATUS_LABEL[sess.status]}
+                        </span>
+                      </TD>
+                      <TD style={{ fontSize: 11, color: '#9ca3af' }}>{fmtTime(sess.firstSeen)}</TD>
+                      <TD style={{ fontSize: 11, color: '#9ca3af' }}>
+                        {secsAgo(sess.secondsSinceLastSeen)}
+                      </TD>
+                      <TD style={{ fontSize: 12 }}>{sess.utmCampaign || '—'}</TD>
+                      <TD style={{ fontSize: 12 }}>{sess.adsetId || '—'}</TD>
+                      <TD style={{ fontSize: 12 }}>{sess.utmContent || '—'}</TD>
+                      <TD style={{ fontSize: 12, color: '#d1d5db' }}>{sess.maxSectionTitle || '—'}</TD>
+                      <TD right>{fmt(sess.clicksCount)}</TD>
+                      <TD right>
+                        {sess.purchased ? <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span> : '—'}
+                      </TD>
+                      <TD right style={{ fontSize: 12 }}>
+                        {sess.revenue > 0 ? fmtBRL(sess.revenue) : '—'}
+                      </TD>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Block>
 
-        {/* Actions */}
-        <div style={{display:'flex',gap:10,flexWrap:'wrap',margin:'8px 0'}}>
-          <Btn onClick={()=>exportData('csv')}>⬇ CSV</Btn>
-          <Btn onClick={()=>exportData('json')}>⬇ JSON</Btn>
-          <Btn danger onClick={()=>setShowClear(true)}>🗑 Limpar {date}</Btn>
+        {/* ── Campanhas ── */}
+        {data.campaigns.length > 0 && (
+          <Block title="Por Campanha (utm_campaign)">
+            <DataGrid
+              headers={['Campanha', 'Sessões', 'Oferta', 'Cliques', 'Compras', 'Receita', 'CTR%', 'CVR%']}
+              rows={data.campaigns.map(c => [
+                c.utmCampaign, fmt(c.sessions), fmt(c.reachedOffer),
+                fmt(c.clicks), fmt(c.purchases), fmtBRL(c.revenue),
+                c.conversionClick + '%', c.conversionPurchase + '%',
+              ])}
+            />
+          </Block>
+        )}
+
+        {/* ── Adsets ── */}
+        {data.adsets.length > 0 && (
+          <Block title="Por Conjunto (adset_id)">
+            <DataGrid
+              headers={['Conjunto', 'Sessões', 'Oferta', 'Cliques', 'Compras', 'Receita', 'CTR%', 'CVR%']}
+              rows={data.adsets.map(a => [
+                a.adsetId, fmt(a.sessions), fmt(a.reachedOffer),
+                fmt(a.clicks), fmt(a.purchases), fmtBRL(a.revenue),
+                a.conversionClick + '%', a.conversionPurchase + '%',
+              ])}
+            />
+          </Block>
+        )}
+
+        {/* ── Criativos ── */}
+        {data.creatives.length > 0 && (
+          <Block title="Por Criativo (utm_content)">
+            <DataGrid
+              headers={['Criativo', 'Sessões', 'Oferta', 'Cliques', 'Compras', 'Receita', 'CTR%', 'CVR%']}
+              rows={data.creatives.map(c => [
+                c.utmContent, fmt(c.sessions), fmt(c.reachedOffer),
+                fmt(c.clicks), fmt(c.purchases), fmtBRL(c.revenue),
+                c.conversionClick + '%', c.conversionPurchase + '%',
+              ])}
+            />
+          </Block>
+        )}
+
+        {/* ── Actions ── */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '8px 0 24px' }}>
+          <BtnSm onClick={() => exportData('csv')}>⬇ Exportar CSV</BtnSm>
+          <BtnSm onClick={() => exportData('json')}>⬇ Exportar JSON</BtnSm>
+          <BtnSm danger onClick={() => setShowClear(true)}>🗑 Limpar dados de {date}</BtnSm>
         </div>
-        <p style={{textAlign:'center',fontSize:10,color:'#333',marginTop:8}}>Sem dados pessoais · {data.updatedAt}</p>
+        <p style={{ textAlign: 'center', fontSize: 10, color: '#374151', paddingBottom: 32 }}>
+          Sem dados pessoais · {data.updatedAt}
+        </p>
 
       </div>{/* /wrap */}
 
-      {/* Session Detail */}
-      {selSid&&(
-        <div style={s.overlay} onClick={closeDetail}>
-          <div style={s.drawer} onClick={e=>e.stopPropagation()}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,borderBottom:'1px solid #222',paddingBottom:12}}>
-              <h2 style={{margin:0,fontSize:15,fontWeight:800,color:'#F28A1A'}}>{detSess?.label||'Detalhe'}</h2>
-              <button onClick={closeDetail} style={{background:'none',border:'none',color:'#666',cursor:'pointer',fontSize:20}}>✕</button>
+      {/* ── Session detail drawer ── */}
+      {selSid && (
+        <div style={g.overlay} onClick={closeDetail}>
+          <aside style={g.drawer} onClick={e => e.stopPropagation()}>
+            <div style={g.drawerHdr}>
+              <h2 style={g.drawerTitle}>{detSess?.label || 'Detalhe'}</h2>
+              <button onClick={closeDetail} style={g.closeBtn}>✕</button>
             </div>
-            {detL?<div style={{color:'#888',textAlign:'center',padding:32}}>Carregando…</div>:detail?(
-              <div style={{overflowY:'auto',maxHeight:'calc(90vh - 80px)'}}>
-                {/* Bloco 1 — ID */}
-                {detSess&&<>
-                  <DLabel>Identificação</DLabel>
-                  <div style={s.dBlock}>
-                    <DRow k="Usuário" v={detSess.label}/>
-                    <DRow k="Status" v={<span style={{color:STATUS_COLOR[detSess.status]}}>{detSess.status}</span>}/>
-                    <DRow k="sessionId" v={<span style={{fontFamily:'monospace',fontSize:11}}>{selSid.slice(0,20)}…</span>}/>
-                    <DRow k="Primeira visita" v={fmtTime(detSess.firstSeen)}/>
-                    <DRow k="Última atividade" v={fmtTime(detSess.lastSeen)}/>
-                    {detSess.leftAt&&<DRow k="Saiu em" v={fmtTime(detSess.leftAt)}/>}
-                  </div>
-                </>}
-                {/* Bloco 2 — UTM */}
-                {detail.session&&<>
-                  <DLabel>Origem</DLabel>
-                  <div style={s.dBlock}>
-                    {(['utm_source','utm_medium','utm_campaign','utm_term','utm_content','campaign_id','adset_id','ad_id','placement','site_source_name'] as string[]).map(k=>(
-                      detail.session![k]?<DRow key={k} k={k} v={String(detail.session![k])}/>:null
-                    ))}
-                  </div>
-                </>}
-                {/* Bloco 3 — Seções */}
-                {detail.sectionsReached.length>0&&<>
-                  <DLabel>Percurso na PV ({detail.sectionsReached.length})</DLabel>
-                  <div style={{...s.dBlock,padding:0,overflow:'hidden'}}>
-                    {detail.sectionsReached.map((ev,i)=>{
-                      const isLast = i===detail.sectionsReached.length-1;
-                      return <div key={i} style={{padding:'8px 12px',borderBottom:'1px solid #1a1a1a',background:isLast?'rgba(242,138,26,.06)':'transparent',display:'flex',justifyContent:'space-between'}}>
-                        <span style={{fontSize:12,color:isLast?'#F28A1A':'#ccc'}}>{ev.section_title as string}</span>
-                        <span style={{fontSize:11,color:'#555'}}>{fmtTime(ev.created_at as string)}</span>
-                      </div>;
-                    })}
-                  </div>
-                </>}
-                {/* Bloco 4 — Cliques */}
-                {detail.clicks.length>0&&<>
-                  <DLabel>Cliques ({detail.clicks.length})</DLabel>
-                  <div style={{...s.dBlock,padding:0,overflow:'hidden'}}>
-                    {detail.clicks.map((ev,i)=>(
-                      <div key={i} style={{padding:'8px 12px',borderBottom:'1px solid #1a1a1a',display:'flex',justifyContent:'space-between'}}>
-                        <span style={{fontSize:12,color:'#f59e0b'}}>{ev.checkout_type as string}</span>
-                        <span style={{fontSize:11,color:'#555'}}>{String(ev.button_location||'')} · {fmtTime(ev.created_at as string)}</span>
+            <div style={g.drawerBody}>
+              {detLoading ? (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: 32 }}>Carregando…</p>
+              ) : detail ? (
+                <>
+                  {/* Bloco 1 — ID */}
+                  {detSess && (
+                    <DetailBlock title="Identificação">
+                      <DRow k="Usuário" v={detSess.label} />
+                      <DRow k="Status" v={<span style={{ color: STATUS_COLOR[detSess.status] }}>{STATUS_LABEL[detSess.status]}</span>} />
+                      <DRow k="Session" v={<code style={{ fontSize: 11 }}>{selSid.slice(0, 20)}…</code>} />
+                      <DRow k="1ª visita" v={fmtTime(detSess.firstSeen)} />
+                      <DRow k="Última atividade" v={fmtTime(detSess.lastSeen)} />
+                      {detSess.leftAt && <DRow k="Saiu em" v={fmtTime(detSess.leftAt)} />}
+                    </DetailBlock>
+                  )}
+
+                  {/* Bloco 2 — UTM */}
+                  {detail.session && (
+                    <DetailBlock title="Origem">
+                      {(['utm_source','utm_medium','utm_campaign','utm_term','utm_content',
+                        'campaign_id','adset_id','ad_id','placement','site_source_name'] as string[]).map(k =>
+                        detail.session![k]
+                          ? <DRow key={k} k={k} v={String(detail.session![k])} />
+                          : null
+                      )}
+                    </DetailBlock>
+                  )}
+
+                  {/* Bloco 3 — Timeline */}
+                  {detail.sectionsReached.length > 0 && (
+                    <DetailBlock title={`Percurso na PV (${detail.sectionsReached.length} seções)`}>
+                      <div style={g.timeline}>
+                        {detail.sectionsReached.map((ev, i) => {
+                          const isLast = i === detail.sectionsReached.length - 1;
+                          return (
+                            <div key={i} style={{ ...g.timelineRow, background: isLast ? 'rgba(249,115,22,.1)' : undefined }}>
+                              <span style={{ color: isLast ? '#f97316' : '#60a5fa', fontSize: 12, fontWeight: isLast ? 700 : 400 }}>
+                                {ev.section_title as string}
+                              </span>
+                              <span style={{ fontSize: 11, color: '#6b7280' }}>{fmtTime(ev.created_at as string)}</span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                </>}
-                {/* Bloco 5 — Compra */}
-                <DLabel>Compra</DLabel>
-                {detail.purchase?(
-                  <div style={s.dBlock}>
-                    <DRow k="Produto" v={String(detail.purchase.checkout_title||'')}/>
-                    <DRow k="Valor" v={<span style={{color:'#4ade80',fontWeight:700}}>{fmtBRL(detail.purchase.amount as number)}</span>}/>
-                    <DRow k="Horário" v={fmtTime(detail.purchase.created_at as string)}/>
-                  </div>
-                ):<div style={{...s.dBlock,color:'#555',fontSize:12}}>Sem compra registrada.</div>}
-              </div>
-            ):<div style={{color:'#888',textAlign:'center',padding:24}}>Sessão não encontrada.</div>}
-          </div>
+                    </DetailBlock>
+                  )}
+
+                  {/* Bloco 4 — Cliques */}
+                  {detail.clicks.length > 0 && (
+                    <DetailBlock title={`Cliques (${detail.clicks.length})`}>
+                      <div style={g.timeline}>
+                        {detail.clicks.map((ev, i) => (
+                          <div key={i} style={g.timelineRow}>
+                            <span style={{ color: '#f59e0b', fontSize: 12 }}>{ev.checkout_type as string}</span>
+                            <span style={{ fontSize: 11, color: '#6b7280' }}>
+                              {String(ev.button_location || '')} · {fmtTime(ev.created_at as string)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </DetailBlock>
+                  )}
+
+                  {/* Bloco 5 — Compra */}
+                  <DetailBlock title="Compra">
+                    {detail.purchase ? (
+                      <>
+                        <DRow k="Produto" v={String(detail.purchase.checkout_title || '')} />
+                        <DRow k="Valor" v={<span style={{ color: '#22c55e', fontWeight: 700 }}>{fmtBRL(detail.purchase.amount as number)}</span>} />
+                        <DRow k="Horário" v={fmtTime(detail.purchase.created_at as string)} />
+                      </>
+                    ) : (
+                      <p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>Sem compra registrada.</p>
+                    )}
+                  </DetailBlock>
+                </>
+              ) : (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: 32 }}>Sessão não encontrada.</p>
+              )}
+            </div>
+          </aside>
         </div>
       )}
 
-      {/* Clear Modal */}
-      {showClear&&(
-        <div style={s.overlay} onClick={()=>setShowClear(false)}>
-          <div style={{...s.drawer,maxWidth:440}} onClick={e=>e.stopPropagation()}>
-            <h2 style={{fontSize:14,fontWeight:700,color:'#ff6b6b',margin:'0 0 12px'}}>⚠️ Limpar dados de {date}</h2>
-            <p style={{fontSize:12,color:'#ccc',marginBottom:8}}>Isso apagará <strong style={{color:'#fff'}}>todos os dados do Supabase</strong> para {date}. Exporte antes de continuar.</p>
-            <p style={{fontSize:12,color:'#888',marginBottom:12}}>Digite <strong style={{color:'#ff6b6b'}}>LIMPAR</strong> para confirmar:</p>
-            <input value={clearTxt} onChange={e=>setClearTxt(e.target.value)} placeholder="LIMPAR" style={{...s.inp,width:'100%',marginBottom:12,color:'#ff6b6b'}}/>
-            <div style={{display:'flex',gap:8}}>
-              <Btn danger onClick={doClear} disabled={clearTxt!=='LIMPAR'}>Confirmar limpeza</Btn>
-              <Btn onClick={()=>{setShowClear(false);setClearTxt('');}}>Cancelar</Btn>
+      {/* ── Clear modal ── */}
+      {showClear && (
+        <div style={g.overlay} onClick={() => setShowClear(false)}>
+          <div style={g.modal} onClick={e => e.stopPropagation()}>
+            <h2 style={{ color: '#ef4444', fontSize: 15, margin: '0 0 12px' }}>⚠️ Limpar dados de {date}</h2>
+            <p style={{ color: '#d1d5db', fontSize: 13, marginBottom: 8 }}>
+              Isso apagará <strong>todos os dados do Supabase</strong> para {date}. Exporte antes de continuar.
+            </p>
+            <p style={{ color: '#9ca3af', fontSize: 12, marginBottom: 12 }}>
+              Digite <strong style={{ color: '#ef4444' }}>LIMPAR</strong> para confirmar:
+            </p>
+            <input
+              value={clearTxt}
+              onChange={e => setClearTxt(e.target.value)}
+              placeholder="LIMPAR"
+              style={{ ...g.inp, width: '100%', marginBottom: 12, color: '#ef4444' }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <BtnSm danger onClick={doClear} disabled={clearTxt !== 'LIMPAR'}>
+                Confirmar limpeza
+              </BtnSm>
+              <BtnSm onClick={() => { setShowClear(false); setClearTxt(''); }}>
+                Cancelar
+              </BtnSm>
             </div>
           </div>
         </div>
@@ -332,70 +532,139 @@ export default function FunilPage() {
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-function Block({title,children}:{title:string;children:React.ReactNode}){
-  return <div style={s.blk}><h2 style={s.blkT}>{title}</h2>{children}</div>;
-}
-function Card({label,value,color,hint}:{label:string;value:string;color:string;hint?:string}){
-  return <div style={s.card} title={hint}>
-    <p style={s.cLabel}>{label}</p>
-    <p style={{...s.cVal,color}}>{value}</p>
-    {hint&&<p style={{fontSize:10,color:'#444',margin:'4px 0 0'}}>{hint}</p>}
-  </div>;
-}
-function Grid({headers,rows}:{headers:string[];rows:string[][]}){
-  return <div style={{overflowX:'auto'}}>
-    <table style={s.tbl}>
-      <thead><tr style={{color:'#555'}}>
-        {headers.map((h,i)=><th key={h} style={{...s.th,textAlign:i===0?'left':'right'}}>{h}</th>)}
-      </tr></thead>
-      <tbody>{rows.map((row,ri)=>(
-        <tr key={ri} style={s.tr}>
-          {row.map((cell,ci)=><td key={ci} style={{...s.td,textAlign:ci===0?'left':'right',fontWeight:ci===0?400:600}}>{cell}</td>)}
-        </tr>
-      ))}</tbody>
-    </table>
-  </div>;
-}
-function Btn({children,onClick,active,danger,disabled}:{children:React.ReactNode;onClick?:()=>void;active?:boolean;danger?:boolean;disabled?:boolean}){
-  return <button onClick={onClick} disabled={disabled} style={{border:'1px solid',borderRadius:6,padding:'6px 14px',fontSize:12,cursor:disabled?'not-allowed':'pointer',
-    background:active?'#166534':danger?'#3f0000':'#1f1f1f',
-    color:active?'#4ade80':danger?'#ff6b6b':'#aaa',
-    borderColor:active?'#166534':danger?'#7f1d1d':'#333',
-    opacity:disabled?0.5:1}}>{children}</button>;
-}
-const Th=({children,r}:{children?:React.ReactNode;r?:boolean})=><th style={{...s.th,textAlign:r?'right':'left'}}>{children}</th>;
-const Td=({children,r,bold,style}:{children?:React.ReactNode;r?:boolean;bold?:boolean;style?:React.CSSProperties})=>
-  <td style={{...s.td,textAlign:r?'right':'left',fontWeight:bold?700:400,...style}}>{children}</td>;
-const DLabel=({children}:{children:React.ReactNode})=><p style={{fontSize:10,color:'#F28A1A',textTransform:'uppercase',letterSpacing:1,margin:'16px 0 6px',fontWeight:700}}>{children}</p>;
-const DRow=({k,v}:{k:string;v:React.ReactNode})=><div style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:'1px solid #1e1e1e'}}>
-  <span style={{fontSize:11,color:'#555'}}>{k}</span>
-  <span style={{fontSize:12,color:'#ccc'}}>{v}</span>
-</div>;
+// ─── Sub-components ────────────────────────────────────────────────────────
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const s: Record<string,React.CSSProperties> = {
-  page:   {minHeight:'100vh',background:'#0c0c0c',color:'#fff',fontFamily:'system-ui,sans-serif',padding:'20px 16px'},
-  wrap:   {maxWidth:1000,margin:'0 auto'},
-  center: {minHeight:'100vh',background:'#0c0c0c',display:'flex',alignItems:'center',justifyContent:'center'},
-  ebox:   {background:'#1a1a1a',border:'1px solid #333',borderRadius:12,padding:32,textAlign:'center'},
-  hdr:    {display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,flexWrap:'wrap',gap:12},
-  ttl:    {fontSize:18,fontWeight:800,margin:0,color:'#F28A1A'},
-  sub:    {fontSize:11,color:'#444',margin:'4px 0 0'},
-  cards:  {display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:20},
-  card:   {background:'#161616',border:'1px solid #222',borderRadius:10,padding:'12px 16px'},
-  cLabel: {fontSize:11,color:'#555',margin:'0 0 6px',textTransform:'uppercase',letterSpacing:.8},
-  cVal:   {fontSize:22,fontWeight:800,margin:0},
-  blk:    {background:'#121212',border:'1px solid #1e1e1e',borderRadius:10,padding:18,marginBottom:18},
-  blkT:   {fontSize:12,fontWeight:700,color:'#555',textTransform:'uppercase',letterSpacing:1,margin:'0 0 14px'},
-  tbl:    {width:'100%',borderCollapse:'collapse',fontSize:13},
-  tr:     {borderBottom:'1px solid #1a1a1a'},
-  th:     {padding:'8px 10px',fontWeight:600,fontSize:11,textTransform:'uppercase',letterSpacing:.7,borderBottom:'1px solid #1e1e1e'},
-  td:     {padding:'9px 10px',color:'#bbb',verticalAlign:'middle'},
-  barBg:  {height:5,background:'#1e1e1e',borderRadius:3,overflow:'hidden',minWidth:60},
-  barFill:{height:'100%',background:'#F28A1A',borderRadius:3,transition:'width .4s'},
-  inp:    {background:'#161616',border:'1px solid #2a2a2a',borderRadius:6,color:'#ccc',padding:'6px 10px',fontSize:12},
-  overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',display:'flex',alignItems:'flex-start',justifyContent:'flex-end',zIndex:1000},
-  drawer: {background:'#141414',borderLeft:'1px solid #222',padding:24,width:'100%',maxWidth:500,height:'100vh',overflowY:'auto'},
-  dBlock: {background:'#0f0f0f',borderRadius:8,padding:'10px 12px',marginBottom:4},
+function Block({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={g.block}>
+      <h2 style={g.blockTitle}>{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function StatCard({ label, value, color, hint }: { label: string; value: string; color: string; hint?: string }) {
+  return (
+    <div style={g.card} title={hint}>
+      <p style={g.cardLabel}>{label}</p>
+      <p style={{ ...g.cardVal, color }}>{value}</p>
+      {hint && <p style={{ fontSize: 10, color: '#4b5563', margin: '4px 0 0' }}>{hint}</p>}
+    </div>
+  );
+}
+
+function DataGrid({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={g.tbl}>
+        <thead>
+          <tr>{headers.map((h, i) => <TH key={h} right={i > 0}>{h}</TH>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri} style={g.tr}>
+              {row.map((cell, ci) => (
+                <TD key={ci} right={ci > 0} bold={ci > 0}>{cell}</TD>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DetailBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={g.detLabel}>{title}</p>
+      <div style={g.detCard}>{children}</div>
+    </div>
+  );
+}
+
+function DRow({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #1f2937' }}>
+      <span style={{ fontSize: 11, color: '#6b7280' }}>{k}</span>
+      <span style={{ fontSize: 12, color: '#d1d5db', textAlign: 'right', maxWidth: '60%', wordBreak: 'break-all' }}>{v}</span>
+    </div>
+  );
+}
+
+function BtnSm({ children, onClick, active, danger, disabled }:
+  { children: React.ReactNode; onClick?: () => void; active?: boolean; danger?: boolean; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        border: '1px solid',
+        borderRadius: 6,
+        padding: '6px 14px',
+        fontSize: 12,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        background: active ? '#14532d' : danger ? '#450a0a' : '#1f2937',
+        color:  active ? '#4ade80' : danger ? '#f87171' : '#d1d5db',
+        borderColor: active ? '#166534' : danger ? '#991b1b' : '#374151',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'opacity .15s',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+const TH = ({ children, right }: { children?: React.ReactNode; right?: boolean }) => (
+  <th style={{ padding: '10px 12px', fontWeight: 600, fontSize: 11, textTransform: 'uppercase',
+    letterSpacing: .8, borderBottom: '1px solid #1f2937', color: '#6b7280',
+    textAlign: right ? 'right' : 'left', whiteSpace: 'nowrap' }}>
+    {children}
+  </th>
+);
+
+const TD = ({ children, right, bold, style }: {
+  children?: React.ReactNode; right?: boolean; bold?: boolean; style?: React.CSSProperties;
+}) => (
+  <td style={{ padding: '10px 12px', color: '#9ca3af', verticalAlign: 'middle',
+    textAlign: right ? 'right' : 'left', fontWeight: bold ? 600 : 400, ...style }}>
+    {children}
+  </td>
+);
+
+// ─── Styles ────────────────────────────────────────────────────────────────
+const g: Record<string, React.CSSProperties> = {
+  page:       { minHeight: '100vh', background: '#0a0a0a', color: '#fff', fontFamily: 'system-ui,sans-serif', padding: '24px 20px' },
+  wrap:       { maxWidth: 1320, margin: '0 auto' },
+  center:     { minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 },
+  ebox:       { background: '#111827', border: '1px solid #1f2937', borderRadius: 12, padding: 32, textAlign: 'center' },
+  hdr:        { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 },
+  title:      { fontSize: 22, fontWeight: 800, margin: 0, color: '#f3f4f6', letterSpacing: '-.01em' },
+  sub:        { fontSize: 12, color: '#4b5563', margin: '4px 0 0' },
+  inp:        { background: '#111827', border: '1px solid #1f2937', borderRadius: 6, color: '#d1d5db', padding: '7px 12px', fontSize: 12 },
+  cards6:     { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 20 },
+  card:       { background: '#111827', border: '1px solid #1f2937', borderRadius: 10, padding: '16px 18px' },
+  cardLabel:  { fontSize: 11, color: '#4b5563', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: .9 },
+  cardVal:    { fontSize: 26, fontWeight: 800, margin: 0 },
+  block:      { background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: '20px 22px', marginBottom: 18 },
+  blockTitle: { fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 16px' },
+  tbl:        { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
+  tr:         { borderBottom: '1px solid #111827', transition: 'background .1s' },
+  barBg:      { height: 5, background: '#1e293b', borderRadius: 3, overflow: 'hidden', minWidth: 80 },
+  barFill:    { height: '100%', background: '#f59e0b', borderRadius: 3, transition: 'width .5s' },
+  miniCard:   { background: '#111827', border: '1px solid #1f2937', borderRadius: 8, padding: '12px 16px' },
+  miniLabel:  { fontSize: 11, color: '#4b5563', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: .8 },
+  miniVal:    { fontSize: 22, fontWeight: 800, margin: 0 },
+  overlay:    { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 999, display: 'flex', justifyContent: 'flex-end' },
+  drawer:     { background: '#0f172a', borderLeft: '1px solid #1e293b', width: '100%', maxWidth: 480, height: '100vh', display: 'flex', flexDirection: 'column', zIndex: 1000 },
+  drawerHdr:  { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', borderBottom: '1px solid #1e293b' },
+  drawerTitle:{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f59e0b' },
+  drawerBody: { flex: 1, overflowY: 'auto', padding: '20px 22px' },
+  closeBtn:   { background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 20, lineHeight: 1 },
+  modal:      { background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: 24, width: '90%', maxWidth: 460, margin: 'auto', alignSelf: 'center' },
+  detLabel:   { fontSize: 10, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px', fontWeight: 700 },
+  detCard:    { background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 8, padding: '10px 14px' },
+  timeline:   { background: '#0a0a0a', border: '1px solid #1f2937', borderRadius: 8, overflow: 'hidden' },
+  timelineRow:{ display: 'flex', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid #111827', alignItems: 'center' },
 };

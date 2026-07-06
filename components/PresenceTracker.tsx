@@ -64,7 +64,7 @@ export default function PresenceTracker() {
 
     function startInterval() {
       if (interval) clearInterval(interval);
-      interval = setInterval(sendHeartbeat, 15_000);
+      interval = setInterval(sendHeartbeat, 15_000); // every 15s — threshold 25s
     }
 
     function stopInterval() {
