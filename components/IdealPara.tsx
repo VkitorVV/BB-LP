@@ -21,12 +21,6 @@ export default function IdealPara() {
     >
       <div className="max-w-md mx-auto">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-8 w-[4px] rounded-full" style={{ background: '#F28A1A' }} />
-          <span className="badge-copper">Ideal para você</span>
-        </div>
-
         <h2 className="font-display text-[2.4rem] leading-none uppercase text-[#FFF4E6] mb-10">
           Ideal para você que deseja:
         </h2>

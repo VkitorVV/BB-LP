@@ -81,11 +81,6 @@ export default function ProdutoPorDentro() {
     >
       {/* Text block */}
       <div className="px-5 max-w-md mx-auto">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-8 w-[4px] rounded-full" style={{ background: '#F28A1A' }} />
-          <span className="badge-copper">Material por dentro</span>
-        </div>
-
         <h2 className="font-display text-[2.4rem] leading-none uppercase text-[#FFF4E6] mb-4">
           Veja por dentro o material que você vai receber
         </h2>

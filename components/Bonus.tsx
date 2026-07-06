@@ -21,12 +21,6 @@ export default function Bonus() {
     >
       <div className="max-w-md mx-auto">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-8 w-[4px] rounded-full" style={{ background: '#D8A64A' }} />
-          <span className="badge-gold">Bônus exclusivos</span>
-        </div>
-
         <h2 className="font-display text-[2.4rem] leading-none uppercase text-[#FFF4E6] mb-3">
           E não para por aí. Você também recebe 5 bônus práticos
         </h2>

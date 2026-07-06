@@ -20,12 +20,6 @@ export default function ProvaSocial() {
     >
       <div className="max-w-md mx-auto">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-8 w-[4px] rounded-full" style={{ background: '#F28A1A' }} />
-          <span className="badge-gold">Prova social</span>
-        </div>
-
         <h2 className="font-display text-[2.4rem] leading-none uppercase text-[#FFF4E6] mb-3">
           Veja o que outros barbeiros falaram sobre o material
         </h2>
