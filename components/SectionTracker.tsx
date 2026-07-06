@@ -26,51 +26,90 @@ const sections = [
 ];
 
 const SESSION_PREFIX = 'st_fired_';
+const SESSION_ID_KEY = 'mapa_degrade_session_id';
 
-function fireSection(id: string, title: string, order: number) {
-  if (!title || !id) return; // guard: nunca disparar com valores vazios
+function getSessionId(): string {
+  let id = sessionStorage.getItem(SESSION_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(SESSION_ID_KEY, id);
+  }
+  return id;
+}
+
+function getUtmParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    utmSource:       params.get('utm_source')       || undefined,
+    utmMedium:       params.get('utm_medium')       || undefined,
+    utmCampaign:     params.get('utm_campaign')     || undefined,
+    utmContent:      params.get('utm_content')      || undefined,
+    utmTerm:         params.get('utm_term')         || undefined,
+    campaignId:      params.get('campaign_id')      || undefined,
+    adsetId:         params.get('adset_id')         || undefined,
+    adId:            params.get('ad_id')            || undefined,
+    placement:       params.get('placement')        || undefined,
+    siteSourceName:  params.get('site_source_name') || undefined,
+  };
+}
+
+function fireSection(sessionId: string, id: string, title: string, order: number) {
+  if (!title || !id) return;
 
   const storageKey = SESSION_PREFIX + id;
-  if (sessionStorage.getItem(storageKey)) return; // já disparou nesta sessão
+  if (sessionStorage.getItem(storageKey)) return;
   sessionStorage.setItem(storageKey, '1');
 
-  if (typeof window.gtag !== 'function') return; // gtag ainda não carregou
+  const utms = getUtmParams();
 
-  const pageLocation = window.location.origin + window.location.pathname + '#' + id;
-  const pagePath     = window.location.pathname + '#' + id;
+  // ── GA4 ──────────────────────────────────────────────────────────────────
+  if (typeof window.gtag === 'function') {
+    const pageLocation = window.location.origin + window.location.pathname + '#' + id;
+    const pagePath     = window.location.pathname + '#' + id;
 
-  // 1. Evento personalizado section_reached
-  window.gtag('event', 'section_reached', {
-    section_title:  title,
-    section_id:     id,
-    section_order:  order,
-    transport_type: 'beacon',
-  });
+    window.gtag('event', 'section_reached', {
+      section_title:  title,
+      section_id:     id,
+      section_order:  order,
+      transport_type: 'beacon',
+    });
 
-  // 2. Virtual page_view para aparecer no card "Visualizações por Título"
-  window.gtag('event', 'page_view', {
-    page_title:     title,
-    page_location:  pageLocation,
-    page_path:      pagePath,
-    transport_type: 'beacon',
-  });
+    window.gtag('event', 'page_view', {
+      page_title:     title,
+      page_location:  pageLocation,
+      page_path:      pagePath,
+      transport_type: 'beacon',
+    });
+  }
+
+  // ── Redis (fire-and-forget, não bloqueia UI) ──────────────────────────────
+  fetch('/api/track-section', {
+    method:    'POST',
+    headers:   { 'Content-Type': 'application/json' },
+    keepalive: true,
+    body: JSON.stringify({
+      sessionId,
+      sectionId:    id,
+      sectionTitle: title,
+      sectionOrder: order,
+      timestamp:    Date.now(),
+      ...utms,
+    }),
+  }).catch(() => { /* silently ignore */ });
 }
 
 export default function SectionTracker() {
   useEffect(() => {
+    const sessionId = getSessionId();
     let rafId: number | null = null;
 
     const checkSections = () => {
       const triggerLine = window.scrollY + window.innerHeight * 0.75;
-
       sections.forEach(({ id, title, order }) => {
         const el = document.getElementById(id);
         if (!el) return;
-
         const top = el.getBoundingClientRect().top + window.scrollY;
-        if (top <= triggerLine) {
-          fireSection(id, title, order);
-        }
+        if (top <= triggerLine) fireSection(sessionId, id, title, order);
       });
     };
 
@@ -82,13 +121,11 @@ export default function SectionTracker() {
       });
     };
 
-    // Aguarda gtag estar disponível antes do check inicial,
-    // para evitar que Hero dispare com gtag undefined e gere (not set)
+    // Aguarda gtag carregar antes do check inicial (evita (not set) na Hero)
     const waitForGtag = (attempts = 0) => {
       if (typeof window.gtag === 'function') {
         checkSections();
       } else if (attempts < 20) {
-        // tenta a cada 250ms por até 5s
         setTimeout(() => waitForGtag(attempts + 1), 250);
       }
     };

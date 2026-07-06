@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rPipeline } from '@/lib/redis';
+
+const TTL_7D = 7 * 24 * 60 * 60;
 
 export async function POST(request: NextRequest) {
   console.warn('[WIAPY_WEBHOOK] POST route called');
@@ -30,10 +33,13 @@ export async function POST(request: NextRequest) {
   const tracking = payload.tracking as Record<string, unknown> | undefined;
   const products = payload.products as Record<string, unknown>[] | undefined;
 
-  const status        = payment?.status        as string | undefined;
-  const paymentId     = payment?.id            as string | undefined;
-  const checkoutTitle = checkout?.title        as string | undefined;
-  const amount        = payment?.amount        as number | undefined;
+  const status        = payment?.status         as string | undefined;
+  const paymentId     = payment?.id             as string | undefined;
+  const checkoutTitle = checkout?.title         as string | undefined;
+  const amount        = payment?.amount         as number | undefined;
+  const utmCampaign   = tracking?.utm_campaign  as string | undefined;
+  const utmContent    = tracking?.utm_content   as string | undefined;
+  const utmTerm       = tracking?.utm_term      as string | undefined;
 
   console.warn('[WIAPY_WEBHOOK] Payload parsed', {
     paymentStatus: status,
@@ -81,7 +87,6 @@ export async function POST(request: NextRequest) {
       : value,
   })) ?? [];
 
-  // ── 6. Log pré-envio GA4 ─────────────────────────────────────────────────
   console.warn('[WIAPY_WEBHOOK] Sending to GA4', {
     measurementIdExists: Boolean(measurementId),
     apiSecretExists:     Boolean(apiSecret),
@@ -89,33 +94,30 @@ export async function POST(request: NextRequest) {
     value,
   });
 
-  // ── 7. Body para GA4 Measurement Protocol ────────────────────────────────
   const ga4Body = {
     client_id: clientId,
     user_id:   customer?.id as string | undefined,
-    events: [
-      {
-        name: 'purchase',
-        params: {
-          transaction_id:       transactionId,
-          value,
-          currency:             'BRL',
-          payment_method:       payment?.payment_method as string | undefined,
-          checkout_id:          checkout?.id            as string | undefined,
-          checkout_title:       checkoutTitle,
-          utm_source:           tracking?.utm_source    as string | undefined,
-          utm_medium:           tracking?.utm_medium    as string | undefined,
-          utm_campaign:         tracking?.utm_campaign  as string | undefined,
-          utm_content:          tracking?.utm_content   as string | undefined,
-          utm_term:             tracking?.utm_term      as string | undefined,
-          items,
-          engagement_time_msec: 1,
-        },
+    events: [{
+      name: 'purchase',
+      params: {
+        transaction_id:       transactionId,
+        value,
+        currency:             'BRL',
+        payment_method:       payment?.payment_method as string | undefined,
+        checkout_id:          checkout?.id            as string | undefined,
+        checkout_title:       checkoutTitle,
+        utm_source:           tracking?.utm_source    as string | undefined,
+        utm_medium:           tracking?.utm_medium    as string | undefined,
+        utm_campaign:         utmCampaign,
+        utm_content:          utmContent,
+        utm_term:             utmTerm,
+        items,
+        engagement_time_msec: 1,
       },
-    ],
+    }],
   };
 
-  // ── 8. Enviar ao GA4 ──────────────────────────────────────────────────────
+  // ── 6. Enviar ao GA4 ──────────────────────────────────────────────────────
   try {
     const ga4Response = await fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
@@ -139,12 +141,57 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    console.warn('[WIAPY_WEBHOOK] GA4 purchase event sent');
   } catch (err) {
     console.error('[WIAPY_WEBHOOK] Error', err);
     return NextResponse.json(
       { error: 'GA4 fetch failed', details: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
+  }
+
+  // ── 7. Salvar no Redis ────────────────────────────────────────────────────
+  try {
+    const campaign    = utmCampaign || 'direct';
+    const content     = utmContent  || 'none';
+    const valueCents  = typeof amount === 'number' ? amount : 0;
+
+    const commands: unknown[][] = [
+      // Contadores globais
+      ['INCR',   'funnel:purchase:count'],
+      ['EXPIRE', 'funnel:purchase:count', TTL_7D],
+      ['INCRBY', 'funnel:purchase:revenue_cents', valueCents],
+      ['EXPIRE', 'funnel:purchase:revenue_cents', TTL_7D],
+
+      // Por checkoutTitle
+      ['INCR',   `funnel:purchase:checkout:${checkoutTitle || 'unknown'}:count`],
+      ['EXPIRE', `funnel:purchase:checkout:${checkoutTitle || 'unknown'}:count`, TTL_7D],
+
+      // Por campanha
+      ['INCR',   `funnel:campaign:${campaign}:purchase_count`],
+      ['EXPIRE', `funnel:campaign:${campaign}:purchase_count`, TTL_7D],
+      ['INCRBY', `funnel:campaign:${campaign}:revenue_cents`, valueCents],
+      ['EXPIRE', `funnel:campaign:${campaign}:revenue_cents`, TTL_7D],
+
+      // Por content (criativo)
+      ['INCR',   `funnel:content:${content}:purchase_count`],
+      ['EXPIRE', `funnel:content:${content}:purchase_count`, TTL_7D],
+      ['INCRBY', `funnel:content:${content}:revenue_cents`, valueCents],
+      ['EXPIRE', `funnel:content:${content}:revenue_cents`, TTL_7D],
+    ];
+
+    // Por UTM Term (se existir)
+    if (utmTerm) {
+      commands.push(['INCR',   `funnel:term:${utmTerm}:purchase_count`]);
+      commands.push(['EXPIRE', `funnel:term:${utmTerm}:purchase_count`, TTL_7D]);
+    }
+
+    await rPipeline(commands);
+    console.warn('[WIAPY_WEBHOOK] Redis purchase saved');
+  } catch (err) {
+    // Redis failure não bloqueia a resposta — GA4 já foi enviado com sucesso
+    console.error('[WIAPY_WEBHOOK] Redis error (non-fatal)', err instanceof Error ? err.message : err);
   }
 
   return NextResponse.json({ received: true, ga4Sent: true }, { status: 200 });

@@ -11,8 +11,43 @@ declare global {
   }
 }
 
-const CHECKOUT_BASICO_URL = "https://pay.wiapy.com/iUoMvXq0sJr-";
-const CHECKOUT_KIT_DESCONTO_URL = "https://pay.wiapy.com/8To4z6HioR";
+const CHECKOUT_BASICO_URL      = 'https://pay.wiapy.com/iUoMvXq0sJr-';
+const CHECKOUT_KIT_DESCONTO_URL = 'https://pay.wiapy.com/8To4z6HioR';
+const CHECKOUT_KIT_COMPLETO_URL = 'https://pay.wiapy.com/MaYsqe4pqwN';
+
+function getSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  const KEY = 'mapa_degrade_session_id';
+  let id = sessionStorage.getItem(KEY);
+  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(KEY, id); }
+  return id;
+}
+
+function getUtms() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    utmSource:   p.get('utm_source')   || undefined,
+    utmMedium:   p.get('utm_medium')   || undefined,
+    utmCampaign: p.get('utm_campaign') || undefined,
+    utmContent:  p.get('utm_content')  || undefined,
+    utmTerm:     p.get('utm_term')     || undefined,
+  };
+}
+
+function trackClick(checkoutType: string, buttonLocation: string) {
+  fetch('/api/track-click', {
+    method:    'POST',
+    headers:   { 'Content-Type': 'application/json' },
+    keepalive: true,
+    body: JSON.stringify({
+      sessionId: getSessionId(),
+      checkoutType,
+      buttonLocation,
+      timestamp: Date.now(),
+      ...getUtms(),
+    }),
+  }).catch(() => { /* silently ignore */ });
+}
 
 export default function Oferta() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -20,12 +55,13 @@ export default function Oferta() {
   const handleCheckoutBasic = () => {
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'basic_offer_click', {
-        checkout_type:  'plano_basico',
-        checkout_price: '19.90',
+        checkout_type:   'plano_basico',
+        checkout_price:  '19.90',
         button_location: 'oferta',
-        transport_type: 'beacon',
+        transport_type:  'beacon',
       });
     }
+    trackClick('plano_basico_popup_open', 'oferta');
     setShowUpgradeModal(true);
   };
 
@@ -38,6 +74,7 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
+    trackClick('kit_desconto_popup', 'popup_upgrade');
     window.open(CHECKOUT_KIT_DESCONTO_URL, '_blank');
     setShowUpgradeModal(false);
   };
@@ -51,6 +88,7 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
+    trackClick('plano_basico', 'popup_upgrade');
     window.open(CHECKOUT_BASICO_URL, '_blank');
     setShowUpgradeModal(false);
   };
@@ -64,7 +102,8 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    window.open('https://pay.wiapy.com/MaYsqe4pqwN', '_blank');
+    trackClick('kit_completo', 'oferta');
+    window.open(CHECKOUT_KIT_COMPLETO_URL, '_blank');
   };
 
   // Lock body scroll when modal is open
@@ -74,9 +113,7 @@ export default function Oferta() {
     } else {
       document.body.style.overflow = 'unset';
     }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    return () => { document.body.style.overflow = 'unset'; };
   }, [showUpgradeModal]);
 
   // Close modal on ESC key
