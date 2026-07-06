@@ -18,20 +18,21 @@ const SECTION_ORDER = [
   { id: 'rodape',              title: '14 - Rodape',              order: 14 },
 ];
 
-function windowToSince(window: string | null, date: string): string | null {
-  if (!window || window === 'today') return null; // full day filter via date
+function windowToSince(win: string): string | null {
   const ms: Record<string, number> = {
-    '90s': 90_000,
-    '30m': 30 * 60_000,
-    '1h':  60 * 60_000,
-    '2h':  2  * 60 * 60_000,
-    '4h':  4  * 60 * 60_000,
-    '12h': 12 * 60 * 60_000,
-    '24h': 24 * 60 * 60_000,
+    'now': 35_000, '30m': 30*60_000, '1h': 60*60_000,
+    '2h': 2*60*60_000, '4h': 4*60*60_000, '12h': 12*60*60_000, '24h': 24*60*60_000,
   };
-  const delta = ms[window];
-  if (!delta) return null;
-  return new Date(Date.now() - delta).toISOString();
+  const delta = ms[win];
+  return delta ? new Date(Date.now() - delta).toISOString() : null;
+}
+
+function sessionStatus(lastSeen: string, pageStatus: string): 'online'|'recente'|'saiu'|'inativo' {
+  const secAgo = (Date.now() - new Date(lastSeen).getTime()) / 1000;
+  if (pageStatus === 'left') return 'saiu';
+  if (secAgo <= 35) return 'online';
+  if (secAgo <= 1800) return 'recente';
+  return 'inativo';
 }
 
 export async function GET(request: NextRequest) {
@@ -41,18 +42,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const date   = searchParams.get('date')   || new Date().toISOString().split('T')[0];
-  const window = searchParams.get('window') || 'today';
-  const since  = windowToSince(window, date);
-  const now90s = new Date(Date.now() -  90_000).toISOString();
-  const now30m = new Date(Date.now() - 30 * 60_000).toISOString();
+  const date  = searchParams.get('date')   || new Date().toISOString().split('T')[0];
+  const win   = searchParams.get('window') || 'today';
+  const since = windowToSince(win);                    // null = full day
+  const now35 = new Date(Date.now() -    35_000).toISOString();
+  const now30m = new Date(Date.now() - 30*60_000).toISOString();
 
   try {
-    // ── Ativos agora (90s) ────────────────────────────────────────────────
+    // ── Ativos agora ─────────────────────────────────────────────────────
     const { count: activeNow } = await supabaseAdmin
       .from('funnel_sessions')
       .select('*', { count: 'exact', head: true })
-      .gte('last_seen', now90s);
+      .gte('last_seen', now35)
+      .neq('page_status', 'left');
 
     // ── Ativos 30min ──────────────────────────────────────────────────────
     const { count: active30m } = await supabaseAdmin
@@ -61,126 +63,121 @@ export async function GET(request: NextRequest) {
       .gte('last_seen', now30m);
 
     // ── Sessões no período ────────────────────────────────────────────────
-    let sessionsQuery = supabaseAdmin
+    let sq = supabaseAdmin
       .from('funnel_sessions')
-      .select('session_id, first_seen, last_seen, utm_campaign, utm_content, utm_source, utm_term, adset_id, ad_id, campaign_id, placement, site_source_name, max_section_title, max_section_order, clicks_count, purchased, revenue')
+      .select('session_id,first_seen,last_seen,left_at,page_status,utm_source,utm_medium,utm_campaign,utm_content,utm_term,campaign_id,adset_id,ad_id,placement,site_source_name,max_section_order,max_section_title,clicks_count,purchased,revenue')
       .eq('date', date)
       .order('last_seen', { ascending: false });
-    if (since) sessionsQuery = sessionsQuery.gte('last_seen', since);
-    const { data: sessionData } = await sessionsQuery;
+    if (since) sq = sq.gte('last_seen', since);
+    const { data: sessionData } = await sq;
 
-    const totalSessionsInWindow = (sessionData || []).length;
-    const sessionIds = (sessionData || []).map((s: { session_id: string }) => s.session_id);
+    const sessions = ((sessionData || []) as Array<{
+      session_id: string; first_seen: string; last_seen: string;
+      left_at?: string; page_status?: string;
+      utm_source?: string; utm_medium?: string; utm_campaign?: string;
+      utm_content?: string; utm_term?: string;
+      campaign_id?: string; adset_id?: string; ad_id?: string;
+      placement?: string; site_source_name?: string;
+      max_section_order?: number; max_section_title?: string;
+      clicks_count?: number; purchased?: boolean; revenue?: number;
+    }>).slice(0, 100).map((s, idx) => ({
+      sessionId:           s.session_id,
+      label:               `Usuário #${String(idx + 1).padStart(3, '0')}`,
+      shortId:             s.session_id.slice(0, 6),
+      firstSeen:           s.first_seen,
+      lastSeen:            s.last_seen,
+      leftAt:              s.left_at || null,
+      pageStatus:          s.page_status || 'active',
+      status:              sessionStatus(s.last_seen, s.page_status || 'active'),
+      secondsSinceLastSeen: Math.floor((Date.now() - new Date(s.last_seen).getTime()) / 1000),
+      utmSource:           s.utm_source,
+      utmCampaign:         s.utm_campaign,
+      utmTerm:             s.utm_term,
+      utmContent:          s.utm_content,
+      campaignId:          s.campaign_id,
+      adsetId:             s.adset_id,
+      adId:                s.ad_id,
+      placement:           s.placement,
+      siteSourceName:      s.site_source_name,
+      maxSectionOrder:     s.max_section_order || 0,
+      maxSectionTitle:     s.max_section_title || null,
+      clicksCount:         s.clicks_count || 0,
+      purchased:           s.purchased || false,
+      revenue:             s.revenue || 0,
+    }));
 
-    // ── Funil — seções no período ─────────────────────────────────────────
-    let sectionQuery = supabaseAdmin
-      .from('funnel_section_events')
-      .select('section_id')
-      .eq('date', date);
-    if (sessionIds.length > 0) sectionQuery = sectionQuery.in('session_id', sessionIds);
-    const { data: sectionData } = await sectionQuery;
+    const sessionIds = sessions.map(s => s.sessionId);
+    const totalInWindow = (sessionData || []).length;
 
-    const sectionCounts: Record<string, number> = {};
-    (sectionData || []).forEach((row: { section_id: string }) => {
-      sectionCounts[row.section_id] = (sectionCounts[row.section_id] || 0) + 1;
+    // ── Funil ─────────────────────────────────────────────────────────────
+    let secQ = supabaseAdmin.from('funnel_section_events').select('section_id').eq('date', date);
+    if (sessionIds.length > 0) secQ = secQ.in('session_id', sessionIds);
+    const { data: secData } = await secQ;
+
+    const secCounts: Record<string, number> = {};
+    (secData || []).forEach((r: {section_id:string}) => { secCounts[r.section_id] = (secCounts[r.section_id]||0)+1; });
+    const heroCount = secCounts['hero'] || 1;
+    const sections  = SECTION_ORDER.map((s, i) => {
+      const reached = secCounts[s.id] || 0;
+      const prev    = i > 0 ? (secCounts[SECTION_ORDER[i-1].id] || reached) : reached;
+      return { ...s, reached, percentOfHero: Math.round((reached/heroCount)*100),
+        dropFromPrevious: prev > 0 ? Math.round(((prev-reached)/prev)*100) : 0 };
     });
-    const heroCount = sectionCounts['hero'] || 1;
-    const sections = SECTION_ORDER.map((s, i) => {
-      const reached  = sectionCounts[s.id] || 0;
-      const prevId   = i > 0 ? SECTION_ORDER[i - 1].id : s.id;
-      const prev     = sectionCounts[prevId] || reached;
-      return {
-        ...s, reached,
-        percentOfHero:    Math.round((reached / heroCount) * 100),
-        dropFromPrevious: prev > 0 ? Math.round(((prev - reached) / prev) * 100) : 0,
-      };
-    });
 
-    // ── Cliques no período ────────────────────────────────────────────────
-    let clickQuery = supabaseAdmin
-      .from('funnel_click_events')
-      .select('checkout_type')
-      .eq('date', date);
-    if (sessionIds.length > 0) clickQuery = clickQuery.in('session_id', sessionIds);
-    const { data: clickData } = await clickQuery;
+    // ── Cliques ───────────────────────────────────────────────────────────
+    let cq = supabaseAdmin.from('funnel_click_events').select('checkout_type').eq('date', date);
+    if (sessionIds.length > 0) cq = cq.in('session_id', sessionIds);
+    const { data: clickData } = await cq;
+    const checkoutClicks: Record<string,number> = {
+      plano_basico_popup_open:0, plano_basico:0, kit_completo:0, kit_desconto_popup:0 };
+    (clickData||[]).forEach((r:{checkout_type:string}) => { if (r.checkout_type in checkoutClicks) checkoutClicks[r.checkout_type]++; });
 
-    const checkoutClicks: Record<string, number> = {
-      plano_basico_popup_open: 0, plano_basico: 0,
-      kit_completo: 0, kit_desconto_popup: 0,
-    };
-    (clickData || []).forEach((row: { checkout_type: string }) => {
-      if (row.checkout_type in checkoutClicks) checkoutClicks[row.checkout_type]++;
-    });
-
-    // ── Compras no período ────────────────────────────────────────────────
-    let purchaseQuery = supabaseAdmin
-      .from('funnel_purchases')
-      .select('amount, utm_campaign, utm_content')
-      .eq('date', date);
-    if (since) purchaseQuery = purchaseQuery.gte('created_at', since);
-    const { data: purchaseData } = await purchaseQuery;
-
-    const purchaseCount   = (purchaseData || []).length;
-    const purchaseRevenue = (purchaseData || []).reduce((s: number, r: { amount: number }) => s + (r.amount || 0), 0);
+    // ── Compras ───────────────────────────────────────────────────────────
+    let pq = supabaseAdmin.from('funnel_purchases').select('amount').eq('date', date);
+    if (since) pq = pq.gte('created_at', since);
+    const { data: purchaseData } = await pq;
+    const purchaseCount   = (purchaseData||[]).length;
+    const purchaseRevenue = (purchaseData||[]).reduce((a:{amount:number}[], r:{amount:number}) => (a as unknown as number) + (r.amount||0), 0 as unknown as {amount:number}[]) as unknown as number;
 
     // ── Campanhas / Adsets / Criativos ───────────────────────────────────
-    type MapEntry = { sessions: number; clicks: number; reachedOffer: number; purchases: number; revenue: number };
-    const campaignMap: Record<string, MapEntry> = {};
-    const contentMap:  Record<string, MapEntry> = {};
-    const adsetMap:    Record<string, MapEntry> = {};
+    type MapEntry = {sessions:number;clicks:number;reachedOffer:number;purchases:number;revenue:number};
+    const campaignMap: Record<string,MapEntry> = {};
+    const adsetMap:    Record<string,MapEntry> = {};
+    const contentMap:  Record<string,MapEntry> = {};
 
-    (sessionData || []).forEach((s: {
-      utm_campaign?: string; utm_content?: string; adset_id?: string;
-      max_section_order?: number; clicks_count?: number; purchased?: boolean; revenue?: number;
-    }) => {
-      const camp  = s.utm_campaign || 'direct';
-      const cont  = s.utm_content  || 'none';
-      const adset = s.adset_id     || 'none';
-      for (const [map, key] of [[campaignMap, camp], [contentMap, cont], [adsetMap, adset]] as [typeof campaignMap, string][]) {
-        if (!map[key]) map[key] = { sessions: 0, clicks: 0, reachedOffer: 0, purchases: 0, revenue: 0 };
+    sessions.forEach(s => {
+      const camp  = s.utmCampaign || 'direct';
+      const adset = s.adsetId     || 'none';
+      const cont  = s.utmContent  || 'none';
+      for (const [map, key] of [[campaignMap,camp],[adsetMap,adset],[contentMap,cont]] as [typeof campaignMap,string][]) {
+        if (!map[key]) map[key] = {sessions:0,clicks:0,reachedOffer:0,purchases:0,revenue:0};
         map[key].sessions++;
-        map[key].clicks       += s.clicks_count || 0;
-        map[key].reachedOffer += (s.max_section_order || 0) >= 11 ? 1 : 0;
+        map[key].clicks       += s.clicksCount;
+        map[key].reachedOffer += s.maxSectionOrder >= 11 ? 1 : 0;
         map[key].purchases    += s.purchased ? 1 : 0;
-        map[key].revenue      += s.revenue   || 0;
+        map[key].revenue      += s.revenue;
       }
     });
 
-    const toArray = (map: typeof campaignMap, keyName: string) =>
-      Object.entries(map).map(([k, v]) => ({
-        [keyName]: k, ...v,
-        conversionClick:    v.sessions > 0 ? Math.round((v.clicks / v.sessions) * 100) : 0,
-        conversionPurchase: v.sessions > 0 ? Math.round((v.purchases / v.sessions) * 100) : 0,
-      })).sort((a, b) => b.sessions - a.sessions);
-
-    // Sessões recentes — top 100
-    const recentSessions = (sessionData || []).slice(0, 100).map((s: {
-      session_id: string; first_seen: string; last_seen: string;
-      utm_campaign?: string; utm_source?: string; utm_content?: string;
-      utm_term?: string; adset_id?: string; ad_id?: string;
-      max_section_title?: string; max_section_order?: number;
-      clicks_count?: number; purchased?: boolean;
-    }, idx: number) => ({
-      ...s,
-      userLabel: `Usuário #${String(idx + 1).padStart(3, '0')}`,
-      status: new Date(s.last_seen) >= new Date(now90s) ? 'online'
-            : new Date(s.last_seen) >= new Date(now30m) ? 'recente'
-            : 'inativo',
-    }));
+    const toArr = (map: typeof campaignMap, k: string) =>
+      Object.entries(map).map(([v,d]) => ({
+        [k]: v, ...d,
+        conversionClick:    d.sessions > 0 ? Math.round((d.clicks/d.sessions)*100) : 0,
+        conversionPurchase: d.sessions > 0 ? Math.round((d.purchases/d.sessions)*100) : 0,
+      })).sort((a,b) => b.sessions-a.sessions);
 
     return NextResponse.json({
-      date, window,
-      activeNow:            activeNow  || 0,
-      active30m:            active30m  || 0,
-      totalSessionsInWindow,
-      totalClicks:          Object.values(checkoutClicks).reduce((a, b) => a + b, 0),
-      sections,
-      checkoutClicks,
+      date, window: win,
+      activeNow: activeNow||0, active30m: active30m||0,
+      totalSessionsInWindow: totalInWindow,
+      totalClicks: Object.values(checkoutClicks).reduce((a,b)=>a+b,0),
+      sections, checkoutClicks,
       purchases: { count: purchaseCount, revenue: purchaseRevenue },
-      campaigns: toArray(campaignMap, 'utmCampaign'),
-      adsets:    toArray(adsetMap,    'adsetId'),
-      creatives: toArray(contentMap,  'utmContent'),
-      sessions:  recentSessions,
+      campaigns: toArr(campaignMap, 'utmCampaign'),
+      adsets:    toArr(adsetMap,    'adsetId'),
+      creatives: toArr(contentMap,  'utmContent'),
+      sessions,
+      showingMax: totalInWindow > 100,
       updatedAt: new Date().toISOString(),
     });
 

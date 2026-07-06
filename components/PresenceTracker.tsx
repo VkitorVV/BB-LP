@@ -6,10 +6,7 @@ const SESSION_ID_KEY = 'mapa_degrade_session_id';
 
 function getSessionId(): string {
   let id = sessionStorage.getItem(SESSION_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    sessionStorage.setItem(SESSION_ID_KEY, id);
-  }
+  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(SESSION_ID_KEY, id); }
   return id;
 }
 
@@ -32,33 +29,73 @@ function getUtmParams() {
 function sendHeartbeat() {
   if (document.visibilityState === 'hidden') return;
   try {
-    const sessionId = getSessionId();
     fetch('/api/track-presence', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
-      body: JSON.stringify({ sessionId, timestamp: new Date().toISOString(), ...getUtmParams() }),
+      body: JSON.stringify({
+        sessionId: getSessionId(),
+        timestamp: new Date().toISOString(),
+        ...getUtmParams(),
+      }),
     }).catch(() => {});
+  } catch { /* silently ignore */ }
+}
+
+function sendExit() {
+  const sessionId = getSessionId();
+  const payload   = JSON.stringify({ sessionId, timestamp: new Date().toISOString() });
+  try {
+    if (navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: 'application/json' });
+      navigator.sendBeacon('/api/track-exit', blob);
+    } else {
+      fetch('/api/track-exit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        keepalive: true, body: payload,
+      }).catch(() => {});
+    }
   } catch { /* silently ignore */ }
 }
 
 export default function PresenceTracker() {
   useEffect(() => {
-    // Initial heartbeat
-    sendHeartbeat();
+    let interval: ReturnType<typeof setInterval> | null = null;
 
-    // Heartbeat every 30s
-    const interval = setInterval(sendHeartbeat, 30_000);
+    function startInterval() {
+      if (interval) clearInterval(interval);
+      interval = setInterval(sendHeartbeat, 15_000);
+    }
 
-    // Pause when tab hidden
+    function stopInterval() {
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') sendHeartbeat();
+      if (document.visibilityState === 'visible') {
+        sendHeartbeat();
+        startInterval();
+      } else {
+        stopInterval();
+        sendExit();
+      }
     };
+
+    const onExit = () => sendExit();
+
+    // Initial heartbeat + start interval
+    sendHeartbeat();
+    startInterval();
+
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onExit);
+    window.addEventListener('beforeunload', onExit);
 
     return () => {
-      clearInterval(interval);
+      stopInterval();
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onExit);
+      window.removeEventListener('beforeunload', onExit);
     };
   }, []);
 

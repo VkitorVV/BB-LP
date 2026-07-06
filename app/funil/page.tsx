@@ -1,224 +1,172 @@
 'use client';
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface SectionData {
-  order: number; id: string; title: string;
-  reached: number; percentOfHero: number; dropFromPrevious: number;
-}
-interface CheckoutClicks {
-  plano_basico_popup_open: number; plano_basico: number;
-  kit_completo: number; kit_desconto_popup: number;
-}
-interface MapRow {
-  sessions: number; clicks: number; reachedOffer: number;
-  purchases: number; revenue: number;
-  conversionClick: number; conversionPurchase: number;
-}
-interface CampaignRow extends MapRow { utmCampaign: string; }
-interface AdsetRow    extends MapRow { adsetId: string; }
-interface CreativeRow extends MapRow { utmContent: string; }
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface SectionRow { order:number; id:string; title:string; reached:number; percentOfHero:number; dropFromPrevious:number; }
+interface CheckoutClicks { plano_basico_popup_open:number; plano_basico:number; kit_completo:number; kit_desconto_popup:number; }
+interface MapRow { sessions:number; clicks:number; reachedOffer:number; purchases:number; revenue:number; conversionClick:number; conversionPurchase:number; }
+interface CRow extends MapRow { utmCampaign:string; }
+interface ARow extends MapRow { adsetId:string; }
+interface CreRow extends MapRow { utmContent:string; }
+type SessionStatus = 'online'|'recente'|'saiu'|'inativo';
 interface SessionRow {
-  session_id: string; userLabel: string; status: 'online'|'recente'|'inativo';
-  first_seen: string; last_seen: string;
-  utm_campaign?: string; utm_source?: string; utm_content?: string;
-  utm_term?: string; adset_id?: string; ad_id?: string;
-  max_section_title?: string; max_section_order?: number;
-  clicks_count?: number; purchased?: boolean;
+  sessionId:string; label:string; shortId:string;
+  firstSeen:string; lastSeen:string; leftAt:string|null; pageStatus:string;
+  status:SessionStatus; secondsSinceLastSeen:number;
+  utmSource?:string; utmCampaign?:string; utmTerm?:string; utmContent?:string;
+  campaignId?:string; adsetId?:string; adId?:string; placement?:string; siteSourceName?:string;
+  maxSectionOrder:number; maxSectionTitle?:string; clicksCount:number; purchased:boolean; revenue:number;
 }
-interface DashboardData {
-  date: string; window: string;
-  activeNow: number; active30m: number;
-  totalSessionsInWindow: number; totalClicks: number;
-  sections: SectionData[];
-  checkoutClicks: CheckoutClicks;
-  purchases: { count: number; revenue: number };
-  campaigns: CampaignRow[];
-  adsets: AdsetRow[];
-  creatives: CreativeRow[];
-  sessions: SessionRow[];
-  updatedAt: string;
+interface DashData {
+  date:string; window:string;
+  activeNow:number; active30m:number; totalSessionsInWindow:number; totalClicks:number;
+  sections:SectionRow[]; checkoutClicks:CheckoutClicks;
+  purchases:{count:number;revenue:number};
+  campaigns:CRow[]; adsets:ARow[]; creatives:CreRow[];
+  sessions:SessionRow[]; showingMax:boolean; updatedAt:string;
 }
 interface SessionDetail {
-  session: Record<string, unknown> | null;
-  sectionEvents: Record<string, unknown>[];
-  clickEvents: Record<string, unknown>[];
-  purchase: Record<string, unknown> | null;
+  session:Record<string,unknown>|null;
+  sectionsReached:Record<string,unknown>[];
+  clicks:Record<string,unknown>[];
+  purchase:Record<string,unknown>|null;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fmt    = (n?:number|null) => (n??0).toLocaleString('pt-BR');
+const fmtBRL = (n?:number|null) => (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtTime = (iso?:string|null) => iso ? new Date(iso).toLocaleTimeString('pt-BR') : '—';
+const pctCol  = (p:number) => p>=70?'#4ade80':p>=40?'#f59e0b':'#ff6b6b';
+const today   = () => new Date().toISOString().split('T')[0];
 
-const fmt    = (n?: number|null) => (n ?? 0).toLocaleString('pt-BR');
-const fmtBRL = (n?: number|null) => (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const fmtTime = (iso?: string|null) => iso ? new Date(iso).toLocaleTimeString('pt-BR') : '—';
-const pctColor = (p: number) => p >= 70 ? '#4ade80' : p >= 40 ? '#f59e0b' : '#ff6b6b';
-const today = () => new Date().toISOString().split('T')[0];
-const statusColor = (s: string) => s === 'online' ? '#4ade80' : s === 'recente' ? '#f59e0b' : '#555';
-const statusDot   = (s: string) => s === 'online' ? '●' : s === 'recente' ? '◑' : '○';
+const STATUS_COLOR: Record<SessionStatus,string> = {
+  online:'#4ade80', recente:'#60a5fa', saiu:'#6b7280', inativo:'#374151',
+};
+const STATUS_DOT: Record<SessionStatus,string> = {
+  online:'●', recente:'●', saiu:'○', inativo:'○',
+};
+
+function secsAgo(sec:number): string {
+  if (sec < 5)   return 'agora';
+  if (sec < 60)  return `há ${sec}s`;
+  if (sec < 3600) return `há ${Math.floor(sec/60)}min`;
+  return `há ${Math.floor(sec/3600)}h`;
+}
 
 const WINDOWS = [
-  { value: '90s',  label: 'Agora/90s' },
-  { value: '30m',  label: '30 min' },
-  { value: '1h',   label: '1 hora' },
-  { value: '2h',   label: '2 horas' },
-  { value: '4h',   label: '4 horas' },
-  { value: '12h',  label: '12 horas' },
-  { value: '24h',  label: '24 horas' },
-  { value: 'today',label: 'Hoje (dia todo)' },
+  {v:'now',  l:'Agora (35s)'}, {v:'30m', l:'30 min'}, {v:'1h', l:'1 hora'},
+  {v:'2h',   l:'2 horas'},     {v:'4h',  l:'4 horas'},{v:'12h',l:'12 horas'},
+  {v:'24h',  l:'24 horas'},    {v:'today',l:'Hoje'},
 ];
 
-// ── Main component ────────────────────────────────────────────────────────────
-
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function FunilPage() {
-  const [token, setToken]     = useState('');
-  const [date, setDate]       = useState(today());
-  const [win, setWin]         = useState('today');
-  const [data, setData]       = useState<DashboardData | null>(null);
-  const [error, setError]     = useState('');
-  const [loading, setLoading] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState('');
-  const [autoRefresh, setAutoRefresh]   = useState(false);
-  const [selectedSid, setSelectedSid]   = useState<string | null>(null);
-  const [detail, setDetail]             = useState<SessionDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [clearInput, setClearInput]     = useState('');
-  const [showClearModal, setShowClearModal] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval>|null>(null);
+  const [token,setToken]     = useState('');
+  const [date,setDate]       = useState(today());
+  const [win,setWin]         = useState('today');
+  const [data,setData]       = useState<DashData|null>(null);
+  const [err,setErr]         = useState('');
+  const [loading,setLoading] = useState(false);
+  const [lu,setLu]           = useState('');
+  const [auto,setAuto]       = useState(false);
+  const [selSid,setSelSid]   = useState<string|null>(null);
+  const [detail,setDetail]   = useState<SessionDetail|null>(null);
+  const [detL,setDetL]       = useState(false);
+  const [clearTxt,setClearTxt] = useState('');
+  const [showClear,setShowClear] = useState(false);
+  const [tick,setTick]       = useState(0);
+  const ivRef  = useRef<ReturnType<typeof setInterval>|null>(null);
+  const tickIv = useRef<ReturnType<typeof setInterval>|null>(null);
 
-  useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    setToken(p.get('token') || '');
-  }, []);
+  // 1-second ticker for "visto há"
+  useEffect(()=>{ tickIv.current=setInterval(()=>setTick(p=>p+1),1000); return()=>{ if(tickIv.current) clearInterval(tickIv.current); }; },[]);
 
-  const fetchData = useCallback(async (tok: string, d: string, w: string) => {
-    if (!tok) return;
+  useEffect(()=>{ const p=new URLSearchParams(window.location.search); setToken(p.get('token')||''); },[]);
+
+  const load = useCallback(async(tok:string,d:string,w:string)=>{
+    if(!tok) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/funnel-dashboard?token=${encodeURIComponent(tok)}&date=${d}&window=${w}`);
-      if (res.status === 401) { setError('Acesso negado.'); setData(null); return; }
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({})) as {error?:string};
-        setError(`Erro ${res.status}${j.error ? ': '+j.error : ''}`);
-        return;
-      }
-      setData(await res.json() as DashboardData);
-      setError('');
-      setLastUpdate(new Date().toLocaleTimeString('pt-BR'));
-    } catch (e) {
-      setError(`Conexão: ${e instanceof Error ? e.message : e}`);
-    } finally { setLoading(false); }
-  }, []);
+      const r = await fetch(`/api/funnel-dashboard?token=${encodeURIComponent(tok)}&date=${d}&window=${w}`);
+      if(r.status===401){setErr('Acesso negado.');setData(null);return;}
+      if(!r.ok){const j=await r.json().catch(()=>({})) as {error?:string}; setErr(`Erro ${r.status}${j.error?': '+j.error:''}`);return;}
+      setData(await r.json() as DashData);
+      setErr('');
+      setLu(new Date().toLocaleTimeString('pt-BR'));
+    } catch(e){setErr(`Conexão: ${e instanceof Error?e.message:e}`);}
+    finally{setLoading(false);}
+  },[]);
 
-  useEffect(() => { if (token) fetchData(token, date, win); }, [token]);             // eslint-disable-line
-  useEffect(() => { if (token) fetchData(token, date, win); }, [date, win]);         // eslint-disable-line
-  useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (autoRefresh && token) intervalRef.current = setInterval(() => fetchData(token, date, win), 60_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [autoRefresh, token, date, win, fetchData]);
+  useEffect(()=>{if(token)load(token,date,win);},[token]);           // eslint-disable-line
+  useEffect(()=>{if(token)load(token,date,win);},[date,win]);        // eslint-disable-line
+  useEffect(()=>{
+    if(ivRef.current) clearInterval(ivRef.current);
+    if(auto&&token) ivRef.current=setInterval(()=>load(token,date,win),60_000);
+    return()=>{if(ivRef.current) clearInterval(ivRef.current);};
+  },[auto,token,date,win,load]);
 
-  const openDetail = useCallback(async (sid: string) => {
-    setSelectedSid(sid); setDetailLoading(true);
+  const openDetail = useCallback(async(sid:string)=>{
+    setSelSid(sid); setDetL(true);
     try {
-      const res = await fetch(`/api/funnel-session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sid)}&date=${date}`);
-      setDetail(await res.json() as SessionDetail);
-    } catch { setDetail(null); }
-    finally { setDetailLoading(false); }
-  }, [token, date]);
+      const r=await fetch(`/api/funnel-session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sid)}&date=${date}`);
+      setDetail(await r.json() as SessionDetail);
+    } catch{setDetail(null);} finally{setDetL(false);}
+  },[token,date]);
 
-  const closeDetail = () => { setSelectedSid(null); setDetail(null); };
-
-  const exportData = (type: 'csv'|'json') =>
-    window.open(`/api/funnel-export?token=${encodeURIComponent(token)}&date=${date}&type=${type}`, '_blank');
-
-  const clearDay = async () => {
-    if (clearInput !== 'LIMPAR') return;
-    const res = await fetch('/api/funnel-clear', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ token, date }),
-    });
-    if (res.ok) { setShowClearModal(false); setClearInput(''); fetchData(token, date, win); }
+  const closeDetail=()=>{setSelSid(null);setDetail(null);};
+  const exportData=(t:'csv'|'json')=>window.open(`/api/funnel-export?token=${encodeURIComponent(token)}&date=${date}&type=${t}`,'_blank');
+  const doClear=async()=>{
+    if(clearTxt!=='LIMPAR') return;
+    await fetch('/api/funnel-clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,date})});
+    setShowClear(false); setClearTxt(''); load(token,date,win);
   };
 
-  // ── Error / loading states ────────────────────────────────────────────────
-  if (error) return (
-    <div style={s.center}>
-      <div style={s.errorBox}>
-        <div style={{fontSize:32,marginBottom:12}}>🔒</div>
-        <p style={{color:'#ff6b6b',fontWeight:700,marginBottom:16}}>{error}</p>
-        <button style={s.btn} onClick={()=>{setError('');fetchData(token,date,win);}}>Tentar novamente</button>
-      </div>
-    </div>
-  );
-  if (!data) return <div style={s.center}><div style={{color:'#888'}}>{loading?'Carregando...':'Aguardando token (?token=)...'}</div></div>;
+  if(err) return <div style={s.center}><div style={s.ebox}><div style={{fontSize:32,marginBottom:12}}>🔒</div><p style={{color:'#ff6b6b',fontWeight:700,marginBottom:16}}>{err}</p><Btn onClick={()=>{setErr('');load(token,date,win);}}>Tentar novamente</Btn></div></div>;
+  if(!data) return <div style={s.center}><div style={{color:'#888'}}>{loading?'Carregando...':'Aguardando ?token=...'}</div></div>;
 
-  const totalClicks = Object.values(data.checkoutClicks).reduce((a,b)=>a+b,0);
+  const totalClicks=Object.values(data.checkoutClicks).reduce((a,b)=>a+b,0);
+  const detSess = selSid ? data.sessions.find(s=>s.sessionId===selSid) : null;
 
-  // ── Main render ───────────────────────────────────────────────────────────
   return (
     <div style={s.page}>
-      <div style={s.container}>
+      <div style={s.wrap}>
 
         {/* Header */}
-        <div style={s.header}>
-          <div>
-            <h1 style={s.title}>FUNIL — Mapa do Degradê</h1>
-            <p style={s.sub}>Atualizado às {lastUpdate}</p>
-          </div>
+        <div style={s.hdr}>
+          <div><h1 style={s.ttl}>FUNIL — Mapa do Degradê</h1><p style={s.sub}>Atualizado às {lu}{loading?' · carregando...':''}</p></div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-            <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={s.dateInput}/>
-            <select value={win} onChange={e=>setWin(e.target.value)} style={s.dateInput}>
-              {WINDOWS.map(w=><option key={w.value} value={w.value}>{w.label}</option>)}
+            <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={s.inp}/>
+            <select value={win} onChange={e=>setWin(e.target.value)} style={s.inp}>
+              {WINDOWS.map(w=><option key={w.v} value={w.v}>{w.l}</option>)}
             </select>
-            <button onClick={()=>setAutoRefresh(p=>!p)} style={{...s.btn,background:autoRefresh?'#166534':'#1f1f1f',color:autoRefresh?'#4ade80':'#888'}}>
-              {autoRefresh?'⟳ Auto 60s':'⟳ Auto OFF'}
-            </button>
-            <button onClick={()=>fetchData(token,date,win)} disabled={loading} style={{...s.btn,background:'#1f1f1f',color:loading?'#F28A1A':'#ccc'}}>
-              {loading?'...':'↺ Atualizar'}
-            </button>
+            <Btn active={auto} onClick={()=>setAuto(p=>!p)}>{auto?'⟳ Auto 60s':'⟳ Auto OFF'}</Btn>
+            <Btn onClick={()=>load(token,date,win)} disabled={loading}>↺ Atualizar</Btn>
           </div>
         </div>
 
         {/* Cards */}
-        <div style={s.cardGrid}>
-          {[
-            {label:'● Ativos agora',  val:fmt(data.activeNow),              color:'#4ade80'},
-            {label:'◑ Ativos 30min',  val:fmt(data.active30m),              color:'#a3e635'},
-            {label:'Sessões período', val:fmt(data.totalSessionsInWindow),   color:'#60a5fa'},
-            {label:'Cliques CTA',     val:fmt(totalClicks),                  color:'#f59e0b'},
-            {label:'Compras',         val:fmt(data.purchases.count),         color:'#fb923c'},
-            {label:'Receita',         val:fmtBRL(data.purchases.revenue),    color:'#a78bfa'},
-          ].map(c=>(
-            <div key={c.label} style={s.card}>
-              <p style={s.cardLabel}>{c.label}</p>
-              <p style={{...s.cardVal,color:c.color}}>{c.val}</p>
-            </div>
-          ))}
+        <div style={s.cards}>
+          <Card label="● Ativos agora" value={fmt(data.activeNow)} color="#4ade80" hint="Presença confirmada nos últimos 35s"/>
+          <Card label="◑ Ativos 30min" value={fmt(data.active30m)} color="#60a5fa"/>
+          <Card label="Sessões período" value={fmt(data.totalSessionsInWindow)} color="#a78bfa"/>
+          <Card label="Cliques CTA" value={fmt(totalClicks)} color="#f59e0b"/>
+          <Card label="Compras" value={fmt(data.purchases.count)} color="#fb923c"/>
+          <Card label="Receita" value={fmtBRL(data.purchases.revenue)} color="#e879f9"/>
         </div>
 
         {/* Funnel */}
         <Block title="Funil por Seção">
-          <table style={s.table}>
+          <table style={s.tbl}>
             <thead><tr style={{color:'#555'}}>
-              <th style={th}>Seção</th>
-              <th style={{...th,textAlign:'right'}}>Alcançaram</th>
-              <th style={{...th,textAlign:'right'}}>% Topo</th>
-              <th style={{...th,textAlign:'right'}}>Drop</th>
-              <th style={{...th,minWidth:80}}>Barra</th>
+              <Th>Seção</Th><Th r>Alcançaram</Th><Th r>% Topo</Th><Th r>Drop</Th><Th>Barra</Th>
             </tr></thead>
             <tbody>{data.sections.map(sec=>(
-              <tr key={sec.id} style={s.tr}>
-                <td style={td}>{sec.title}</td>
-                <td style={{...td,textAlign:'right',fontWeight:700}}>{fmt(sec.reached)}</td>
-                <td style={{...td,textAlign:'right',color:pctColor(sec.percentOfHero)}}>{sec.percentOfHero}%</td>
-                <td style={{...td,textAlign:'right',color:sec.dropFromPrevious>30?'#ff6b6b':'#666'}}>
-                  {sec.dropFromPrevious>0?`-${sec.dropFromPrevious}%`:'—'}
-                </td>
-                <td style={td}>
-                  <div style={s.barBg}><div style={{...s.barFill,width:`${sec.percentOfHero}%`}}/></div>
-                </td>
+              <tr key={sec.id} style={{...s.tr, outline: sec.id==='oferta'?'1px solid rgba(242,138,26,.35)':'none'}}>
+                <Td>{sec.id==='oferta'?<span style={{color:'#F28A1A',marginRight:4}}>★</span>:null}{sec.title}</Td>
+                <Td r bold>{fmt(sec.reached)}</Td>
+                <Td r style={{color:pctCol(sec.percentOfHero)}}>{sec.percentOfHero}%</Td>
+                <Td r style={{color:sec.dropFromPrevious>30?'#ff6b6b':'#555'}}>{sec.dropFromPrevious>0?`-${sec.dropFromPrevious}%`:'—'}</Td>
+                <Td><div style={s.barBg}><div style={{...s.barFill,width:`${sec.percentOfHero}%`}}/></div></Td>
               </tr>
             ))}</tbody>
           </table>
@@ -226,151 +174,156 @@ export default function FunilPage() {
 
         {/* Checkout clicks */}
         <Block title="Cliques em Checkout">
-          <div style={s.clickGrid}>
-            {[
-              {label:'Básico → popup', val:data.checkoutClicks.plano_basico_popup_open},
-              {label:'Kit (PV)',       val:data.checkoutClicks.kit_completo},
-              {label:'Kit desconto',  val:data.checkoutClicks.kit_desconto_popup},
-              {label:'Continua Bás.', val:data.checkoutClicks.plano_basico},
-            ].map(c=>(
-              <div key={c.label} style={s.card}>
-                <p style={s.cardLabel}>{c.label}</p>
-                <p style={{...s.cardVal,fontSize:22,color:'#60a5fa'}}>{fmt(c.val||0)}</p>
-              </div>
+          <div style={s.cards}>
+            {([['Básico→popup','plano_basico_popup_open'],['Kit (PV)','kit_completo'],['Kit desconto','kit_desconto_popup'],['Continua Bás.','plano_basico']] as [string,keyof typeof data.checkoutClicks][]).map(([l,k])=>(
+              <Card key={k} label={l} value={fmt(data.checkoutClicks[k]||0)} color="#60a5fa"/>
             ))}
           </div>
         </Block>
 
         {/* Campaigns */}
-        {data.campaigns.length>0&&<Block title="Por Campanha">
-          <Grid headers={['Campanha','Sessões','Oferta','Cliques','Compras','Receita','CTR%','Conv%']}
+        {data.campaigns.length>0&&<Block title="Por Campanha (utm_campaign)">
+          <Grid headers={['Campanha','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']}
             rows={data.campaigns.map(c=>[c.utmCampaign,fmt(c.sessions),fmt(c.reachedOffer),fmt(c.clicks),fmt(c.purchases),fmtBRL(c.revenue),c.conversionClick+'%',c.conversionPurchase+'%'])}/>
         </Block>}
 
         {/* Adsets */}
         {data.adsets.length>0&&<Block title="Por Conjunto (adset_id)">
-          <Grid headers={['Adset','Sessões','Oferta','Cliques','Compras','Receita','CTR%','Conv%']}
+          <Grid headers={['Conjunto','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']}
             rows={data.adsets.map(a=>[a.adsetId,fmt(a.sessions),fmt(a.reachedOffer),fmt(a.clicks),fmt(a.purchases),fmtBRL(a.revenue),a.conversionClick+'%',a.conversionPurchase+'%'])}/>
         </Block>}
 
         {/* Creatives */}
         {data.creatives.length>0&&<Block title="Por Criativo (utm_content)">
-          <Grid headers={['Criativo','Sessões','Oferta','Cliques','Compras','Receita','CTR%','Conv%']}
+          <Grid headers={['Criativo','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']}
             rows={data.creatives.map(c=>[c.utmContent,fmt(c.sessions),fmt(c.reachedOffer),fmt(c.clicks),fmt(c.purchases),fmtBRL(c.revenue),c.conversionClick+'%',c.conversionPurchase+'%'])}/>
         </Block>}
 
-        {/* Sessions */}
-        {data.sessions.length>0&&<Block title={`Usuários Anônimos (${data.sessions.length})`}>
+        {/* Users */}
+        {data.sessions.length>0&&<Block title={`Usuários Anônimos (${data.sessions.length}${data.showingMax?' — mostrando 100':''}) `}>
           <div style={{overflowX:'auto'}}>
-            <table style={s.table}>
+            <table style={s.tbl}>
               <thead><tr style={{color:'#555'}}>
-                <th style={th}>Usuário</th>
-                <th style={th}>Status</th>
-                <th style={th}>1ª visita</th>
-                <th style={th}>Última ativ.</th>
-                <th style={th}>Campanha</th>
-                <th style={th}>Adset</th>
-                <th style={th}>Criativo</th>
-                <th style={th}>Última seção</th>
-                <th style={{...th,textAlign:'right'}}>Cliques</th>
-                <th style={{...th,textAlign:'center'}}>Comprou</th>
+                <Th>Usuário</Th><Th>Status</Th><Th>1ª visita</Th><Th>Visto há</Th>
+                <Th>Campanha</Th><Th>Conjunto</Th><Th>Criativo</Th>
+                <Th>Última seção</Th><Th r>Cliques</Th><Th r>Compra</Th><Th r>Receita</Th>
               </tr></thead>
-              <tbody>{data.sessions.map(sess=>(
-                <tr key={sess.session_id} style={{...s.tr,cursor:'pointer'}} onClick={()=>openDetail(sess.session_id)}>
-                  <td style={{...td,color:'#60a5fa',fontFamily:'monospace',fontSize:11}}>{sess.userLabel}</td>
-                  <td style={{...td,color:statusColor(sess.status)}}>{statusDot(sess.status)} {sess.status}</td>
-                  <td style={{...td,fontSize:11}}>{fmtTime(sess.first_seen)}</td>
-                  <td style={{...td,fontSize:11}}>{fmtTime(sess.last_seen)}</td>
-                  <td style={{...td,fontSize:12}}>{sess.utm_campaign||'—'}</td>
-                  <td style={{...td,fontSize:12}}>{sess.adset_id||'—'}</td>
-                  <td style={{...td,fontSize:12}}>{sess.utm_content||'—'}</td>
-                  <td style={{...td,fontSize:12}}>{sess.max_section_title||'—'}</td>
-                  <td style={{...td,textAlign:'right'}}>{fmt(sess.clicks_count)}</td>
-                  <td style={{...td,textAlign:'center'}}>{sess.purchased?<span style={{color:'#4ade80'}}>✓</span>:'—'}</td>
-                </tr>
-              ))}</tbody>
+              <tbody>{data.sessions.map(sess=>{
+                const secAgoVal = tick >= 0 ? sess.secondsSinceLastSeen + Math.floor((Date.now()/1000) - Math.floor(Date.now()/1000)) : sess.secondsSinceLastSeen;
+                void secAgoVal;
+                const liveSeconds = sess.secondsSinceLastSeen;
+                return (
+                  <tr key={sess.sessionId} style={{...s.tr,cursor:'pointer'}} onClick={()=>openDetail(sess.sessionId)}>
+                    <Td><span style={{color:'#60a5fa',fontFamily:'monospace',fontSize:11}}>{sess.label}</span><span style={{color:'#555',fontSize:10,marginLeft:6}}>#{sess.shortId}</span></Td>
+                    <Td><span style={{color:STATUS_COLOR[sess.status],fontSize:13}}>{STATUS_DOT[sess.status]}</span> <span style={{fontSize:12,color:STATUS_COLOR[sess.status]}}>{sess.status}</span></Td>
+                    <Td style={{fontSize:11}}>{fmtTime(sess.firstSeen)}</Td>
+                    <Td style={{fontSize:11,color:'#888'}}>{secsAgo(liveSeconds)}</Td>
+                    <Td style={{fontSize:12}}>{sess.utmCampaign||'—'}</Td>
+                    <Td style={{fontSize:12}}>{sess.adsetId||'—'}</Td>
+                    <Td style={{fontSize:12}}>{sess.utmContent||'—'}</Td>
+                    <Td style={{fontSize:12}}>{sess.maxSectionTitle||'—'}</Td>
+                    <Td r>{fmt(sess.clicksCount)}</Td>
+                    <Td r>{sess.purchased?<span style={{color:'#4ade80'}}>✓</span>:'—'}</Td>
+                    <Td r style={{fontSize:12}}>{sess.revenue>0?fmtBRL(sess.revenue):'—'}</Td>
+                  </tr>
+                );
+              })}</tbody>
             </table>
           </div>
         </Block>}
 
         {/* Actions */}
-        <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:8,marginBottom:8}}>
-          <button onClick={()=>exportData('csv')} style={s.btnAct}>⬇ Exportar CSV</button>
-          <button onClick={()=>exportData('json')} style={s.btnAct}>⬇ Exportar JSON</button>
-          <button onClick={()=>setShowClearModal(true)} style={{...s.btnAct,background:'#3f0000',color:'#ff6b6b',borderColor:'#7f1d1d'}}>
-            🗑 Limpar {date}
-          </button>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',margin:'8px 0'}}>
+          <Btn onClick={()=>exportData('csv')}>⬇ CSV</Btn>
+          <Btn onClick={()=>exportData('json')}>⬇ JSON</Btn>
+          <Btn danger onClick={()=>setShowClear(true)}>🗑 Limpar {date}</Btn>
         </div>
-        <p style={{textAlign:'center',fontSize:10,color:'#333',marginTop:8}}>
-          Sem dados pessoais · {data.updatedAt}
-        </p>
+        <p style={{textAlign:'center',fontSize:10,color:'#333',marginTop:8}}>Sem dados pessoais · {data.updatedAt}</p>
 
-      </div>{/* /container */}
+      </div>{/* /wrap */}
 
-      {/* ── Session detail modal ── */}
-      {selectedSid&&(
+      {/* Session Detail */}
+      {selSid&&(
         <div style={s.overlay} onClick={closeDetail}>
-          <div style={s.modal} onClick={e=>e.stopPropagation()}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-              <h2 style={{fontSize:14,fontWeight:700,color:'#F28A1A',margin:0}}>Detalhe</h2>
-              <button onClick={closeDetail} style={{background:'none',border:'none',color:'#888',cursor:'pointer',fontSize:18}}>✕</button>
+          <div style={s.drawer} onClick={e=>e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,borderBottom:'1px solid #222',paddingBottom:12}}>
+              <h2 style={{margin:0,fontSize:15,fontWeight:800,color:'#F28A1A'}}>{detSess?.label||'Detalhe'}</h2>
+              <button onClick={closeDetail} style={{background:'none',border:'none',color:'#666',cursor:'pointer',fontSize:20}}>✕</button>
             </div>
-            {detailLoading?<div style={{color:'#888',textAlign:'center',padding:24}}>Carregando...</div>:detail?(
-              <div style={{overflowY:'auto',maxHeight:'65vh'}}>
+            {detL?<div style={{color:'#888',textAlign:'center',padding:32}}>Carregando…</div>:detail?(
+              <div style={{overflowY:'auto',maxHeight:'calc(90vh - 80px)'}}>
+                {/* Bloco 1 — ID */}
+                {detSess&&<>
+                  <DLabel>Identificação</DLabel>
+                  <div style={s.dBlock}>
+                    <DRow k="Usuário" v={detSess.label}/>
+                    <DRow k="Status" v={<span style={{color:STATUS_COLOR[detSess.status]}}>{detSess.status}</span>}/>
+                    <DRow k="sessionId" v={<span style={{fontFamily:'monospace',fontSize:11}}>{selSid.slice(0,20)}…</span>}/>
+                    <DRow k="Primeira visita" v={fmtTime(detSess.firstSeen)}/>
+                    <DRow k="Última atividade" v={fmtTime(detSess.lastSeen)}/>
+                    {detSess.leftAt&&<DRow k="Saiu em" v={fmtTime(detSess.leftAt)}/>}
+                  </div>
+                </>}
+                {/* Bloco 2 — UTM */}
                 {detail.session&&<>
-                  <Label>SESSION</Label><Mono>{selectedSid.slice(0,20)}…</Mono>
-                  <Label>STATUS / TEMPO</Label>
-                  <Mono>Primeiro: {fmtTime(detail.session.first_seen as string)} | Último: {fmtTime(detail.session.last_seen as string)}</Mono>
-                  <Label>UTM</Label>
-                  <Mono>source={String(detail.session.utm_source||'—')} | campaign={String(detail.session.utm_campaign||'—')} | content={String(detail.session.utm_content||'—')} | term={String(detail.session.utm_term||'—')}</Mono>
-                  <Label>IDS</Label>
-                  <Mono>campaign_id={String(detail.session.campaign_id||'—')} | adset_id={String(detail.session.adset_id||'—')} | ad_id={String(detail.session.ad_id||'—')}</Mono>
-                  <Label>PROGRESSO</Label>
-                  <Mono>Última seção: {String(detail.session.max_section_title||'—')} | Cliques: {String(detail.session.clicks_count||0)} | Comprou: {detail.session.purchased?'SIM':'não'}</Mono>
-                </>}
-                {detail.sectionEvents.length>0&&<>
-                  <Label>SEÇÕES ({detail.sectionEvents.length})</Label>
-                  <div style={s.evList}>
-                    {detail.sectionEvents.map((ev,i)=>(
-                      <div key={i} style={s.evRow}><span style={{color:'#60a5fa'}}>{ev.section_order as number}.</span> {ev.section_title as string} <span style={{color:'#555',fontSize:10}}>{fmtTime(ev.created_at as string)}</span></div>
+                  <DLabel>Origem</DLabel>
+                  <div style={s.dBlock}>
+                    {(['utm_source','utm_medium','utm_campaign','utm_term','utm_content','campaign_id','adset_id','ad_id','placement','site_source_name'] as string[]).map(k=>(
+                      detail.session![k]?<DRow key={k} k={k} v={String(detail.session![k])}/>:null
                     ))}
                   </div>
                 </>}
-                {detail.clickEvents.length>0&&<>
-                  <Label>CLIQUES ({detail.clickEvents.length})</Label>
-                  <div style={s.evList}>
-                    {detail.clickEvents.map((ev,i)=>(
-                      <div key={i} style={s.evRow}><span style={{color:'#f59e0b'}}>{ev.checkout_type as string}</span> · {String(ev.button_location||'')} <span style={{color:'#555',fontSize:10}}>{fmtTime(ev.created_at as string)}</span></div>
+                {/* Bloco 3 — Seções */}
+                {detail.sectionsReached.length>0&&<>
+                  <DLabel>Percurso na PV ({detail.sectionsReached.length})</DLabel>
+                  <div style={{...s.dBlock,padding:0,overflow:'hidden'}}>
+                    {detail.sectionsReached.map((ev,i)=>{
+                      const isLast = i===detail.sectionsReached.length-1;
+                      return <div key={i} style={{padding:'8px 12px',borderBottom:'1px solid #1a1a1a',background:isLast?'rgba(242,138,26,.06)':'transparent',display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:12,color:isLast?'#F28A1A':'#ccc'}}>{ev.section_title as string}</span>
+                        <span style={{fontSize:11,color:'#555'}}>{fmtTime(ev.created_at as string)}</span>
+                      </div>;
+                    })}
+                  </div>
+                </>}
+                {/* Bloco 4 — Cliques */}
+                {detail.clicks.length>0&&<>
+                  <DLabel>Cliques ({detail.clicks.length})</DLabel>
+                  <div style={{...s.dBlock,padding:0,overflow:'hidden'}}>
+                    {detail.clicks.map((ev,i)=>(
+                      <div key={i} style={{padding:'8px 12px',borderBottom:'1px solid #1a1a1a',display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:12,color:'#f59e0b'}}>{ev.checkout_type as string}</span>
+                        <span style={{fontSize:11,color:'#555'}}>{String(ev.button_location||'')} · {fmtTime(ev.created_at as string)}</span>
+                      </div>
                     ))}
                   </div>
                 </>}
-                {detail.purchase&&<>
-                  <Label>COMPRA</Label>
-                  <Mono style={{color:'#4ade80'}}>{fmtBRL(detail.purchase.amount as number)} · {String(detail.purchase.checkout_title||'')}</Mono>
-                </>}
+                {/* Bloco 5 — Compra */}
+                <DLabel>Compra</DLabel>
+                {detail.purchase?(
+                  <div style={s.dBlock}>
+                    <DRow k="Produto" v={String(detail.purchase.checkout_title||'')}/>
+                    <DRow k="Valor" v={<span style={{color:'#4ade80',fontWeight:700}}>{fmtBRL(detail.purchase.amount as number)}</span>}/>
+                    <DRow k="Horário" v={fmtTime(detail.purchase.created_at as string)}/>
+                  </div>
+                ):<div style={{...s.dBlock,color:'#555',fontSize:12}}>Sem compra registrada.</div>}
               </div>
             ):<div style={{color:'#888',textAlign:'center',padding:24}}>Sessão não encontrada.</div>}
           </div>
         </div>
       )}
 
-      {/* ── Clear modal ── */}
-      {showClearModal&&(
-        <div style={s.overlay} onClick={()=>setShowClearModal(false)}>
-          <div style={s.modal} onClick={e=>e.stopPropagation()}>
-            <h2 style={{fontSize:14,fontWeight:700,color:'#ff6b6b',margin:'0 0 12px'}}>⚠️ Limpar dados</h2>
-            <p style={{fontSize:12,color:'#ccc',marginBottom:8}}>Isso apagará todos os dados do Supabase para <strong style={{color:'#fff'}}>{date}</strong>. Exporte antes de continuar.</p>
+      {/* Clear Modal */}
+      {showClear&&(
+        <div style={s.overlay} onClick={()=>setShowClear(false)}>
+          <div style={{...s.drawer,maxWidth:440}} onClick={e=>e.stopPropagation()}>
+            <h2 style={{fontSize:14,fontWeight:700,color:'#ff6b6b',margin:'0 0 12px'}}>⚠️ Limpar dados de {date}</h2>
+            <p style={{fontSize:12,color:'#ccc',marginBottom:8}}>Isso apagará <strong style={{color:'#fff'}}>todos os dados do Supabase</strong> para {date}. Exporte antes de continuar.</p>
             <p style={{fontSize:12,color:'#888',marginBottom:12}}>Digite <strong style={{color:'#ff6b6b'}}>LIMPAR</strong> para confirmar:</p>
-            <input value={clearInput} onChange={e=>setClearInput(e.target.value)} placeholder="LIMPAR"
-              style={{...s.dateInput,width:'100%',marginBottom:12,color:'#ff6b6b'}}/>
+            <input value={clearTxt} onChange={e=>setClearTxt(e.target.value)} placeholder="LIMPAR" style={{...s.inp,width:'100%',marginBottom:12,color:'#ff6b6b'}}/>
             <div style={{display:'flex',gap:8}}>
-              <button onClick={clearDay} disabled={clearInput!=='LIMPAR'}
-                style={{...s.btn,background:clearInput==='LIMPAR'?'#7f1d1d':'#1f1f1f',color:clearInput==='LIMPAR'?'#ff6b6b':'#555',flex:1}}>
-                Confirmar limpeza
-              </button>
-              <button onClick={()=>{setShowClearModal(false);setClearInput('');}} style={{...s.btn,background:'#1f1f1f',color:'#888'}}>
-                Cancelar
-              </button>
+              <Btn danger onClick={doClear} disabled={clearTxt!=='LIMPAR'}>Confirmar limpeza</Btn>
+              <Btn onClick={()=>{setShowClear(false);setClearTxt('');}}>Cancelar</Btn>
             </div>
           </div>
         </div>
@@ -379,58 +332,70 @@ export default function FunilPage() {
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
+// ─── Sub-components ───────────────────────────────────────────────────────────
 function Block({title,children}:{title:string;children:React.ReactNode}){
-  return <div style={s.block}><h2 style={s.blockTitle}>{title}</h2>{children}</div>;
+  return <div style={s.blk}><h2 style={s.blkT}>{title}</h2>{children}</div>;
+}
+function Card({label,value,color,hint}:{label:string;value:string;color:string;hint?:string}){
+  return <div style={s.card} title={hint}>
+    <p style={s.cLabel}>{label}</p>
+    <p style={{...s.cVal,color}}>{value}</p>
+    {hint&&<p style={{fontSize:10,color:'#444',margin:'4px 0 0'}}>{hint}</p>}
+  </div>;
 }
 function Grid({headers,rows}:{headers:string[];rows:string[][]}){
   return <div style={{overflowX:'auto'}}>
-    <table style={s.table}>
+    <table style={s.tbl}>
       <thead><tr style={{color:'#555'}}>
-        {headers.map((h,i)=><th key={h} style={{...th,textAlign:i===0?'left':'right'}}>{h}</th>)}
+        {headers.map((h,i)=><th key={h} style={{...s.th,textAlign:i===0?'left':'right'}}>{h}</th>)}
       </tr></thead>
       <tbody>{rows.map((row,ri)=>(
         <tr key={ri} style={s.tr}>
-          {row.map((cell,ci)=><td key={ci} style={{...td,textAlign:ci===0?'left':'right',fontWeight:ci===0?400:600}}>{cell}</td>)}
+          {row.map((cell,ci)=><td key={ci} style={{...s.td,textAlign:ci===0?'left':'right',fontWeight:ci===0?400:600}}>{cell}</td>)}
         </tr>
       ))}</tbody>
     </table>
   </div>;
 }
-const Label = ({children}:{children:React.ReactNode})=><p style={{fontSize:10,color:'#555',textTransform:'uppercase',letterSpacing:1,margin:'12px 0 4px'}}>{children}</p>;
-const Mono = ({children,style}:{children:React.ReactNode;style?:React.CSSProperties})=>
-  <p style={{fontFamily:'monospace',fontSize:12,color:'#ccc',margin:0,wordBreak:'break-all',...style}}>{children}</p>;
+function Btn({children,onClick,active,danger,disabled}:{children:React.ReactNode;onClick?:()=>void;active?:boolean;danger?:boolean;disabled?:boolean}){
+  return <button onClick={onClick} disabled={disabled} style={{border:'1px solid',borderRadius:6,padding:'6px 14px',fontSize:12,cursor:disabled?'not-allowed':'pointer',
+    background:active?'#166534':danger?'#3f0000':'#1f1f1f',
+    color:active?'#4ade80':danger?'#ff6b6b':'#aaa',
+    borderColor:active?'#166534':danger?'#7f1d1d':'#333',
+    opacity:disabled?0.5:1}}>{children}</button>;
+}
+const Th=({children,r}:{children?:React.ReactNode;r?:boolean})=><th style={{...s.th,textAlign:r?'right':'left'}}>{children}</th>;
+const Td=({children,r,bold,style}:{children?:React.ReactNode;r?:boolean;bold?:boolean;style?:React.CSSProperties})=>
+  <td style={{...s.td,textAlign:r?'right':'left',fontWeight:bold?700:400,...style}}>{children}</td>;
+const DLabel=({children}:{children:React.ReactNode})=><p style={{fontSize:10,color:'#F28A1A',textTransform:'uppercase',letterSpacing:1,margin:'16px 0 6px',fontWeight:700}}>{children}</p>;
+const DRow=({k,v}:{k:string;v:React.ReactNode})=><div style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:'1px solid #1e1e1e'}}>
+  <span style={{fontSize:11,color:'#555'}}>{k}</span>
+  <span style={{fontSize:12,color:'#ccc'}}>{v}</span>
+</div>;
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const th:React.CSSProperties = {padding:'8px 10px',fontWeight:600,fontSize:11,textTransform:'uppercase',letterSpacing:.8,borderBottom:'1px solid #222'};
-const td:React.CSSProperties = {padding:'10px 10px',color:'#ccc',verticalAlign:'middle'};
-
-const s:Record<string,React.CSSProperties> = {
-  page:      {minHeight:'100vh',background:'#0f0f0f',color:'#fff',fontFamily:'system-ui,sans-serif',padding:'24px 16px'},
-  container: {maxWidth:980,margin:'0 auto'},
-  center:    {minHeight:'100vh',background:'#0f0f0f',display:'flex',alignItems:'center',justifyContent:'center'},
-  errorBox:  {background:'#1a1a1a',border:'1px solid #333',borderRadius:12,padding:32,textAlign:'center',color:'#fff'},
-  header:    {display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24,flexWrap:'wrap',gap:12},
-  title:     {fontSize:20,fontWeight:800,margin:0,color:'#F28A1A'},
-  sub:       {fontSize:11,color:'#555',margin:'4px 0 0'},
-  cardGrid:  {display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:24},
-  card:      {background:'#1a1a1a',border:'1px solid #2a2a2a',borderRadius:10,padding:'14px 18px'},
-  cardLabel: {fontSize:11,color:'#555',margin:'0 0 6px',textTransform:'uppercase',letterSpacing:1},
-  cardVal:   {fontSize:24,fontWeight:800,margin:0},
-  block:     {background:'#141414',border:'1px solid #222',borderRadius:10,padding:20,marginBottom:20},
-  blockTitle:{fontSize:13,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:1,margin:'0 0 14px'},
-  table:     {width:'100%',borderCollapse:'collapse',fontSize:13},
-  tr:        {borderBottom:'1px solid #1f1f1f'},
-  barBg:     {height:6,background:'#222',borderRadius:4,overflow:'hidden'},
-  barFill:   {height:'100%',background:'#F28A1A',borderRadius:4,transition:'width .4s'},
-  clickGrid: {display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10},
-  btn:       {border:'1px solid #333',borderRadius:6,padding:'6px 12px',fontSize:12,cursor:'pointer'},
-  btnAct:    {background:'#1a1a1a',border:'1px solid #333',borderRadius:8,color:'#ccc',padding:'8px 16px',fontSize:13,cursor:'pointer'},
-  dateInput: {background:'#1a1a1a',border:'1px solid #333',borderRadius:6,color:'#ccc',padding:'6px 10px',fontSize:12},
-  overlay:   {position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
-  modal:     {background:'#1a1a1a',border:'1px solid #333',borderRadius:12,padding:24,width:'100%',maxWidth:560},
-  evList:    {background:'#111',borderRadius:6,padding:'8px 10px',marginBottom:4},
-  evRow:     {fontSize:12,color:'#aaa',padding:'2px 0'},
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s: Record<string,React.CSSProperties> = {
+  page:   {minHeight:'100vh',background:'#0c0c0c',color:'#fff',fontFamily:'system-ui,sans-serif',padding:'20px 16px'},
+  wrap:   {maxWidth:1000,margin:'0 auto'},
+  center: {minHeight:'100vh',background:'#0c0c0c',display:'flex',alignItems:'center',justifyContent:'center'},
+  ebox:   {background:'#1a1a1a',border:'1px solid #333',borderRadius:12,padding:32,textAlign:'center'},
+  hdr:    {display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,flexWrap:'wrap',gap:12},
+  ttl:    {fontSize:18,fontWeight:800,margin:0,color:'#F28A1A'},
+  sub:    {fontSize:11,color:'#444',margin:'4px 0 0'},
+  cards:  {display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:20},
+  card:   {background:'#161616',border:'1px solid #222',borderRadius:10,padding:'12px 16px'},
+  cLabel: {fontSize:11,color:'#555',margin:'0 0 6px',textTransform:'uppercase',letterSpacing:.8},
+  cVal:   {fontSize:22,fontWeight:800,margin:0},
+  blk:    {background:'#121212',border:'1px solid #1e1e1e',borderRadius:10,padding:18,marginBottom:18},
+  blkT:   {fontSize:12,fontWeight:700,color:'#555',textTransform:'uppercase',letterSpacing:1,margin:'0 0 14px'},
+  tbl:    {width:'100%',borderCollapse:'collapse',fontSize:13},
+  tr:     {borderBottom:'1px solid #1a1a1a'},
+  th:     {padding:'8px 10px',fontWeight:600,fontSize:11,textTransform:'uppercase',letterSpacing:.7,borderBottom:'1px solid #1e1e1e'},
+  td:     {padding:'9px 10px',color:'#bbb',verticalAlign:'middle'},
+  barBg:  {height:5,background:'#1e1e1e',borderRadius:3,overflow:'hidden',minWidth:60},
+  barFill:{height:'100%',background:'#F28A1A',borderRadius:3,transition:'width .4s'},
+  inp:    {background:'#161616',border:'1px solid #2a2a2a',borderRadius:6,color:'#ccc',padding:'6px 10px',fontSize:12},
+  overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',display:'flex',alignItems:'flex-start',justifyContent:'flex-end',zIndex:1000},
+  drawer: {background:'#141414',borderLeft:'1px solid #222',padding:24,width:'100%',maxWidth:500,height:'100vh',overflowY:'auto'},
+  dBlock: {background:'#0f0f0f',borderRadius:8,padding:'10px 12px',marginBottom:4},
 };
