@@ -44,13 +44,21 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    // Inserir clique
-    await supabaseAdmin
+    // Inserir clique — proteção: máx 20 cliques por sessão/dia
+    const { count: existingClicks } = await supabaseAdmin
       .from('funnel_click_events')
-      .insert({
-        session_id: sessionId, date: today,
-        checkout_type: checkoutType, button_location: buttonLocation,
-      });
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', sessionId)
+      .eq('date', today);
+
+    if ((existingClicks || 0) < 20) {
+      await supabaseAdmin
+        .from('funnel_click_events')
+        .insert({
+          session_id: sessionId, date: today,
+          checkout_type: checkoutType, button_location: buttonLocation,
+        });
+    }
 
   } catch (err) {
     console.error('[track-click]', err);

@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
     if (since) pq = pq.gte('created_at', since);
     const { data: purchaseData } = await pq;
     const purchaseCount   = (purchaseData||[]).length;
-    const purchaseRevenue = (purchaseData||[]).reduce((a:{amount:number}[], r:{amount:number}) => (a as unknown as number) + (r.amount||0), 0 as unknown as {amount:number}[]) as unknown as number;
+    const purchaseRevenue = (purchaseData||[]).reduce((sum: number, r: {amount: number}) => sum + (r.amount||0), 0);
 
     // ── Campanhas / Adsets / Criativos ───────────────────────────────────
     type MapEntry = {sessions:number;clicks:number;reachedOffer:number;purchases:number;revenue:number};
