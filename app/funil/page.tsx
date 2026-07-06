@@ -70,13 +70,18 @@ export default function FunilPage() {
     try {
       const res = await fetch(`/api/funnel-dashboard?token=${encodeURIComponent(tok)}`);
       if (res.status === 401) { setError('Acesso negado. Token inválido.'); setData(null); return; }
-      if (!res.ok) { setError('Erro ao carregar dados.'); return; }
+      if (!res.ok) {
+        let detail = '';
+        try { const j = await res.json() as { error?: string }; detail = j.error || ''; } catch { /* ignore */ }
+        setError(`Erro ${res.status}${detail ? ': ' + detail : ''}. Verifique as variáveis de ambiente na Vercel.`);
+        return;
+      }
       const json = await res.json() as DashboardData;
       setData(json);
       setError('');
       setLastUpdate(new Date().toLocaleTimeString('pt-BR'));
-    } catch {
-      setError('Erro de conexão.');
+    } catch (e) {
+      setError(`Erro de conexão: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setLoading(false);
     }

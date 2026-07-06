@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (err) {
-    console.error('[funnel-dashboard] Error', err);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    console.error('[funnel-dashboard] Error', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal error' }, { status: 500 });
   }
 }
