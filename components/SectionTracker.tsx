@@ -25,7 +25,10 @@ const sections = [
   { id: 'rodape',              title: '14 - Rodape',              order: 14 },
 ];
 
-const SESSION_PREFIX = 'st_fired_';
+// Prefixos separados para GA4 e painel próprio
+// Assim um não bloqueia o outro caso um falhe
+const GA4_PREFIX    = 'ga4_fired_';
+const PANEL_PREFIX  = 'panel_fired_';
 const SESSION_ID_KEY = 'mapa_degrade_session_id';
 
 function getSessionId(): string {
@@ -40,32 +43,28 @@ function getSessionId(): string {
 function getUtmParams() {
   const params = new URLSearchParams(window.location.search);
   return {
-    utmSource:       params.get('utm_source')       || undefined,
-    utmMedium:       params.get('utm_medium')       || undefined,
-    utmCampaign:     params.get('utm_campaign')     || undefined,
-    utmContent:      params.get('utm_content')      || undefined,
-    utmTerm:         params.get('utm_term')         || undefined,
-    campaignId:      params.get('campaign_id')      || undefined,
-    adsetId:         params.get('adset_id')         || undefined,
-    adId:            params.get('ad_id')            || undefined,
-    placement:       params.get('placement')        || undefined,
-    siteSourceName:  params.get('site_source_name') || undefined,
+    utmSource:      params.get('utm_source')       || undefined,
+    utmMedium:      params.get('utm_medium')       || undefined,
+    utmCampaign:    params.get('utm_campaign')     || undefined,
+    utmContent:     params.get('utm_content')      || undefined,
+    utmTerm:        params.get('utm_term')         || undefined,
+    campaignId:     params.get('campaign_id')      || undefined,
+    adsetId:        params.get('adset_id')         || undefined,
+    adId:           params.get('ad_id')            || undefined,
+    placement:      params.get('placement')        || undefined,
+    siteSourceName: params.get('site_source_name') || undefined,
   };
 }
 
-function fireSection(sessionId: string, id: string, title: string, order: number) {
+// ── GA4: dispara section_reached + page_view virtual ─────────────────────────
+function fireGA4(id: string, title: string, order: number) {
   if (!title || !id) return;
+  if (sessionStorage.getItem(GA4_PREFIX + id)) return;
 
-  const storageKey = SESSION_PREFIX + id;
-  if (sessionStorage.getItem(storageKey)) return;
-  sessionStorage.setItem(storageKey, '1');
+  if (typeof window.gtag !== 'function') return; // gtag ainda não carregou
 
-  const utms = getUtmParams();
-
-  // ── GA4 ──────────────────────────────────────────────────────────────────
-  if (typeof window.gtag === 'function') {
-    const pageLocation = window.location.origin + window.location.pathname + '#' + id;
-    const pagePath     = window.location.pathname + '#' + id;
+  try {
+    sessionStorage.setItem(GA4_PREFIX + id, '1');
 
     window.gtag('event', 'section_reached', {
       section_title:  title,
@@ -76,26 +75,39 @@ function fireSection(sessionId: string, id: string, title: string, order: number
 
     window.gtag('event', 'page_view', {
       page_title:     title,
-      page_location:  pageLocation,
-      page_path:      pagePath,
+      page_location:  window.location.origin + window.location.pathname + '#' + id,
+      page_path:      window.location.pathname + '#' + id,
       transport_type: 'beacon',
     });
+  } catch {
+    // silently ignore
   }
+}
 
-  // ── Redis (fire-and-forget, não bloqueia UI) ──────────────────────────────
-  fetch('/api/track-section', {
-    method:    'POST',
-    headers:   { 'Content-Type': 'application/json' },
-    keepalive: true,
-    body: JSON.stringify({
-      sessionId,
-      sectionId:    id,
-      sectionTitle: title,
-      sectionOrder: order,
-      timestamp:    Date.now(),
-      ...utms,
-    }),
-  }).catch(() => { /* silently ignore */ });
+// ── Painel próprio: dispara track-section ─────────────────────────────────────
+function firePanel(sessionId: string, id: string, title: string, order: number) {
+  if (!title || !id) return;
+  if (sessionStorage.getItem(PANEL_PREFIX + id)) return;
+
+  try {
+    sessionStorage.setItem(PANEL_PREFIX + id, '1');
+
+    fetch('/api/track-section', {
+      method:    'POST',
+      headers:   { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        sessionId,
+        sectionId:    id,
+        sectionTitle: title,
+        sectionOrder: order,
+        timestamp:    new Date().toISOString(),
+        ...getUtmParams(),
+      }),
+    }).catch(() => { /* silently ignore */ });
+  } catch {
+    // silently ignore
+  }
 }
 
 export default function SectionTracker() {
@@ -105,11 +117,17 @@ export default function SectionTracker() {
 
     const checkSections = () => {
       const triggerLine = window.scrollY + window.innerHeight * 0.75;
+
       sections.forEach(({ id, title, order }) => {
         const el = document.getElementById(id);
         if (!el) return;
+
         const top = el.getBoundingClientRect().top + window.scrollY;
-        if (top <= triggerLine) fireSection(sessionId, id, title, order);
+        if (top > triggerLine) return;
+
+        // Cada rastreamento é independente — um não bloqueia o outro
+        fireGA4(id, title, order);
+        firePanel(sessionId, id, title, order);
       });
     };
 
@@ -121,16 +139,18 @@ export default function SectionTracker() {
       });
     };
 
-    // Aguarda gtag carregar antes do check inicial (evita (not set) na Hero)
-    const waitForGtag = (attempts = 0) => {
+    // Dispara painel imediatamente (não precisa esperar gtag)
+    checkSections();
+
+    // Tenta disparar GA4 assim que o gtag carregar (para a Hero e seções já visíveis)
+    const tryGA4Initial = (attempts = 0) => {
       if (typeof window.gtag === 'function') {
-        checkSections();
+        checkSections(); // re-verifica para seções visíveis que o gtag perdeu
       } else if (attempts < 20) {
-        setTimeout(() => waitForGtag(attempts + 1), 250);
+        setTimeout(() => tryGA4Initial(attempts + 1), 250);
       }
     };
-
-    waitForGtag();
+    tryGA4Initial();
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
