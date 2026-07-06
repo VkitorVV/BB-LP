@@ -1,55 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, TTL_7D, TTL_30M } from '@/lib/redis';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await request.json(); }
-  catch { return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 }); }
+  catch { return NextResponse.json({ ok: false }, { status: 400 }); }
 
-  const { sessionId, sectionId, sectionTitle, sectionOrder,
-          utmCampaign, utmContent, utmSource, utmMedium, utmTerm,
-          campaignId, adsetId, adId, placement, siteSourceName, timestamp } =
-    body as Record<string, string | number | undefined>;
-
-  if (!sessionId || typeof sessionId !== 'string') return NextResponse.json({ ok: false }, { status: 400 });
-  if (!sectionId || typeof sectionId !== 'string') return NextResponse.json({ ok: false }, { status: 400 });
-  if (!sectionTitle || typeof sectionTitle !== 'string') return NextResponse.json({ ok: false }, { status: 400 });
-
-  const order    = typeof sectionOrder === 'number' ? sectionOrder : parseInt(String(sectionOrder || 0), 10);
-  const ts       = typeof timestamp === 'number' ? timestamp : Date.now();
-  const campaign = (utmCampaign as string | undefined) || 'direct';
-  const content  = (utmContent  as string | undefined) || 'none';
-
-  const sessionData = JSON.stringify({
-    lastSection: sectionId, lastOrder: order,
+  const {
+    sessionId, sectionId, sectionTitle, sectionOrder,
     utmSource, utmMedium, utmCampaign, utmContent, utmTerm,
-    campaignId, adsetId, adId, placement, siteSourceName, updatedAt: ts,
-  });
+    campaignId, adsetId, adId, placement, siteSourceName, timestamp,
+  } = body as Record<string, string | number | undefined>;
+
+  if (!sessionId || !sectionId || !sectionTitle) {
+    return NextResponse.json({ ok: false, error: 'Missing fields' }, { status: 400 });
+  }
+
+  const order = typeof sectionOrder === 'number' ? sectionOrder : parseInt(String(sectionOrder || 0), 10);
+  const today = new Date().toISOString().split('T')[0];
+
+  // suppress unused variable warning
+  void timestamp;
 
   try {
-    await Promise.all([
-      redis.incr(`funnel:section:${sectionId}:count`).then(() =>
-        redis.expire(`funnel:section:${sectionId}:count`, TTL_7D)),
+    // Upsert sessão
+    const { data: existingSession } = await supabaseAdmin
+      .from('funnel_sessions')
+      .select('id, max_section_order')
+      .eq('session_id', sessionId)
+      .eq('date', today)
+      .single();
 
-      redis.zadd('funnel:sessions:maxSection', { score: order, member: sessionId }).then(() =>
-        redis.expire('funnel:sessions:maxSection', TTL_7D)),
+    if (existingSession) {
+      const updates: Record<string, unknown> = { last_seen: new Date().toISOString() };
+      if (order > (existingSession.max_section_order || 0)) {
+        updates.max_section_order = order;
+        updates.max_section_title = sectionTitle;
+      }
+      await supabaseAdmin
+        .from('funnel_sessions')
+        .update(updates)
+        .eq('session_id', sessionId)
+        .eq('date', today);
+    } else {
+      await supabaseAdmin
+        .from('funnel_sessions')
+        .insert({
+          session_id: sessionId, date: today,
+          utm_source: utmSource, utm_medium: utmMedium,
+          utm_campaign: utmCampaign, utm_content: utmContent, utm_term: utmTerm,
+          campaign_id: campaignId, adset_id: adsetId, ad_id: adId,
+          placement, site_source_name: siteSourceName,
+          max_section_order: order, max_section_title: sectionTitle,
+        });
+    }
 
-      redis.incr(`funnel:section:${sectionId}:campaign:${campaign}`).then(() =>
-        redis.expire(`funnel:section:${sectionId}:campaign:${campaign}`, TTL_7D)),
+    // Inserir evento de seção (ignora duplicata)
+    await supabaseAdmin
+      .from('funnel_section_events')
+      .upsert({
+        session_id: sessionId, date: today,
+        section_id: sectionId, section_title: sectionTitle as string, section_order: order,
+      }, { onConflict: 'session_id,date,section_id' });
 
-      redis.incr(`funnel:section:${sectionId}:content:${content}`).then(() =>
-        redis.expire(`funnel:section:${sectionId}:content:${content}`, TTL_7D)),
-
-      redis.set(`funnel:session:${sessionId}`, sessionData, { ex: TTL_30M }),
-
-      redis.pfadd(`funnel:campaign:${campaign}:sessions`, sessionId).then(() =>
-        redis.expire(`funnel:campaign:${campaign}:sessions`, TTL_7D)),
-
-      redis.pfadd(`funnel:content:${content}:sessions`, sessionId).then(() =>
-        redis.expire(`funnel:content:${content}:sessions`, TTL_7D)),
-    ]);
   } catch (err) {
-    console.error('[track-section] Redis error', err);
+    console.error('[track-section]', err);
   }
 
   return NextResponse.json({ ok: true });

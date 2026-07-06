@@ -1,53 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, TTL_7D, TTL_30M } from '@/lib/redis';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await request.json(); }
-  catch { return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 }); }
+  catch { return NextResponse.json({ ok: false }, { status: 400 }); }
 
-  const { sessionId, checkoutType, buttonLocation,
-          utmCampaign, utmContent, utmSource, utmMedium, utmTerm,
-          campaignId, adsetId, adId, timestamp } =
-    body as Record<string, string | number | undefined>;
+  const {
+    sessionId, checkoutType, buttonLocation,
+    utmSource, utmMedium, utmCampaign, utmContent, utmTerm,
+    campaignId, adsetId, adId,
+  } = body as Record<string, string | number | undefined>;
 
-  if (!sessionId || typeof sessionId !== 'string') return NextResponse.json({ ok: false }, { status: 400 });
-  if (!checkoutType || typeof checkoutType !== 'string') return NextResponse.json({ ok: false }, { status: 400 });
+  if (!sessionId || !checkoutType) {
+    return NextResponse.json({ ok: false }, { status: 400 });
+  }
 
-  const campaign = (utmCampaign as string | undefined) || 'direct';
-  const content  = (utmContent  as string | undefined) || 'none';
-  const location = (buttonLocation as string | undefined) || 'unknown';
-  const ts       = typeof timestamp === 'number' ? timestamp : Date.now();
-
-  const sessionData = JSON.stringify({
-    lastClick: checkoutType, utmSource, utmMedium, utmCampaign, utmContent,
-    utmTerm, campaignId, adsetId, adId, updatedAt: ts,
-  });
+  const today = new Date().toISOString().split('T')[0];
 
   try {
-    await Promise.all([
-      redis.incr(`funnel:click:${checkoutType}:count`).then(() =>
-        redis.expire(`funnel:click:${checkoutType}:count`, TTL_7D)),
+    // Upsert sessão
+    const { data: existingSession } = await supabaseAdmin
+      .from('funnel_sessions')
+      .select('id, clicks_count')
+      .eq('session_id', sessionId)
+      .eq('date', today)
+      .single();
 
-      redis.incr(`funnel:click:location:${location}:count`).then(() =>
-        redis.expire(`funnel:click:location:${location}:count`, TTL_7D)),
+    if (existingSession) {
+      await supabaseAdmin
+        .from('funnel_sessions')
+        .update({ last_seen: new Date().toISOString(), clicks_count: (existingSession.clicks_count || 0) + 1 })
+        .eq('session_id', sessionId)
+        .eq('date', today);
+    } else {
+      await supabaseAdmin
+        .from('funnel_sessions')
+        .insert({
+          session_id: sessionId, date: today, clicks_count: 1,
+          utm_source: utmSource, utm_medium: utmMedium,
+          utm_campaign: utmCampaign, utm_content: utmContent, utm_term: utmTerm,
+          campaign_id: campaignId, adset_id: adsetId, ad_id: adId,
+        });
+    }
 
-      redis.incr(`funnel:click:${checkoutType}:campaign:${campaign}`).then(() =>
-        redis.expire(`funnel:click:${checkoutType}:campaign:${campaign}`, TTL_7D)),
+    // Inserir clique
+    await supabaseAdmin
+      .from('funnel_click_events')
+      .insert({
+        session_id: sessionId, date: today,
+        checkout_type: checkoutType, button_location: buttonLocation,
+      });
 
-      redis.incr(`funnel:click:${checkoutType}:content:${content}`).then(() =>
-        redis.expire(`funnel:click:${checkoutType}:content:${content}`, TTL_7D)),
-
-      redis.set(`funnel:session:${sessionId}`, sessionData, { ex: TTL_30M }),
-
-      redis.pfadd(`funnel:campaign:${campaign}:clicks`, sessionId).then(() =>
-        redis.expire(`funnel:campaign:${campaign}:clicks`, TTL_7D)),
-
-      redis.pfadd(`funnel:content:${content}:clicks`, sessionId).then(() =>
-        redis.expire(`funnel:content:${content}:clicks`, TTL_7D)),
-    ]);
   } catch (err) {
-    console.error('[track-click] Redis error', err);
+    console.error('[track-click]', err);
   }
 
   return NextResponse.json({ ok: true });

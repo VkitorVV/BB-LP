@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, TTL_7D } from '@/lib/redis';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: NextRequest) {
   console.warn('[WIAPY_WEBHOOK] POST route called');
@@ -134,37 +134,33 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 7. Salvar no Redis ────────────────────────────────────────────────────
+  // ── 7. Salvar no Supabase ─────────────────────────────────────────────────
   try {
-    const campaign   = utmCampaign || 'direct';
-    const content    = utmContent  || 'none';
-    const valueCents = typeof amount === 'number' ? amount : 0;
-    const titleKey   = checkoutTitle || 'unknown';
+    const today = new Date().toISOString().split('T')[0];
 
-    await Promise.all([
-      redis.incr('funnel:purchase:count').then(() =>
-        redis.expire('funnel:purchase:count', TTL_7D)),
-      redis.incrby('funnel:purchase:revenue_cents', valueCents).then(() =>
-        redis.expire('funnel:purchase:revenue_cents', TTL_7D)),
-      redis.incr(`funnel:purchase:checkout:${titleKey}:count`).then(() =>
-        redis.expire(`funnel:purchase:checkout:${titleKey}:count`, TTL_7D)),
-      redis.incr(`funnel:campaign:${campaign}:purchase_count`).then(() =>
-        redis.expire(`funnel:campaign:${campaign}:purchase_count`, TTL_7D)),
-      redis.incrby(`funnel:campaign:${campaign}:revenue_cents`, valueCents).then(() =>
-        redis.expire(`funnel:campaign:${campaign}:revenue_cents`, TTL_7D)),
-      redis.incr(`funnel:content:${content}:purchase_count`).then(() =>
-        redis.expire(`funnel:content:${content}:purchase_count`, TTL_7D)),
-      redis.incrby(`funnel:content:${content}:revenue_cents`, valueCents).then(() =>
-        redis.expire(`funnel:content:${content}:revenue_cents`, TTL_7D)),
-      ...(utmTerm ? [
-        redis.incr(`funnel:term:${utmTerm}:purchase_count`).then(() =>
-          redis.expire(`funnel:term:${utmTerm}:purchase_count`, TTL_7D)),
-      ] : []),
-    ]);
+    await supabaseAdmin.from('funnel_purchases').insert({
+      date:           today,
+      payment_id:     transactionId,
+      checkout_title: checkoutTitle,
+      amount:         value,
+      utm_campaign:   utmCampaign,
+      utm_content:    utmContent,
+      utm_term:       utmTerm,
+    });
 
-    console.warn('[WIAPY_WEBHOOK] Redis purchase saved');
+    // Atualizar sessão se tiver session_id no tracking
+    const trackingSessionId = tracking?.session_id as string | undefined;
+    if (trackingSessionId) {
+      await supabaseAdmin
+        .from('funnel_sessions')
+        .update({ purchased: true, revenue: value })
+        .eq('session_id', trackingSessionId)
+        .eq('date', today);
+    }
+
+    console.warn('[WIAPY_WEBHOOK] Supabase purchase saved');
   } catch (err) {
-    console.error('[WIAPY_WEBHOOK] Redis error (non-fatal)', err instanceof Error ? err.message : err);
+    console.error('[WIAPY_WEBHOOK] Supabase error (non-fatal)', err instanceof Error ? err.message : err);
   }
 
   return NextResponse.json({ received: true, ga4Sent: true }, { status: 200 });
