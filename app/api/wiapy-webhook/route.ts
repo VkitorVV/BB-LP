@@ -26,12 +26,13 @@ export async function POST(request: NextRequest) {
   const checkoutTitle = checkout?.title        as string | undefined;
   const amount        = payment?.amount        as number | undefined;
 
-  // ── 3. Log mínimo ─────────────────────────────────────────────────────────
+  // ── 3. Log de recebimento (sem dados pessoais) ────────────────────────────
   console.log('WIAPY webhook received', {
-    status,
+    paymentStatus:  status,
     paymentId,
-    checkoutTitle,
     amount,
+    checkoutTitle,
+    productsCount:  products?.length || 0,
   });
 
   // ── 4. Processar apenas pagamentos confirmados ────────────────────────────
@@ -47,7 +48,10 @@ export async function POST(request: NextRequest) {
   const apiSecret     = process.env.GA4_API_SECRET;
 
   if (!measurementId || !apiSecret) {
-    console.error('GA4 env vars missing', { measurementId: !!measurementId, apiSecret: !!apiSecret });
+    console.error('GA4 env vars missing', {
+      measurementIdExists: Boolean(measurementId),
+      apiSecretExists:     Boolean(apiSecret),
+    });
     return NextResponse.json({ error: 'GA4 configuration missing' }, { status: 500 });
   }
 
@@ -68,7 +72,16 @@ export async function POST(request: NextRequest) {
       : value,
   })) ?? [];
 
-  // ── 7. Body para GA4 Measurement Protocol ────────────────────────────────
+  // ── 7. Log pré-envio GA4 ─────────────────────────────────────────────────
+  console.log('Sending purchase to GA4', {
+    measurementIdExists: Boolean(measurementId),
+    apiSecretExists:     Boolean(apiSecret),
+    clientId,
+    transactionId,
+    value,
+  });
+
+  // ── 8. Body para GA4 Measurement Protocol ────────────────────────────────
   const ga4Body = {
     client_id: clientId,
     user_id:   customer?.id as string | undefined,
@@ -94,7 +107,7 @@ export async function POST(request: NextRequest) {
     ],
   };
 
-  // ── 8. Enviar ao GA4 ──────────────────────────────────────────────────────
+  // ── 9. Enviar ao GA4 ──────────────────────────────────────────────────────
   try {
     const ga4Response = await fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
@@ -105,14 +118,21 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    console.log('GA4 response', {
+      status: ga4Response.status,
+      ok:     ga4Response.ok,
+    });
+
     if (!ga4Response.ok) {
-      const text = await ga4Response.text();
-      console.error('GA4 Measurement Protocol error', { status: ga4Response.status, body: text });
+      const ga4ErrorText = await ga4Response.text();
+      console.error('GA4 purchase event failed', ga4ErrorText);
       return NextResponse.json(
-        { error: 'GA4 request failed', details: text },
+        { error: 'GA4 request failed', details: ga4ErrorText },
         { status: 500 }
       );
     }
+
+    console.log('GA4 purchase event sent');
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('GA4 fetch exception', { message });
