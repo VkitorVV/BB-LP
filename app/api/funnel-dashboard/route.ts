@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { rGetInt, rKeys, rPipeline } from '@/lib/redis';
+import { redis } from '@/lib/redis';
 
 const SECTIONS = [
   { order: 1,  id: 'hero',                title: '01 - Hero'               },
@@ -18,12 +18,14 @@ const SECTIONS = [
   { order: 14, id: 'rodape',              title: '14 - Rodape'              },
 ];
 
-const CHECKOUT_TYPES = [
-  'plano_basico_popup_open',
-  'plano_basico',
-  'kit_completo',
-  'kit_desconto_popup',
-];
+const CLICK_TYPES = ['plano_basico_popup_open', 'plano_basico', 'kit_completo', 'kit_desconto_popup'];
+
+async function safeInt(key: string): Promise<number> {
+  try {
+    const val = await redis.get<string>(key);
+    return val ? parseInt(String(val), 10) || 0 : 0;
+  } catch { return 0; }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -34,100 +36,86 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // ── Usuários ativos nos últimos 30min ─────────────────────────────────
-    const sessionKeys = await rKeys('funnel:session:*');
+    // ── Sessões ativas (30min) ────────────────────────────────────────────
+    const sessionKeys = await redis.keys('funnel:session:*');
     const activeUsersLast30Min = sessionKeys.length;
 
     // ── Seções ────────────────────────────────────────────────────────────
     const sectionCounts = await Promise.all(
-      SECTIONS.map(({ id }) => rGetInt(`funnel:section:${id}:count`))
+      SECTIONS.map(({ id }) => safeInt(`funnel:section:${id}:count`))
     );
-    const heroCount = sectionCounts[0] || 1; // evitar divisão por zero
+    const heroCount = sectionCounts[0] || 1;
 
     const sections = SECTIONS.map((s, i) => {
-      const reached         = sectionCounts[i];
-      const prev            = i > 0 ? sectionCounts[i - 1] : reached;
-      const percentOfHero   = heroCount > 0 ? Math.round((reached / heroCount) * 100) : 0;
+      const reached          = sectionCounts[i];
+      const prev             = i > 0 ? sectionCounts[i - 1] : reached;
+      const percentOfHero    = Math.round((reached / heroCount) * 100);
       const dropFromPrevious = prev > 0 ? Math.round(((prev - reached) / prev) * 100) : 0;
       return { ...s, reached, percentOfHero, dropFromPrevious };
     });
 
-    // ── Cliques em checkout ───────────────────────────────────────────────
+    // ── Cliques ───────────────────────────────────────────────────────────
     const clickCounts = await Promise.all(
-      CHECKOUT_TYPES.map((t) => rGetInt(`funnel:click:${t}:count`))
+      CLICK_TYPES.map((t) => safeInt(`funnel:click:${t}:count`))
     );
     const checkoutClicks: Record<string, number> = {};
-    CHECKOUT_TYPES.forEach((t, i) => { checkoutClicks[t] = clickCounts[i]; });
+    CLICK_TYPES.forEach((t, i) => { checkoutClicks[t] = clickCounts[i]; });
 
     // ── Compras ───────────────────────────────────────────────────────────
-    const purchaseCount   = await rGetInt('funnel:purchase:count');
-    const purchaseRevenue = await rGetInt('funnel:purchase:revenue_cents');
-    const revenue         = purchaseRevenue / 100;
+    const [purchaseCount, purchaseRevCents] = await Promise.all([
+      safeInt('funnel:purchase:count'),
+      safeInt('funnel:purchase:revenue_cents'),
+    ]);
 
     // ── Campanhas ─────────────────────────────────────────────────────────
-    const campaignKeys = await rKeys('funnel:campaign:*:sessions');
-    const campaignNames = campaignKeys
-      .map((k) => k.replace('funnel:campaign:', '').replace(':sessions', ''))
-      .filter((v, i, a) => a.indexOf(v) === i);
+    const campaignKeys = await redis.keys('funnel:campaign:*:sessions');
+    const campaignNames = [...new Set(
+      campaignKeys.map((k) => k.replace('funnel:campaign:', '').replace(':sessions', ''))
+    )];
 
-    const campaigns = await Promise.all(
-      campaignNames.map(async (c) => {
-        const [sessions, clicks, purchases, revCents] = await Promise.all([
-          rGetInt(`funnel:campaign:${c}:session_count`),
-          rGetInt(`funnel:campaign:${c}:click_count`),
-          rGetInt(`funnel:campaign:${c}:purchase_count`),
-          rGetInt(`funnel:campaign:${c}:revenue_cents`),
-        ]);
-        const reachedOffer = await rGetInt(`funnel:section:oferta:campaign:${c}`);
-        return {
-          utmCampaign:    c,
-          sessions,
-          reachedOffer,
-          checkoutClicks: clicks,
-          purchases,
-          revenue:        revCents / 100,
-        };
-      })
-    );
+    const campaigns = await Promise.all(campaignNames.map(async (c) => {
+      const [sessions, clicks, purchases, revCents, reachedOffer] = await Promise.all([
+        safeInt(`funnel:campaign:${c}:session_count`),
+        safeInt(`funnel:campaign:${c}:click_count`),
+        safeInt(`funnel:campaign:${c}:purchase_count`),
+        safeInt(`funnel:campaign:${c}:revenue_cents`),
+        safeInt(`funnel:section:oferta:campaign:${c}`),
+      ]);
+      return { utmCampaign: c, sessions, reachedOffer, checkoutClicks: clicks, purchases, revenue: revCents / 100 };
+    }));
 
     // ── Criativos ─────────────────────────────────────────────────────────
-    const contentKeys = await rKeys('funnel:content:*:sessions');
-    const contentNames = contentKeys
-      .map((k) => k.replace('funnel:content:', '').replace(':sessions', ''))
-      .filter((v, i, a) => a.indexOf(v) === i);
+    const contentKeys = await redis.keys('funnel:content:*:sessions');
+    const contentNames = [...new Set(
+      contentKeys.map((k) => k.replace('funnel:content:', '').replace(':sessions', ''))
+    )];
 
-    const creatives = await Promise.all(
-      contentNames.map(async (c) => {
-        const [sessions, clicks, purchases, revCents] = await Promise.all([
-          rGetInt(`funnel:content:${c}:session_count`),
-          rGetInt(`funnel:content:${c}:click_count`),
-          rGetInt(`funnel:content:${c}:purchase_count`),
-          rGetInt(`funnel:content:${c}:revenue_cents`),
-        ]);
-        const reachedOffer = await rGetInt(`funnel:section:oferta:content:${c}`);
-        return {
-          utmContent:     c,
-          sessions,
-          reachedOffer,
-          checkoutClicks: clicks,
-          purchases,
-          revenue:        revCents / 100,
-        };
-      })
-    );
+    const creatives = await Promise.all(contentNames.map(async (c) => {
+      const [sessions, clicks, purchases, revCents, reachedOffer] = await Promise.all([
+        safeInt(`funnel:content:${c}:session_count`),
+        safeInt(`funnel:content:${c}:click_count`),
+        safeInt(`funnel:content:${c}:purchase_count`),
+        safeInt(`funnel:content:${c}:revenue_cents`),
+        safeInt(`funnel:section:oferta:content:${c}`),
+      ]);
+      return { utmContent: c, sessions, reachedOffer, checkoutClicks: clicks, purchases, revenue: revCents / 100 };
+    }));
 
     return NextResponse.json({
+      redisReady: true,
       activeUsersLast30Min,
       sections,
       checkoutClicks,
-      purchases: { count: purchaseCount, revenue },
+      purchases: { count: purchaseCount, revenue: purchaseRevCents / 100 },
       campaigns: campaigns.sort((a, b) => b.sessions - a.sessions),
       creatives: creatives.sort((a, b) => b.sessions - a.sessions),
       updatedAt: new Date().toISOString(),
     });
 
   } catch (err) {
-    console.error('[funnel-dashboard] Error', err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal error' }, { status: 500 });
+    console.error('[funnel-dashboard]', err instanceof Error ? err.message : err);
+    return NextResponse.json({
+      error: err instanceof Error ? err.message : 'Internal error',
+    }, { status: 500 });
   }
 }

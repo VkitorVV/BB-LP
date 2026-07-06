@@ -37,6 +37,7 @@ interface CreativeData {
 }
 
 interface DashboardData {
+  redisReady?: boolean;
   activeUsersLast30Min: number;
   sections: SectionData[];
   checkoutClicks: CheckoutClicks;
@@ -130,8 +131,13 @@ export default function FunilPage() {
               Atualizado às {lastUpdate} · auto-refresh 5s
             </p>
           </div>
-          <div style={{ fontSize: 11, color: loading ? '#F28A1A' : '#555' }}>
-            {loading ? '⟳ atualizando...' : '● ao vivo'}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, color: loading ? '#F28A1A' : '#555' }}>
+              {loading ? '⟳ atualizando...' : '● ao vivo'}
+            </div>
+            <div style={{ fontSize: 10, marginTop: 2, color: data.redisReady ? '#4ade80' : '#ff6b6b' }}>
+              Redis: {data.redisReady ? '✓ conectado' : '✗ sem variáveis de ambiente'}
+            </div>
           </div>
         </div>
 
