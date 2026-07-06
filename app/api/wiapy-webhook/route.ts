@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
+  console.warn('[WIAPY_WEBHOOK] POST route called');
+
   // ── 1. Validar Authorization ──────────────────────────────────────────────
   const authHeader = request.headers.get('authorization');
+
+  console.warn('[WIAPY_WEBHOOK] Authorization received', {
+    hasAuthHeader: Boolean(authHeader),
+    authMatches:   authHeader === process.env.WIAPY_WEBHOOK_SECRET,
+  });
+
   if (authHeader !== process.env.WIAPY_WEBHOOK_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -11,7 +19,8 @@ export async function POST(request: NextRequest) {
   let payload: Record<string, unknown>;
   try {
     payload = await request.json();
-  } catch {
+  } catch (err) {
+    console.error('[WIAPY_WEBHOOK] Error', err);
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
@@ -26,16 +35,15 @@ export async function POST(request: NextRequest) {
   const checkoutTitle = checkout?.title        as string | undefined;
   const amount        = payment?.amount        as number | undefined;
 
-  // ── 3. Log de recebimento (sem dados pessoais) ────────────────────────────
-  console.log('WIAPY webhook received', {
-    paymentStatus:  status,
+  console.warn('[WIAPY_WEBHOOK] Payload parsed', {
+    paymentStatus: status,
     paymentId,
     amount,
     checkoutTitle,
-    productsCount:  products?.length || 0,
+    productsCount: products?.length || 0,
   });
 
-  // ── 4. Processar apenas pagamentos confirmados ────────────────────────────
+  // ── 3. Processar apenas pagamentos confirmados ────────────────────────────
   if (status !== 'paid') {
     return NextResponse.json(
       { received: true, ignored: true, reason: 'not_paid' },
@@ -43,19 +51,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 5. Variáveis de ambiente ──────────────────────────────────────────────
+  // ── 4. Variáveis de ambiente ──────────────────────────────────────────────
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const apiSecret     = process.env.GA4_API_SECRET;
 
   if (!measurementId || !apiSecret) {
-    console.error('GA4 env vars missing', {
+    console.error('[WIAPY_WEBHOOK] Error', {
+      message:             'GA4 env vars missing',
       measurementIdExists: Boolean(measurementId),
       apiSecretExists:     Boolean(apiSecret),
     });
     return NextResponse.json({ error: 'GA4 configuration missing' }, { status: 500 });
   }
 
-  // ── 6. Montar parâmetros do evento ────────────────────────────────────────
+  // ── 5. Montar parâmetros do evento ────────────────────────────────────────
   const clientId = (tracking?.ga_client_id as string | undefined)
     || `wiapy.${(customer?.id as string | undefined) || paymentId || Date.now()}`;
 
@@ -72,16 +81,15 @@ export async function POST(request: NextRequest) {
       : value,
   })) ?? [];
 
-  // ── 7. Log pré-envio GA4 ─────────────────────────────────────────────────
-  console.log('Sending purchase to GA4', {
+  // ── 6. Log pré-envio GA4 ─────────────────────────────────────────────────
+  console.warn('[WIAPY_WEBHOOK] Sending to GA4', {
     measurementIdExists: Boolean(measurementId),
     apiSecretExists:     Boolean(apiSecret),
-    clientId,
     transactionId,
     value,
   });
 
-  // ── 8. Body para GA4 Measurement Protocol ────────────────────────────────
+  // ── 7. Body para GA4 Measurement Protocol ────────────────────────────────
   const ga4Body = {
     client_id: clientId,
     user_id:   customer?.id as string | undefined,
@@ -107,7 +115,7 @@ export async function POST(request: NextRequest) {
     ],
   };
 
-  // ── 9. Enviar ao GA4 ──────────────────────────────────────────────────────
+  // ── 8. Enviar ao GA4 ──────────────────────────────────────────────────────
   try {
     const ga4Response = await fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
@@ -118,25 +126,25 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    console.log('GA4 response', {
+    console.warn('[WIAPY_WEBHOOK] GA4 response', {
       status: ga4Response.status,
       ok:     ga4Response.ok,
     });
 
     if (!ga4Response.ok) {
       const ga4ErrorText = await ga4Response.text();
-      console.error('GA4 purchase event failed', ga4ErrorText);
+      console.error('[WIAPY_WEBHOOK] Error', ga4ErrorText);
       return NextResponse.json(
         { error: 'GA4 request failed', details: ga4ErrorText },
         { status: 500 }
       );
     }
-
-    console.log('GA4 purchase event sent');
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('GA4 fetch exception', { message });
-    return NextResponse.json({ error: 'GA4 fetch failed', details: message }, { status: 500 });
+    console.error('[WIAPY_WEBHOOK] Error', err);
+    return NextResponse.json(
+      { error: 'GA4 fetch failed', details: err instanceof Error ? err.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ received: true, ga4Sent: true }, { status: 200 });
