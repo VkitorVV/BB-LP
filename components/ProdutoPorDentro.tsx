@@ -75,7 +75,7 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
 export default function ProdutoPorDentro() {
   return (
     <section
-      id="produto-por-dentro"
+      id="material-por-dentro"
       className="py-20 relative overflow-hidden"
       style={{ background: '#0B0704', borderBottom: '1px solid #3A1D10' }}
     >

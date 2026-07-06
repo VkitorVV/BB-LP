@@ -141,6 +141,7 @@ export default function OfferCountdown() {
 
   return (
     <section
+      id="countdown"
       className="py-12 px-5"
       style={{ background: '#0B0704', borderBottom: '1px solid #3A1D10' }}
     >
