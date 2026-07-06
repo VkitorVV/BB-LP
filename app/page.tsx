@@ -2,6 +2,7 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
 import SectionTracker from '@/components/SectionTracker';
+import PresenceTracker from '@/components/PresenceTracker';
 import ProdutoPorDentro from '@/components/ProdutoPorDentro';
 import Beneficios from '@/components/Beneficios';
 
@@ -36,6 +37,8 @@ export default function Home() {
       >
         {/* GA4 Section Tracker */}
         <SectionTracker />
+        {/* Presence heartbeat */}
+        <PresenceTracker />
         {/* 1. Hero */}
         <Hero />
         {/* 2. Produto por dentro */}
