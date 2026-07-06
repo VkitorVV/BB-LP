@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Flame, X } from 'lucide-react';
 import Image from 'next/image';
 
-const CHECKOUT_BASICO_URL = "COLE_AQUI_O_LINK_DO_CHECKOUT_BASICO";
-const CHECKOUT_KIT_DESCONTO_URL = "COLE_AQUI_O_LINK_DO_CHECKOUT_KIT_COMPLETO_2490";
+const CHECKOUT_BASICO_URL = "https://pay.wiapy.com/iUoMvXq0sJr-";
+const CHECKOUT_KIT_DESCONTO_URL = "https://pay.wiapy.com/8To4z6HioR";
 
 export default function Oferta() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -26,7 +26,7 @@ export default function Oferta() {
   };
 
   const handleCheckoutComplete = () => {
-    window.open('https://pay.hotmart.com/mock-complete', '_blank');
+    window.open('https://pay.wiapy.com/MaYsqe4pqw', '_blank');
   };
 
   // Lock body scroll when modal is open
