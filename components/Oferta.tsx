@@ -26,7 +26,7 @@ export default function Oferta() {
   };
 
   const handleCheckoutComplete = () => {
-    window.open('https://pay.wiapy.com/MaYsqe4pqw', '_blank');
+    window.open('https://pay.wiapy.com/MaYsqe4pqwN', '_blank');
   };
 
   // Lock body scroll when modal is open
