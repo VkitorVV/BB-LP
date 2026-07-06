@@ -5,6 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Flame, X } from 'lucide-react';
 import Image from 'next/image';
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
 const CHECKOUT_BASICO_URL = "https://pay.wiapy.com/iUoMvXq0sJr-";
 const CHECKOUT_KIT_DESCONTO_URL = "https://pay.wiapy.com/8To4z6HioR";
 
@@ -12,20 +18,52 @@ export default function Oferta() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const handleCheckoutBasic = () => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'basic_offer_click', {
+        checkout_type:  'plano_basico',
+        checkout_price: '19.90',
+        button_location: 'oferta',
+        transport_type: 'beacon',
+      });
+    }
     setShowUpgradeModal(true);
   };
 
   const handleUpgradeToKit = () => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'checkout_click', {
+        checkout_type:   'kit_desconto_popup',
+        checkout_price:  '24.90',
+        button_location: 'popup_upgrade',
+        transport_type:  'beacon',
+      });
+    }
     window.open(CHECKOUT_KIT_DESCONTO_URL, '_blank');
     setShowUpgradeModal(false);
   };
 
   const handleContinueBasic = () => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'checkout_click', {
+        checkout_type:   'plano_basico',
+        checkout_price:  '19.90',
+        button_location: 'popup_upgrade',
+        transport_type:  'beacon',
+      });
+    }
     window.open(CHECKOUT_BASICO_URL, '_blank');
     setShowUpgradeModal(false);
   };
 
   const handleCheckoutComplete = () => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'checkout_click', {
+        checkout_type:   'kit_completo',
+        checkout_price:  '29.90',
+        button_location: 'oferta',
+        transport_type:  'beacon',
+      });
+    }
     window.open('https://pay.wiapy.com/MaYsqe4pqwN', '_blank');
   };
 

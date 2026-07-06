@@ -9,51 +9,71 @@ declare global {
 }
 
 const sections = [
-  { id: 'hero',              title: '01 - Hero' },
-  { id: 'produto-por-dentro', title: '02 - Material por dentro' },
-  { id: 'beneficios',        title: '03 - Beneficios' },
-  { id: 'prova-social',      title: '04 - Prova social' },
-  { id: 'cta-intermediario', title: '05 - CTA intermediario' },
-  { id: 'ideal-para',        title: '06 - Ideal para' },
-  { id: 'o-que-recebe',      title: '07 - O que recebe' },
-  { id: 'bonus',             title: '08 - Bonus' },
-  { id: 'comparativo',       title: '09 - Por que usar o mapa' },
-  { id: 'oferta',            title: '10 - Oferta' },
-  { id: 'garantia',          title: '11 - Garantia' },
-  { id: 'como-acessar',      title: '12 - Como acessar' },
-  { id: 'faq',               title: '13 - FAQ' },
-  { id: 'rodape',            title: '14 - Rodape' },
+  { id: 'hero',               title: '01 - Hero',               order: 1  },
+  { id: 'material-por-dentro', title: '02 - Material por dentro', order: 2  },
+  { id: 'beneficios',         title: '03 - Beneficios',          order: 3  },
+  { id: 'prova-social',       title: '04 - Prova social',        order: 4  },
+  { id: 'cta-intermediario',  title: '05 - CTA intermediario',   order: 5  },
+  { id: 'ideal-para',         title: '06 - Ideal para',          order: 6  },
+  { id: 'o-que-recebe',       title: '07 - O que recebe',        order: 7  },
+  { id: 'bonus',              title: '08 - Bonus',               order: 8  },
+  { id: 'comparativo',        title: '09 - Por que usar o mapa', order: 9  },
+  { id: 'countdown',          title: '10 - Cronometro',          order: 10 },
+  { id: 'oferta',             title: '11 - Oferta',              order: 11 },
+  { id: 'garantia',           title: '12 - Garantia',            order: 12 },
+  { id: 'faq',                title: '13 - FAQ',                 order: 13 },
+  { id: 'rodape',             title: '14 - Rodape',              order: 14 },
 ];
+
+const SESSION_PREFIX = 'st_fired_';
 
 export default function SectionTracker() {
   useEffect(() => {
-    const fired = new Set<string>();
+    let rafId: number | null = null;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !fired.has(entry.target.id)) {
-            const section = sections.find((s) => s.id === entry.target.id);
-            if (section && typeof window.gtag === 'function') {
-              fired.add(entry.target.id);
-              window.gtag('event', 'page_view', {
-                page_title: section.title,
-                page_location: `${window.location.origin}/#${section.id}`,
-                page_path: `/#${section.id}`,
-              });
-            }
+    const checkSections = () => {
+      const triggerLine = window.scrollY + window.innerHeight * 0.75;
+
+      sections.forEach(({ id, title, order }) => {
+        const storageKey = SESSION_PREFIX + id;
+        if (sessionStorage.getItem(storageKey)) return;
+
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        if (top <= triggerLine) {
+          sessionStorage.setItem(storageKey, '1');
+          if (typeof window.gtag === 'function') {
+            window.gtag('event', 'section_reached', {
+              section_title:  title,
+              section_order:  order,
+              section_id:     id,
+              page_path:      window.location.pathname,
+              page_location:  window.location.href,
+              transport_type: 'beacon',
+            });
           }
-        });
-      },
-      { threshold: 0.3 }
-    );
+        }
+      });
+    };
 
-    sections.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        checkSections();
+        rafId = null;
+      });
+    };
 
-    return () => observer.disconnect();
+    // Fire once on mount for sections already visible
+    checkSections();
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return null;
