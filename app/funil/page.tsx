@@ -404,6 +404,14 @@ export default function FunilPage() {
         <p style={{ textAlign: 'center', fontSize: 10, color: '#374151', paddingBottom: 32 }}>
           Sem dados pessoais · {data.updatedAt}
         </p>
+        {/* Debug bar */}
+        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 16px', marginBottom: 32, fontSize: 11, color: '#475569', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+          <span>sessões retornadas: <strong style={{ color: '#94a3b8' }}>{data.sessions.length}</strong></span>
+          <span>sessões hoje: <strong style={{ color: '#94a3b8' }}>{data.totalSessionsToday}</strong></span>
+          <span>seções contadas: <strong style={{ color: '#94a3b8' }}>{data.sections.reduce((a, s) => a + s.reached, 0)}</strong></span>
+          <span>date: <strong style={{ color: '#94a3b8' }}>{data.date}</strong></span>
+          <span>window: <strong style={{ color: '#94a3b8' }}>{data.window}</strong></span>
+        </div>
 
       </div>{/* /wrap */}
 

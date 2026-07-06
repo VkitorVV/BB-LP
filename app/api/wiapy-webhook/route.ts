@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getBrazilDate } from '@/lib/brazilDate';
 
 export async function POST(request: NextRequest) {
   console.warn('[WIAPY_WEBHOOK] POST route called');
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
 
   // ── 7. Salvar no Supabase ─────────────────────────────────────────────────
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getBrazilDate();
 
     await supabaseAdmin.from('funnel_purchases').insert({
       date:           today,

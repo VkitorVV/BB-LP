@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getBrazilDate } from '@/lib/brazilDate';
 
 const SECTION_ORDER = [
   { id: 'hero',                title: '01 - Hero',               order: 1  },
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const date  = searchParams.get('date')   || new Date().toISOString().split('T')[0];
+  const date  = searchParams.get('date')   || getBrazilDate();
   const win   = searchParams.get('window') || 'today';
   const since = windowToSince(win);
   const now25  = new Date(Date.now() -    25_000).toISOString();

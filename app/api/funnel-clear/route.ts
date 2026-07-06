@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getBrazilDate } from '@/lib/brazilDate';
 
 export async function POST(request: NextRequest) {
   let body: { token?: string; date?: string };
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const date = body.date || new Date().toISOString().split('T')[0];
+  const date = body.date || getBrazilDate();
 
   await Promise.all([
     supabaseAdmin.from('funnel_section_events').delete().eq('date', date),

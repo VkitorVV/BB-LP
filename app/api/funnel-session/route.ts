@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getBrazilDate } from '@/lib/brazilDate';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token     = searchParams.get('token');
   const sessionId = searchParams.get('sessionId');
-  const date      = searchParams.get('date') || new Date().toISOString().split('T')[0];
+  const date      = searchParams.get('date') || getBrazilDate();
 
   if (!token || token !== process.env.FUNNEL_DASHBOARD_TOKEN) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

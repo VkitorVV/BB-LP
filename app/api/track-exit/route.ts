@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getBrazilDate } from '@/lib/brazilDate';
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
   const { sessionId, timestamp } = body as { sessionId?: string; timestamp?: string };
   if (!sessionId) return NextResponse.json({ ok: false }, { status: 400 });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getBrazilDate();
   const ts    = timestamp || new Date().toISOString();
 
   try {

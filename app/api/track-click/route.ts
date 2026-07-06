@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getBrazilDate } from '@/lib/brazilDate';
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
@@ -16,7 +17,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getBrazilDate();
+  const now   = new Date().toISOString();
 
   try {
     // Upsert sessão
@@ -30,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (existingSession) {
       await supabaseAdmin
         .from('funnel_sessions')
-        .update({ last_seen: new Date().toISOString(), clicks_count: (existingSession.clicks_count || 0) + 1 })
+        .update({ last_seen: now, clicks_count: (existingSession.clicks_count || 0) + 1 })
         .eq('session_id', sessionId)
         .eq('date', today);
     } else {

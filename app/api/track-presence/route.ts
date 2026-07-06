@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getBrazilDate } from '@/lib/brazilDate';
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
 
   if (!sessionId) return NextResponse.json({ ok: false }, { status: 400 });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getBrazilDate();
   const now   = new Date().toISOString();
 
   try {
@@ -25,13 +26,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existing) {
-      // Update presence — restore active status, preserve original UTMs
       const hasUtms = Boolean(existing.utm_source || existing.utm_campaign);
-      const update: Record<string, unknown> = {
-        last_seen:   now,
-        page_status: 'active',
-        left_at:     null,
-      };
+      const update: Record<string, unknown> = { last_seen: now, page_status: 'active', left_at: null };
       if (!hasUtms) {
         Object.assign(update, {
           utm_source: utmSource, utm_medium: utmMedium,
@@ -58,7 +54,7 @@ export async function POST(request: NextRequest) {
         });
     }
   } catch (err) {
-    console.error('[track-presence]', err);
+    console.error('[track-presence]', err instanceof Error ? err.message : err);
   }
 
   return NextResponse.json({ ok: true });
