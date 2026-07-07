@@ -64,7 +64,7 @@ export default function PresenceTracker() {
 
     function startInterval() {
       if (interval) clearInterval(interval);
-      interval = setInterval(sendHeartbeat, 15_000);
+      interval = setInterval(sendHeartbeat, 15_000); // every 15s — threshold 25s
     }
 
     function stopInterval() {
@@ -83,17 +83,13 @@ export default function PresenceTracker() {
 
     const onExit = () => sendExit();
 
-    // Small defer to avoid competing with LCP paint,
-    // but fires fast enough to not miss the initial pageview
-    const scheduleInit = () => {
-      sendHeartbeat();
-      startInterval();
-      document.addEventListener('visibilitychange', onVisibility);
-      window.addEventListener('pagehide', onExit);
-      window.addEventListener('beforeunload', onExit);
-    };
+    // Initial heartbeat + start interval
+    sendHeartbeat();
+    startInterval();
 
-    setTimeout(scheduleInit, 500);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onExit);
+    window.addEventListener('beforeunload', onExit);
 
     return () => {
       stopInterval();
