@@ -1,10 +1,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
-
-// Trackers — client-only (ssr:false), não bloqueiam SSR nem LCP
-const SectionTracker  = dynamic(() => import('@/components/SectionTracker'),  { ssr: false });
-const PresenceTracker = dynamic(() => import('@/components/PresenceTracker'), { ssr: false });
+import ClientTrackers from '@/components/ClientTrackers';
 
 // Below-the-fold — code-split, SSR mantido para SEO
 const ProdutoPorDentro = dynamic(() => import('@/components/ProdutoPorDentro'), { ssr: true });
@@ -38,8 +35,7 @@ export default function Home() {
         }}
       >
         {/* Trackers client-only — não entram no SSR nem bloqueiam LCP */}
-        <SectionTracker />
-        <PresenceTracker />
+        <ClientTrackers />
 
         {/* 1. Hero — import estático, renderiza sem esperar JS */}
         <Hero />
