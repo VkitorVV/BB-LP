@@ -1,4 +1,4 @@
--- Sessões anônimas
+-- ── funnel_sessions ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS funnel_sessions (
   id               BIGSERIAL PRIMARY KEY,
   session_id       TEXT NOT NULL,
@@ -19,39 +19,62 @@ CREATE TABLE IF NOT EXISTS funnel_sessions (
   site_source_name TEXT,
   max_section_order INT DEFAULT 0,
   max_section_title TEXT,
-  clicks_count     INT DEFAULT 0,
-  purchased        BOOLEAN DEFAULT FALSE,
-  revenue          NUMERIC(10,2) DEFAULT 0,
   UNIQUE(session_id, date)
 );
-
--- Migração: adicionar colunas se ainda não existirem
 ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS left_at TIMESTAMPTZ;
 ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS page_status TEXT NOT NULL DEFAULT 'active';
 
--- Eventos de seção
+-- ── funnel_section_events ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS funnel_section_events (
   id            BIGSERIAL PRIMARY KEY,
   session_id    TEXT NOT NULL,
   date          DATE NOT NULL DEFAULT CURRENT_DATE,
   section_id    TEXT NOT NULL,
   section_title TEXT NOT NULL,
-  section_order INT NOT NULL,
+  section_order INT  NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(session_id, date, section_id)
 );
 
--- Eventos de clique
+-- ── funnel_click_events ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS funnel_click_events (
-  id              BIGSERIAL PRIMARY KEY,
-  session_id      TEXT NOT NULL,
-  date            DATE NOT NULL DEFAULT CURRENT_DATE,
-  checkout_type   TEXT NOT NULL,
-  button_location TEXT,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                     BIGSERIAL PRIMARY KEY,
+  session_id             TEXT NOT NULL,
+  date                   DATE NOT NULL DEFAULT CURRENT_DATE,
+  checkout_type          TEXT NOT NULL,
+  checkout_label         TEXT,
+  checkout_price         NUMERIC(10,2),
+  button_location        TEXT,
+  target_url             TEXT,
+  current_section_title  TEXT,
+  current_section_order  INT,
+  utm_source             TEXT,
+  utm_medium             TEXT,
+  utm_campaign           TEXT,
+  utm_content            TEXT,
+  utm_term               TEXT,
+  campaign_id            TEXT,
+  adset_id               TEXT,
+  ad_id                  TEXT,
+  clicked_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Migration: add new columns if they don't exist
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS checkout_label        TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS checkout_price        NUMERIC(10,2);
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS target_url            TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS current_section_title TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS current_section_order INT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS utm_source            TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS utm_medium            TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS utm_campaign          TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS utm_content           TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS utm_term              TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS campaign_id           TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS adset_id              TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS ad_id                 TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS clicked_at            TIMESTAMPTZ;
 
--- Compras
+-- ── funnel_purchases ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS funnel_purchases (
   id             BIGSERIAL PRIMARY KEY,
   session_id     TEXT,
@@ -65,10 +88,10 @@ CREATE TABLE IF NOT EXISTS funnel_purchases (
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Índices
-CREATE INDEX IF NOT EXISTS idx_funnel_sessions_date         ON funnel_sessions(date);
-CREATE INDEX IF NOT EXISTS idx_funnel_sessions_last_seen    ON funnel_sessions(last_seen);
-CREATE INDEX IF NOT EXISTS idx_funnel_sessions_page_status  ON funnel_sessions(page_status);
-CREATE INDEX IF NOT EXISTS idx_funnel_section_events_date   ON funnel_section_events(date);
-CREATE INDEX IF NOT EXISTS idx_funnel_click_events_date     ON funnel_click_events(date);
-CREATE INDEX IF NOT EXISTS idx_funnel_purchases_date        ON funnel_purchases(date);
+-- ── Indexes ───────────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_funnel_sessions_date        ON funnel_sessions(date);
+CREATE INDEX IF NOT EXISTS idx_funnel_sessions_last_seen   ON funnel_sessions(last_seen);
+CREATE INDEX IF NOT EXISTS idx_funnel_sessions_page_status ON funnel_sessions(page_status);
+CREATE INDEX IF NOT EXISTS idx_funnel_section_events_date  ON funnel_section_events(date);
+CREATE INDEX IF NOT EXISTS idx_funnel_click_events_date    ON funnel_click_events(date);
+CREATE INDEX IF NOT EXISTS idx_funnel_purchases_date       ON funnel_purchases(date);

@@ -57,7 +57,14 @@ type RawSession = {
   max_section_title: string | null;
 };
 
-type ClickEvent = { session_id: string; checkout_type: string };
+type ClickEvent = {
+  session_id: string;
+  checkout_type: string;
+  checkout_label?: string | null;
+  checkout_price?: number | null;
+  button_location?: string | null;
+  clicked_at?: string | null;
+};
 type PurchaseEvent = { session_id: string; amount?: number | null };
 
 export async function GET(request: NextRequest) {
@@ -92,7 +99,7 @@ export async function GET(request: NextRequest) {
   // ── 2. Clicks for this day ──────────────────────────────────────────────
   const { data: clickEvents } = await supabaseAdmin
     .from('funnel_click_events')
-    .select('session_id, checkout_type')
+    .select('session_id, checkout_type, checkout_label, checkout_price, button_location, clicked_at')
     .eq('date', date);
 
   // ── 3. Purchases for this day ───────────────────────────────────────────
@@ -103,8 +110,18 @@ export async function GET(request: NextRequest) {
 
   // ── 4. Build per-session maps ───────────────────────────────────────────
   const clicksBySession: Record<string, number> = {};
+  const lastClickBySession: Record<string, { checkoutType: string; checkoutLabel: string | null; checkoutPrice: number | null; buttonLocation: string | null; clickedAt: string | null }> = {};
+
   (clickEvents || [] as ClickEvent[]).forEach((e: ClickEvent) => {
     clicksBySession[e.session_id] = (clicksBySession[e.session_id] || 0) + 1;
+    // Track last click per session (last in array = most recent since ordered by clicked_at desc)
+    lastClickBySession[e.session_id] = {
+      checkoutType:   e.checkout_type,
+      checkoutLabel:  e.checkout_label  || null,
+      checkoutPrice:  e.checkout_price  || null,
+      buttonLocation: e.button_location || null,
+      clickedAt:      e.clicked_at      || null,
+    };
   });
 
   const purchasedBySession: Record<string, boolean> = {};
@@ -142,9 +159,10 @@ export async function GET(request: NextRequest) {
     maxSectionOrder:      s.max_section_order || 0,
     maxSectionTitle:      s.max_section_title || null,
     // Calculated from related tables
-    clicksCount: clicksBySession[s.session_id]    || 0,
-    purchased:   purchasedBySession[s.session_id] || false,
-    revenue:     revenueBySession[s.session_id]   || 0,
+    clicksCount:        clicksBySession[s.session_id]    || 0,
+    purchased:          purchasedBySession[s.session_id] || false,
+    revenue:            revenueBySession[s.session_id]   || 0,
+    lastCheckoutClick:  lastClickBySession[s.session_id] || null,
   }));
 
   // ── 7. Presence counters (global, no date filter) ───────────────────────

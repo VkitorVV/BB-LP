@@ -26,15 +26,26 @@ function getSessionId(): string {
 function getUtms() {
   const p = new URLSearchParams(window.location.search);
   return {
-    utmSource:   p.get('utm_source')   || undefined,
-    utmMedium:   p.get('utm_medium')   || undefined,
-    utmCampaign: p.get('utm_campaign') || undefined,
-    utmContent:  p.get('utm_content')  || undefined,
-    utmTerm:     p.get('utm_term')     || undefined,
+    utmSource:      p.get('utm_source')       || undefined,
+    utmMedium:      p.get('utm_medium')       || undefined,
+    utmCampaign:    p.get('utm_campaign')     || undefined,
+    utmContent:     p.get('utm_content')      || undefined,
+    utmTerm:        p.get('utm_term')         || undefined,
+    campaignId:     p.get('campaign_id')      || undefined,
+    adsetId:        p.get('adset_id')         || undefined,
+    adId:           p.get('ad_id')            || undefined,
+    placement:      p.get('placement')        || undefined,
+    siteSourceName: p.get('site_source_name') || undefined,
   };
 }
 
-function trackClick(checkoutType: string, buttonLocation: string) {
+function trackClick(
+  checkoutType: string,
+  checkoutLabel: string,
+  checkoutPrice: number,
+  buttonLocation: string,
+  targetUrl?: string,
+) {
   fetch('/api/track-click', {
     method:    'POST',
     headers:   { 'Content-Type': 'application/json' },
@@ -42,7 +53,10 @@ function trackClick(checkoutType: string, buttonLocation: string) {
     body: JSON.stringify({
       sessionId: getSessionId(),
       checkoutType,
+      checkoutLabel,
+      checkoutPrice,
       buttonLocation,
+      targetUrl,
       timestamp: Date.now(),
       ...getUtms(),
     }),
@@ -61,7 +75,7 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('plano_basico_popup_open', 'oferta');
+    trackClick('plano_basico_popup_open', 'Plano Básico - abriu popup', 19.90, 'oferta');
     setShowUpgradeModal(true);
   };
 
@@ -74,7 +88,7 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('kit_desconto_popup', 'popup_upgrade');
+    trackClick('kit_desconto_popup', 'Kit Completo com Desconto', 24.90, 'popup_upgrade', CHECKOUT_KIT_DESCONTO_URL);
     window.open(CHECKOUT_KIT_DESCONTO_URL, '_blank');
     setShowUpgradeModal(false);
   };
@@ -88,7 +102,7 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('plano_basico', 'popup_upgrade');
+    trackClick('plano_basico', 'Plano Básico', 19.90, 'popup_upgrade', CHECKOUT_BASICO_URL);
     window.open(CHECKOUT_BASICO_URL, '_blank');
     setShowUpgradeModal(false);
   };
@@ -102,7 +116,7 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('kit_completo', 'oferta');
+    trackClick('kit_completo', 'Kit Completo', 29.90, 'oferta', CHECKOUT_KIT_COMPLETO_URL);
     window.open(CHECKOUT_KIT_COMPLETO_URL, '_blank');
   };
 
