@@ -87,18 +87,18 @@ export default function Hero() {
           o corte usando um mapa visual simples de pentes, alturas e acabamento.
         </p>
 
-        {/* LCP image — no motion wrapper, renders immediately */}
+        {/* LCP image — no animation, no delay, renders immediately */}
         <div className="w-full mt-8">
           <Image
             src="/images/hero/mockup-hero-guia-principal.webp"
             alt="Mockup do guia Mapa do Degradê Sem Marca"
-            width={1400}
-            height={1000}
+            width={648}
+            height={463}
             priority
             fetchPriority="high"
             loading="eager"
             decoding="async"
-            sizes="(max-width: 640px) 92vw, (max-width: 768px) 648px, 648px"
+            sizes="(max-width: 500px) calc(100vw - 40px), (max-width: 768px) 648px, 648px"
             className="w-full h-auto rounded-2xl"
           />
         </div>

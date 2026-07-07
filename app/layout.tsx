@@ -36,48 +36,49 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link
           rel="preload"
-          href="/images/hero/mockup-hero-guia-principal.webp"
           as="image"
+          href="/images/hero/mockup-hero-guia-principal.webp"
           type="image/webp"
           fetchPriority="high"
+          imageSrcSet="/_next/image?url=%2Fimages%2Fhero%2Fmockup-hero-guia-principal.webp&w=640&q=75 640w, /_next/image?url=%2Fimages%2Fhero%2Fmockup-hero-guia-principal.webp&w=828&q=75 828w"
+          imageSizes="(max-width: 500px) calc(100vw - 40px), 648px"
         />
+        {/* CSS crítico inline — elimina render-blocking para a primeira dobra */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          *,::after,::before{box-sizing:border-box}
+          html{-webkit-font-smoothing:antialiased}
+          body{margin:0;background:#0B0704;color:#FFF4E6;overflow-x:hidden}
+          img{display:block;max-width:100%}
+          .texture-brick{background-color:#160D08;position:relative}
+          .font-display{font-family:var(--font-display),'Bebas Neue',system-ui,sans-serif}
+          .badge-gold{display:inline-block;padding:4px 12px;border-radius:9999px;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:rgba(216,166,74,.15);border:1px solid rgba(216,166,74,.4);color:#D8A64A}
+        ` }} />
       </head>
       <body className="font-sans antialiased bg-[#0B0704] text-[#FFF4E6]" suppressHydrationWarning>
         {children}
         <SpeedInsights />
         <Analytics />
-      </body>
 
-      {/* Microsoft Clarity — lazyOnload para não bloquear LCP */}
-      {clarityId && (
-        <Script id="clarity-init" strategy="lazyOnload">
-          {`
-            (function(c,l,a,r,i,t,y){
-              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", "${clarityId}");
-          `}
-        </Script>
-      )}
-
-      {/* Google Analytics GA4 — lazyOnload para não bloquear LCP */}
-      {gaId && (
-        <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-            strategy="lazyOnload"
-          />
-          <Script id="ga4-init" strategy="lazyOnload">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${gaId}');
-            `}
+        {/* Microsoft Clarity — lazyOnload, carrega apenas após idle */}
+        {clarityId && (
+          <Script id="clarity-init" strategy="lazyOnload">
+            {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${clarityId}");`}
           </Script>
-        </>
-      )}
+        )}
+
+        {/* Google Analytics GA4 — lazyOnload, não bloqueia LCP */}
+        {gaId && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="lazyOnload"
+            />
+            <Script id="ga4-init" strategy="lazyOnload">
+              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`}
+            </Script>
+          </>
+        )}
+      </body>
     </html>
   );
 }
