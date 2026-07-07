@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import Image from 'next/image';
 import { trackInternalCta } from '@/lib/trackInternalCta';
@@ -17,9 +16,11 @@ function getUtms() {
   if (typeof window === 'undefined') return {};
   const p = new URLSearchParams(window.location.search);
   return {
-    utmSource: p.get('utm_source') || undefined, utmMedium: p.get('utm_medium') || undefined,
-    utmCampaign: p.get('utm_campaign') || undefined, utmContent: p.get('utm_content') || undefined,
-    utmTerm: p.get('utm_term') || undefined,
+    utmSource:   p.get('utm_source')   || undefined,
+    utmMedium:   p.get('utm_medium')   || undefined,
+    utmCampaign: p.get('utm_campaign') || undefined,
+    utmContent:  p.get('utm_content')  || undefined,
+    utmTerm:     p.get('utm_term')     || undefined,
   };
 }
 
@@ -54,61 +55,40 @@ export default function Hero() {
       <div className="absolute top-0 left-0 w-full h-[5px] animate-barber-pole" />
 
       {/* Warm vignette corners */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(11,7,4,0.7) 100%)' }} />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(11,7,4,0.7) 100%)' }}
+      />
 
       <div className="relative z-10 max-w-md mx-auto flex flex-col items-center">
 
-        {/* Pre-headline tag */}
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="mb-6"
-        >
+        {/* Pre-headline tag — no animation wrapper, renders immediately */}
+        <div className="mb-6">
           <span className="badge-gold">
             Para barbeiros que querem degradê mais limpo
           </span>
-        </motion.div>
+        </div>
 
         {/* Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.35 }}
-          className="font-display text-[2.8rem] leading-none text-center tracking-wide uppercase text-[#FFF4E6]"
-        >
+        <h1 className="font-display text-[2.8rem] leading-none text-center tracking-wide uppercase text-[#FFF4E6]">
           Seu degradê ainda fica com{' '}
           <span style={{ color: '#F28A1A' }}>marca aparecendo?</span>
-        </motion.h1>
+        </h1>
 
         {/* Copper divider */}
-        <motion.div
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-          className="w-16 h-[2px] my-5 origin-left"
+        <div
+          className="w-16 h-[2px] my-5"
           style={{ background: 'linear-gradient(90deg, #F28A1A, #D8A64A)' }}
         />
 
         {/* Subheadline */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25, duration: 0.35 }}
-          className="text-sm text-[#D9C3A3] text-center leading-relaxed"
-        >
+        <p className="text-sm text-[#D9C3A3] text-center leading-relaxed">
           Entenda onde trocar o pente, como suavizar a transição e como finalizar
           o corte usando um mapa visual simples de pentes, alturas e acabamento.
-        </motion.p>
+        </p>
 
-        {/* Main mockup */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          className="w-full mt-8"
-        >
+        {/* LCP image — no motion wrapper, renders immediately */}
+        <div className="w-full mt-8">
           <Image
             src="/images/hero/mockup-hero-guia-principal.webp"
             alt="Mockup do guia Mapa do Degradê Sem Marca"
@@ -117,21 +97,16 @@ export default function Hero() {
             priority
             fetchPriority="high"
             loading="eager"
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 101vw, 616px"
+            decoding="async"
+            sizes="(max-width: 480px) 92vw, (max-width: 768px) 92vw, (max-width: 1024px) 620px, 648px"
             className="w-full h-auto rounded-2xl"
           />
-        </motion.div>
+        </div>
 
         {/* Bullets */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.35, duration: 0.35 }}
+        <div
           className="w-full mt-8 space-y-3 rounded-xl p-5"
-          style={{
-            background: '#160D08',
-            border: '1px solid #3A1D10',
-          }}
+          style={{ background: '#160D08', border: '1px solid #3A1D10' }}
         >
           {bullets.map((bullet, idx) => (
             <div key={idx} className="flex items-start gap-3">
@@ -144,15 +119,10 @@ export default function Hero() {
               <span className="text-xs text-[#D9C3A3] leading-relaxed font-medium">{bullet}</span>
             </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* CTA Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.35 }}
-          className="w-full mt-8"
-        >
+        <div className="w-full mt-8">
           <button
             onClick={handleScrollToOffer}
             className="w-full py-4 px-6 text-sm font-black uppercase rounded-lg tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer font-display"
@@ -165,7 +135,7 @@ export default function Hero() {
           <p className="text-[11px] text-[#C9B89A] text-center mt-3 font-medium">
             🔒 Acesso digital liberado após a confirmação da compra.
           </p>
-        </motion.div>
+        </div>
 
       </div>
     </section>

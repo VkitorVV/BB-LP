@@ -44,9 +44,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
       </body>
 
-      {/* Microsoft Clarity */}
+      {/* Microsoft Clarity — lazyOnload para não bloquear LCP */}
       {clarityId && (
-        <Script id="clarity-init" strategy="afterInteractive">
+        <Script id="clarity-init" strategy="lazyOnload">
           {`
             (function(c,l,a,r,i,t,y){
               c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -57,14 +57,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       )}
 
-      {/* Google Analytics GA4 */}
+      {/* Google Analytics GA4 — lazyOnload para não bloquear LCP */}
       {gaId && (
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-            strategy="afterInteractive"
+            strategy="lazyOnload"
           />
-          <Script id="ga4-init" strategy="afterInteractive">
+          <Script id="ga4-init" strategy="lazyOnload">
             {`
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}

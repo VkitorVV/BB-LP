@@ -1,24 +1,26 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
-import SectionTracker from '@/components/SectionTracker';
-import PresenceTracker from '@/components/PresenceTracker';
-import ProdutoPorDentro from '@/components/ProdutoPorDentro';
-import Beneficios from '@/components/Beneficios';
 
-// Lazy load components below the fold
-const ProvaSocial = dynamic(() => import('@/components/ProvaSocial'), { ssr: true });
+// Trackers — client-only (ssr:false), não bloqueiam SSR nem LCP
+const SectionTracker  = dynamic(() => import('@/components/SectionTracker'),  { ssr: false });
+const PresenceTracker = dynamic(() => import('@/components/PresenceTracker'), { ssr: false });
+
+// Below-the-fold — code-split, SSR mantido para SEO
+const ProdutoPorDentro = dynamic(() => import('@/components/ProdutoPorDentro'), { ssr: true });
+const Beneficios       = dynamic(() => import('@/components/Beneficios'),       { ssr: true });
+const ProvaSocial      = dynamic(() => import('@/components/ProvaSocial'),      { ssr: true });
 const CTAIntermediario = dynamic(() => import('@/components/CTAIntermediario'), { ssr: true });
-const IdealPara = dynamic(() => import('@/components/IdealPara'), { ssr: true });
-const OQueRecebe = dynamic(() => import('@/components/OQueRecebe'), { ssr: true });
-const Bonus = dynamic(() => import('@/components/Bonus'), { ssr: true });
-const OfferCountdown = dynamic(() => import('@/components/OfferCountdown'), { ssr: true });
-const Comparativo = dynamic(() => import('@/components/Comparativo'), { ssr: true });
-const Oferta = dynamic(() => import('@/components/Oferta'), { ssr: true });
-const Garantia = dynamic(() => import('@/components/Garantia'), { ssr: true });
-const ComoAcessar = dynamic(() => import('@/components/ComoAcessar'), { ssr: true });
-const FAQ = dynamic(() => import('@/components/FAQ'), { ssr: true });
-const Rodape = dynamic(() => import('@/components/Rodape'), { ssr: true });
+const IdealPara        = dynamic(() => import('@/components/IdealPara'),        { ssr: true });
+const OQueRecebe       = dynamic(() => import('@/components/OQueRecebe'),       { ssr: true });
+const Bonus            = dynamic(() => import('@/components/Bonus'),            { ssr: true });
+const Comparativo      = dynamic(() => import('@/components/Comparativo'),      { ssr: true });
+const OfferCountdown   = dynamic(() => import('@/components/OfferCountdown'),   { ssr: true });
+const Oferta           = dynamic(() => import('@/components/Oferta'),           { ssr: true });
+const Garantia         = dynamic(() => import('@/components/Garantia'),         { ssr: true });
+const ComoAcessar      = dynamic(() => import('@/components/ComoAcessar'),      { ssr: true });
+const FAQ              = dynamic(() => import('@/components/FAQ'),              { ssr: true });
+const Rodape           = dynamic(() => import('@/components/Rodape'),           { ssr: true });
 
 export default function Home() {
   return (
@@ -35,39 +37,27 @@ export default function Home() {
           boxShadow: '0 0 80px rgba(11,7,4,0.9)',
         }}
       >
-        {/* GA4 Section Tracker */}
+        {/* Trackers client-only — não entram no SSR nem bloqueiam LCP */}
         <SectionTracker />
-        {/* Presence heartbeat */}
         <PresenceTracker />
-        {/* 1. Hero */}
+
+        {/* 1. Hero — import estático, renderiza sem esperar JS */}
         <Hero />
-        {/* 2. Produto por dentro */}
+
+        {/* 2–15. Below the fold — code-split */}
         <ProdutoPorDentro />
-        {/* 3. Benefícios */}
         <Beneficios />
-        {/* 4. Prova social */}
         <ProvaSocial />
-        {/* 5. CTA intermediário */}
         <CTAIntermediario />
-        {/* 6. Ideal para */}
         <IdealPara />
-        {/* 7. O que recebe */}
         <OQueRecebe />
-        {/* 8. Bônus */}
         <Bonus />
-        {/* 9. Comparativo */}
         <Comparativo />
-        {/* 10. Countdown de oferta */}
         <OfferCountdown />
-        {/* 11. Oferta */}
         <Oferta />
-        {/* 12. Garantia */}
         <Garantia />
-        {/* 13. Como acessar */}
         <ComoAcessar />
-        {/* 14. FAQ */}
         <FAQ />
-        {/* 15. Rodapé */}
         <Rodape />
       </div>
     </main>
