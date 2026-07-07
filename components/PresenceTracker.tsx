@@ -83,8 +83,8 @@ export default function PresenceTracker() {
 
     const onExit = () => sendExit();
 
-    // Defer initial heartbeat to requestIdleCallback / setTimeout
-    // to avoid competing with LCP and third-party scripts on first paint
+    // Small defer to avoid competing with LCP paint,
+    // but fires fast enough to not miss the initial pageview
     const scheduleInit = () => {
       sendHeartbeat();
       startInterval();
@@ -93,12 +93,7 @@ export default function PresenceTracker() {
       window.addEventListener('beforeunload', onExit);
     };
 
-    if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(scheduleInit, { timeout: 3000 });
-    } else {
-      // Fallback: defer 2s — page is interactive by then, LCP already painted
-      setTimeout(scheduleInit, 2000);
-    }
+    setTimeout(scheduleInit, 500);
 
     return () => {
       stopInterval();
