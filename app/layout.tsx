@@ -97,16 +97,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Script>
         )}
 
-        {/* ── Google Analytics GA4 — lazyOnload (após idle) ─────────────
-            window.gtag é criado aqui; SectionTracker usa typeof window.gtag
-            com fallback seguro, então não quebra se gtag ainda não carregou. ── */}
+        {/* ── Google Analytics GA4 — afterInteractive ───────────────────── */}
         {gaId && (
           <>
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-              strategy="lazyOnload"
+              strategy="afterInteractive"
             />
-            <Script id="ga4-init" strategy="lazyOnload">
+            <Script id="ga4-init" strategy="afterInteractive">
               {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`}
             </Script>
           </>
