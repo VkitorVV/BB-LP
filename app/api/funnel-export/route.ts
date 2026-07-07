@@ -128,6 +128,10 @@ export async function GET(request: NextRequest) {
   }
 
   // ── 4. CSV response ──────────────────────────────────────────────────────
+  const DELIM = ';';
+  const CRLF  = '\r\n';
+  const BOM   = '\uFEFF';
+
   const CSV_HEADERS = [
     'date','sessionId','firstSeen','lastSeen','leftAt','pageStatus',
     'utmSource','utmMedium','utmCampaign','utmTerm','utmContent',
@@ -139,16 +143,15 @@ export async function GET(request: NextRequest) {
   ];
 
   const escape = (v: unknown): string => {
-    if (v === null || v === undefined) return '';
+    if (v === null || v === undefined) return '""';
     const str = String(v).replace(/"/g, '""');
     return `"${str}"`;
   };
 
-  const rows: string[] = [CSV_HEADERS.join(',')];
+  const rows: string[] = [CSV_HEADERS.map(h => `"${h}"`).join(DELIM)];
 
   if (sessions.length === 0) {
-    rows.push(CSV_HEADERS.map(() => '').join(','));
-    rows[1] = '"sem dados"';
+    rows.push(`"sem dados"${DELIM.repeat(CSV_HEADERS.length - 1)}`);
   } else {
     sessions.forEach(s => {
       const sid    = s.session_id as string;
@@ -192,11 +195,11 @@ export async function GET(request: NextRequest) {
         escape(purch?.amount),
         escape(purch?.payment_id),
         escape(purch?.created_at),
-      ].join(','));
+      ].join(DELIM));
     });
   }
 
-  return new NextResponse(rows.join('\n'), {
+  return new NextResponse(BOM + rows.join(CRLF), {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="funil-mapa-degrade-${date}.csv"`,
