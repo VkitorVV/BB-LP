@@ -5,16 +5,19 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 type SessionStatus = 'online' | 'recente' | 'saiu' | 'inativo';
 type Tab = 'geral' | 'usuarios' | 'campanhas' | 'exportacoes';
 
-interface SectionRow { order:number; id:string; title:string; reached:number; percentOfHero:number; dropFromPrevious:number; }
+interface SectionRow  { order:number; id:string; title:string; reached:number; percentOfHero:number; dropFromPrevious:number; }
+interface FunnelStep  { sectionId:string; sectionTitle:string; sectionOrder:number; reached:number; percentOfTop:number; dropFromPrevious:number; dropAccumulated:number; topCampaign?:string|null; topCreative?:string|null; }
+interface Bottleneck  { fromSection:string; toSection:string; dropUsers:number; dropPercent:number; }
+interface StopPoint   { sectionTitle:string; usersStopped:number; }
 interface CheckoutClicks { plano_basico_popup_open:number; plano_basico:number; kit_completo:number; kit_desconto_popup:number; }
-interface MapRow { sessions:number; clicks:number; reachedOffer:number; purchases:number; revenue:number; conversionClick:number; conversionPurchase:number; }
-interface LastClick { checkoutType:string; checkoutLabel:string|null; checkoutPrice:number|null; buttonLocation:string|null; clickedAt:string|null; }
-interface SessionRow {
+interface MapRow      { sessions:number; clicks:number; reachedOffer:number; purchases:number; revenue:number; conversionClick:number; conversionPurchase:number; }
+interface LastClick   { checkoutType:string; checkoutLabel:string|null; checkoutPrice:number|null; buttonLocation:string|null; clickedAt:string|null; }
+interface SessionRow  {
   sessionId:string; shortId:string; label:string;
   firstSeen:string; lastSeen:string; leftAt:string|null; pageStatus:string;
   status:SessionStatus; secondsSinceLastSeen:number;
   utmSource?:string; utmCampaign?:string; utmTerm?:string; utmContent?:string;
-  campaignId?:string; adsetId?:string; adId?:string; placement?:string; siteSourceName?:string;
+  campaignId?:string; adsetId?:string; adId?:string;
   maxSectionOrder:number; maxSectionTitle?:string;
   clicksCount:number; purchased:boolean; revenue:number;
   lastCheckoutClick:LastClick|null;
@@ -27,6 +30,10 @@ interface DashData {
   purchases:{count:number;revenue:number};
   campaigns:(MapRow&{utmCampaign:string})[]; adsets:(MapRow&{adsetId:string})[]; creatives:(MapRow&{utmContent:string})[];
   sessions:SessionRow[]; showingMax:boolean;
+  funnelVisual:FunnelStep[];
+  topBottlenecks:Bottleneck[];
+  stopPoints:StopPoint[];
+  sectionDiagnostics:FunnelStep[];
   debug?:{allSessionsTodayCount:number;filteredSessionsCount:number;returnedSessionsCount:number;sessQueryError?:string|null};
   updatedAt:string;
 }
@@ -38,254 +45,314 @@ interface SessionDetail {
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
-const fmt     = (n?:number|null) => (n??0).toLocaleString('pt-BR');
-const fmtBRL  = (n?:number|null) => (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const fmtTime = (iso?:string|null) => iso ? new Date(iso).toLocaleTimeString('pt-BR') : '—';
-const pctCol  = (p:number) => p>=70?'#22c55e':p>=40?'#f59e0b':'#ef4444';
-const brazilToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-
-const STATUS_COLOR:Record<SessionStatus,string> = { online:'#22c55e', recente:'#3b82f6', saiu:'#6b7280', inativo:'#374151' };
-const STATUS_DOT:Record<SessionStatus,string>   = { online:'●', recente:'●', saiu:'○', inativo:'○' };
-
-const CLICK_BADGE:Record<string,{label:string;color:string}> = {
-  plano_basico_popup_open: {label:'Básico →popup',  color:'#6366f1'},
-  plano_basico:            {label:'Básico',          color:'#3b82f6'},
-  kit_completo:            {label:'Kit R$29',        color:'#f59e0b'},
-  kit_desconto_popup:      {label:'Kit R$24',        color:'#22c55e'},
+const fmt     = (n?:number|null)=>(n??0).toLocaleString('pt-BR');
+const fmtBRL  = (n?:number|null)=>(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtTime = (iso?:string|null)=>iso?new Date(iso).toLocaleTimeString('pt-BR'):'—';
+const pctCol  = (p:number)=>p>=70?'#22c55e':p>=40?'#f59e0b':'#ef4444';
+const dropCol = (d:number)=>d<=10?'#22c55e':d<=30?'#f59e0b':'#ef4444';
+const brazilToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const STATUS_COLOR:Record<SessionStatus,string>={online:'#22c55e',recente:'#3b82f6',saiu:'#6b7280',inativo:'#374151'};
+const CLICK_BADGE:Record<string,{label:string;color:string}>={
+  plano_basico_popup_open:{label:'Básico→popup',color:'#6366f1'},
+  plano_basico:           {label:'Básico',       color:'#3b82f6'},
+  kit_completo:           {label:'Kit R$29',      color:'#f59e0b'},
+  kit_desconto_popup:     {label:'Kit R$24',      color:'#22c55e'},
 };
-
-function secsAgo(sec:number):string {
-  if(sec<5)  return 'agora';
-  if(sec<60) return `há ${sec}s`;
-  if(sec<3600) return `há ${Math.floor(sec/60)}min`;
-  return `há ${Math.floor(sec/3600)}h`;
-}
-
-const WINDOWS=[
-  {v:'now',l:'Agora/25s'},{v:'30m',l:'30 min'},{v:'1h',l:'1 hora'},
-  {v:'2h',l:'2 horas'},{v:'4h',l:'4 horas'},{v:'12h',l:'12 horas'},
-  {v:'24h',l:'24 horas'},{v:'today',l:'Hoje'},
-];
+function secsAgo(sec:number){if(sec<5)return 'agora';if(sec<60)return `há ${sec}s`;if(sec<3600)return `há ${Math.floor(sec/60)}min`;return `há ${Math.floor(sec/3600)}h`;}
+const WINDOWS=[{v:'now',l:'Agora/25s'},{v:'30m',l:'30 min'},{v:'1h',l:'1 hora'},{v:'2h',l:'2 horas'},{v:'4h',l:'4 horas'},{v:'12h',l:'12 horas'},{v:'24h',l:'24 horas'},{v:'today',l:'Hoje'}];
 const TABS:[Tab,string][]=[['geral','Visão Geral'],['usuarios','Usuários'],['campanhas','Campanhas'],['exportacoes','Exportações']];
-const USER_FILTERS=['todos','online','recentes','saíram','compraram','clicaram','chegaram_oferta'] as const;
-type UserFilter = typeof USER_FILTERS[number];
+type UserFilter='todos'|'online'|'recentes'|'saíram'|'compraram'|'clicaram'|'chegaram_oferta'|'nao_oferta';
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function FunilPage() {
-  const [token,setToken]     = useState('');
-  const [date,setDate]       = useState(brazilToday());
-  const [win,setWin]         = useState('today');
-  const [tab,setTab]         = useState<Tab>('geral');
-  const [data,setData]       = useState<DashData|null>(null);
-  const [err,setErr]         = useState('');
-  const [loading,setLoading] = useState(false);
-  const [lu,setLu]           = useState('');
-  const [auto,setAuto]       = useState(false);
-  const [tick,setTick]       = useState(0);
-  const [selSid,setSelSid]   = useState<string|null>(null);
-  const [detail,setDetail]   = useState<SessionDetail|null>(null);
-  const [detL,setDetL]       = useState(false);
-  const [userFilter,setUserFilter] = useState<UserFilter>('todos');
-  const [userSearch,setUserSearch] = useState('');
-  const [clearTxt,setClearTxt]     = useState('');
-  const [showClear,setShowClear]   = useState(false);
-  const ivRef  = useRef<ReturnType<typeof setInterval>|null>(null);
-  const tickIv = useRef<ReturnType<typeof setInterval>|null>(null);
+  const [token,setToken]=useState('');
+  const [date,setDate]=useState(brazilToday());
+  const [win,setWin]=useState('today');
+  const [tab,setTab]=useState<Tab>('geral');
+  const [data,setData]=useState<DashData|null>(null);
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [lu,setLu]=useState('');
+  const [auto,setAuto]=useState(false);
+  const [tick,setTick]=useState(0);
+  const [selSid,setSelSid]=useState<string|null>(null);
+  const [detail,setDetail]=useState<SessionDetail|null>(null);
+  const [detL,setDetL]=useState(false);
+  const [funnelFilter,setFunnelFilter]=useState<{type:'campaign'|'creative'|'adset';value:string}|null>(null);
+  const [selectedStep,setSelectedStep]=useState<string|null>(null);
+  const [userFilter,setUserFilter]=useState<UserFilter>('todos');
+  const [userSearch,setUserSearch]=useState('');
+  const [stopFilter,setStopFilter]=useState<string|null>(null);
+  const [clearTxt,setClearTxt]=useState('');
+  const [showClear,setShowClear]=useState(false);
+  const ivRef=useRef<ReturnType<typeof setInterval>|null>(null);
+  const tickIv=useRef<ReturnType<typeof setInterval>|null>(null);
 
-  useEffect(()=>{ tickIv.current=setInterval(()=>setTick(p=>p+1),1000); return()=>{if(tickIv.current) clearInterval(tickIv.current);}; },[]);
-  useEffect(()=>{ const p=new URLSearchParams(window.location.search); setToken(p.get('token')||''); const t=p.get('tab'); if(t) setTab(t as Tab); },[]);
+  useEffect(()=>{tickIv.current=setInterval(()=>setTick(p=>p+1),1000);return()=>{if(tickIv.current)clearInterval(tickIv.current);};},[]);
+  useEffect(()=>{const p=new URLSearchParams(window.location.search);setToken(p.get('token')||'');const t=p.get('tab');if(t)setTab(t as Tab);},[]);
 
-  const load = useCallback(async(tok:string,d:string,w:string)=>{
-    if(!tok) return;
-    setLoading(true);
-    try {
+  const load=useCallback(async(tok:string,d:string,w:string)=>{
+    if(!tok)return;setLoading(true);
+    try{
       const r=await fetch(`/api/funnel-dashboard?token=${encodeURIComponent(tok)}&date=${d}&window=${w}`);
       if(r.status===401){setErr('Acesso negado.');setData(null);return;}
-      if(!r.ok){const j=await r.json().catch(()=>({})) as {error?:string}; setErr(`Erro ${r.status}${j.error?': '+j.error:''}`);return;}
-      setData(await r.json() as DashData); setErr(''); setLu(new Date().toLocaleTimeString('pt-BR'));
-    } catch(e){setErr(`Conexão: ${e instanceof Error?e.message:e}`);} finally{setLoading(false);}
+      if(!r.ok){const j=await r.json().catch(()=>({}))as{error?:string};setErr(`Erro ${r.status}${j.error?': '+j.error:''}`);return;}
+      setData(await r.json() as DashData);setErr('');setLu(new Date().toLocaleTimeString('pt-BR'));
+    }catch(e){setErr(`Conexão: ${e instanceof Error?e.message:e}`);}finally{setLoading(false);}
   },[]);
 
-  useEffect(()=>{if(token)load(token,date,win);},[token]);      // eslint-disable-line
-  useEffect(()=>{if(token)load(token,date,win);},[date,win]);   // eslint-disable-line
+  useEffect(()=>{if(token)load(token,date,win);},[token]);     // eslint-disable-line
+  useEffect(()=>{if(token)load(token,date,win);},[date,win]);  // eslint-disable-line
   useEffect(()=>{
-    if(ivRef.current) clearInterval(ivRef.current);
-    if(auto&&token) ivRef.current=setInterval(()=>load(token,date,win),60_000);
-    return()=>{if(ivRef.current) clearInterval(ivRef.current);};
+    if(ivRef.current)clearInterval(ivRef.current);
+    if(auto&&token)ivRef.current=setInterval(()=>load(token,date,win),60_000);
+    return()=>{if(ivRef.current)clearInterval(ivRef.current);};
   },[auto,token,date,win,load]);
 
   const openDetail=useCallback(async(sid:string)=>{
-    setSelSid(sid); setDetL(true); setDetail(null);
-    try{
-      const r=await fetch(`/api/funnel-session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sid)}&date=${date}`);
-      setDetail(await r.json() as SessionDetail);
-    }catch{setDetail(null);}finally{setDetL(false);}
+    setSelSid(sid);setDetL(true);setDetail(null);
+    try{const r=await fetch(`/api/funnel-session?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sid)}&date=${date}`);setDetail(await r.json() as SessionDetail);}
+    catch{setDetail(null);}finally{setDetL(false);}
   },[token,date]);
 
   const closeDetail=()=>{setSelSid(null);setDetail(null);};
 
+  // Get funnel steps (optionally filtered by campaign/creative)
+  const funnelSteps = data?.funnelVisual || [];
+
+  // Filter sections by origin filter
+  const getFilteredSections = () => {
+    if (!funnelFilter || !data) return funnelSteps;
+    const filtered = data.sessions.filter(s =>
+      funnelFilter.type === 'campaign' ? s.utmCampaign === funnelFilter.value :
+      funnelFilter.type === 'creative' ? s.utmContent  === funnelFilter.value :
+      s.adsetId === funnelFilter.value
+    );
+    const counts: Record<string, number> = {};
+    filtered.forEach(s => { if (s.maxSectionOrder > 0) {
+      data.funnelVisual.filter(f => f.sectionOrder <= s.maxSectionOrder).forEach(f => { counts[f.sectionId] = (counts[f.sectionId] || 0) + 1; });
+    }});
+    const heroC = counts['hero'] || 1;
+    return funnelSteps.map((f, i) => {
+      const reached = counts[f.sectionId] || 0;
+      const prev = i > 0 ? (counts[funnelSteps[i-1].sectionId] || reached) : reached;
+      return { ...f, reached, percentOfTop: Math.round((reached / heroC) * 100), dropFromPrevious: prev > 0 ? Math.round(((prev - reached) / prev) * 100) : 0 };
+    });
+  };
+  const visibleFunnel = getFilteredSections();
+
   const filteredUsers = (data?.sessions||[]).filter(s=>{
-    if(userFilter==='online')          return s.status==='online';
-    if(userFilter==='recentes')        return s.status==='recente';
-    if(userFilter==='saíram')          return s.status==='saiu';
-    if(userFilter==='compraram')       return s.purchased;
-    if(userFilter==='clicaram')        return s.clicksCount>0;
-    if(userFilter==='chegaram_oferta') return s.maxSectionOrder>=11;
-    return true;
-  }).filter(s=>{
-    if(!userSearch) return true;
-    const q=userSearch.toLowerCase();
-    return (s.utmCampaign||'').toLowerCase().includes(q)||
-           (s.utmContent||'').toLowerCase().includes(q)||
-           (s.adsetId||'').toLowerCase().includes(q)||
-           s.shortId.toLowerCase().includes(q)||
-           s.label.toLowerCase().includes(q);
+    const base = stopFilter ? s.maxSectionTitle === stopFilter : true;
+    const filter =
+      userFilter==='online'          ? s.status==='online' :
+      userFilter==='recentes'        ? s.status==='recente' :
+      userFilter==='saíram'          ? s.status==='saiu' :
+      userFilter==='compraram'       ? s.purchased :
+      userFilter==='clicaram'        ? s.clicksCount>0 :
+      userFilter==='chegaram_oferta' ? s.maxSectionOrder>=11 :
+      userFilter==='nao_oferta'      ? s.maxSectionOrder<11 : true;
+    const search = !userSearch || [s.utmCampaign,s.utmContent,s.adsetId,s.shortId,s.label].some(v=>(v||'').toLowerCase().includes(userSearch.toLowerCase()));
+    return base && filter && search;
   });
 
-  if(err) return <div style={s.center}><div style={s.ebox}><p style={{fontSize:32,marginBottom:12}}>🔒</p><p style={{color:'#ef4444',fontWeight:700,marginBottom:16}}>{err}</p><Btn onClick={()=>{setErr('');load(token,date,win);}}>Tentar novamente</Btn></div></div>;
-  if(!data&&!loading) return <div style={s.center}><p style={{color:'#6b7280'}}>Aguardando <code style={{color:'#f59e0b'}}>?token=...</code></p></div>;
-  if(!data) return <div style={s.center}><p style={{color:'#9ca3af'}}>Carregando…</p></div>;
+  if(err)return(<div style={g.center}><div style={g.ebox}><p style={{fontSize:32,marginBottom:12}}>🔒</p><p style={{color:'#ef4444',fontWeight:700,marginBottom:16}}>{err}</p><Btn onClick={()=>{setErr('');load(token,date,win);}}>Tentar novamente</Btn></div></div>);
+  if(!data&&!loading)return(<div style={g.center}><p style={{color:'#6b7280'}}>Aguardando <code style={{color:'#f59e0b'}}>?token=...</code></p></div>);
+  if(!data)return(<div style={g.center}><p style={{color:'#9ca3af'}}>Carregando…</p></div>);
 
   const totalClicks=Object.values(data.checkoutClicks).reduce((a,b)=>a+b,0);
   const detSess=selSid?data.sessions.find(s=>s.sessionId===selSid):null;
   void tick;
 
   return (
-    <div style={s.page}>
-      <div style={s.wrap}>
+    <div style={g.page}>
+      <div style={g.wrap}>
 
-        {/* ── Header ── */}
-        <header style={s.hdr}>
-          <div>
-            <h1 style={s.title}>FUNIL <span style={{color:'#f59e0b'}}>—</span> Mapa do Degradê</h1>
-            <p style={s.sub}>{lu?`Atualizado às ${lu}`:'...'}{loading&&<span style={{color:'#f59e0b',marginLeft:8}}>⟳</span>}</p>
+        {/* Header */}
+        <header style={g.hdr}>
+          <div><h1 style={g.title}>FUNIL <span style={{color:'#f59e0b'}}>—</span> Mapa do Degradê</h1>
+            <p style={g.sub}>{lu?`Atualizado às ${lu}`:'...'}{loading&&<span style={{color:'#f59e0b',marginLeft:8}}>⟳</span>}</p>
           </div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-            <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={s.inp}/>
-            <select value={win} onChange={e=>setWin(e.target.value)} style={s.inp}>
+            <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={g.inp}/>
+            <select value={win} onChange={e=>setWin(e.target.value)} style={g.inp}>
               {WINDOWS.map(w=><option key={w.v} value={w.v}>{w.l}</option>)}
             </select>
-            <Btn active={auto} onClick={()=>setAuto(p=>!p)}>{auto?'⟳ Auto ON':'⟳ Auto OFF'}</Btn>
+            <Btn active={auto} onClick={()=>setAuto(p=>!p)}>{auto?'⟳ ON':'⟳ OFF'}</Btn>
             <Btn onClick={()=>load(token,date,win)} disabled={loading}>↺</Btn>
           </div>
         </header>
 
-        {/* ── Tabs ── */}
-        <div style={s.tabBar}>
+        {/* Tabs */}
+        <div style={g.tabBar}>
           {TABS.map(([t,l])=>(
-            <button key={t} onClick={()=>setTab(t)} style={{...s.tabBtn, ...(tab===t?s.tabActive:{})}}>
-              {l}
-              {t==='usuarios'&&data.sessions.length>0&&<span style={s.badge}>{data.sessions.length}</span>}
+            <button key={t} onClick={()=>setTab(t)} style={{...g.tabBtn,...(tab===t?g.tabActive:{})}}>
+              {l}{t==='usuarios'&&data.sessions.length>0&&<span style={g.badge}>{data.sessions.length}</span>}
             </button>
           ))}
         </div>
 
-        {/* ══════════════ TAB: GERAL ══════════════ */}
+        {/* ════ TAB GERAL ════ */}
         {tab==='geral'&&<>
           {/* Cards */}
-          <div style={s.grid6}>
-            <SCard label="● Ativos agora" value={fmt(data.activeNow)} color="#22c55e" hint="≤25s, não saiu"/>
-            <SCard label="◑ Ativos 30min" value={fmt(data.active30m)} color="#3b82f6"/>
-            <SCard label="Sessões hoje"   value={fmt(data.totalSessionsToday)} color="#06b6d4"/>
-            <SCard label="Cliques CTA"    value={fmt(totalClicks)}              color="#f59e0b"/>
-            <SCard label="Compras"        value={fmt(data.purchases.count)}     color="#f97316"/>
-            <SCard label="Receita"        value={fmtBRL(data.purchases.revenue)} color="#a855f7"/>
+          <div style={g.grid6}>
+            <Card label="● Ativos agora"  value={fmt(data.activeNow)}            color="#22c55e" hint="≤25s"/>
+            <Card label="◑ Ativos 30min"  value={fmt(data.active30m)}            color="#3b82f6"/>
+            <Card label="Sessões hoje"    value={fmt(data.totalSessionsToday)}   color="#06b6d4"/>
+            <Card label="Cliques CTA"     value={fmt(totalClicks)}               color="#f59e0b"/>
+            <Card label="Compras"         value={fmt(data.purchases.count)}      color="#f97316"/>
+            <Card label="Receita"         value={fmtBRL(data.purchases.revenue)} color="#a855f7"/>
           </div>
 
-          {/* Funil */}
-          <Block title="Funil por Seção">
+          {/* ── Funil Visual ── */}
+          <Block title="Funil Visual">
+            {/* Origin filter pills */}
+            <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+              <span style={{fontSize:11,color:'#6b7280',marginRight:4}}>Filtrar por:</span>
+              <Pill active={!funnelFilter} onClick={()=>setFunnelFilter(null)}>Geral</Pill>
+              {data.campaigns.slice(0,4).map(c=><Pill key={c.utmCampaign} active={funnelFilter?.value===c.utmCampaign} onClick={()=>setFunnelFilter(f=>f?.value===c.utmCampaign?null:{type:'campaign',value:c.utmCampaign})}>📢 {c.utmCampaign}</Pill>)}
+              {data.creatives.slice(0,4).map(c=><Pill key={c.utmContent} active={funnelFilter?.value===c.utmContent} onClick={()=>setFunnelFilter(f=>f?.value===c.utmContent?null:{type:'creative',value:c.utmContent})}>🎨 {c.utmContent}</Pill>)}
+            </div>
+
             <div style={{overflowX:'auto'}}>
-              <table style={s.tbl}><thead><tr>
-                <TH>Seção</TH><TH r>Alcançaram</TH><TH r>% Topo</TH><TH r>Drop</TH><TH>Barra</TH>
+              {visibleFunnel.map((step,i)=>{
+                const barW = Math.max(step.percentOfTop, 2);
+                const isOferta = step.sectionId==='oferta';
+                const isSel = selectedStep===step.sectionId;
+                return (
+                  <div key={step.sectionId}
+                    onClick={()=>{setSelectedStep(s=>s===step.sectionId?null:step.sectionId); setTab('usuarios'); setStopFilter(s=>s===step.sectionTitle?null:step.sectionTitle); setUserFilter('todos');}}
+                    style={{display:'flex',alignItems:'center',gap:10,marginBottom:4,padding:'4px 8px',borderRadius:8,cursor:'pointer',
+                      background:isSel?'rgba(249,115,22,.1)':isOferta?'rgba(249,115,22,.05)':'transparent',
+                      border:isSel?'1px solid rgba(249,115,22,.3)':isOferta?'1px solid rgba(249,115,22,.15)':'1px solid transparent'}}
+                  >
+                    <div style={{width:180,fontSize:12,color:isOferta?'#fdba74':'#d1d5db',flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {isOferta&&'★ '}{step.sectionTitle}
+                    </div>
+                    <div style={{flex:1,background:'#111827',borderRadius:4,height:24,position:'relative',overflow:'hidden'}}>
+                      <div style={{position:'absolute',left:0,top:0,height:'100%',width:`${barW}%`,background:
+                        isOferta?'linear-gradient(90deg,#f97316,#f59e0b)':
+                        step.percentOfTop>=70?'#22c55e':step.percentOfTop>=40?'#f59e0b':'#ef4444',
+                        borderRadius:4,transition:'width .5s'}}/>
+                      <span style={{position:'absolute',left:8,top:'50%',transform:'translateY(-50%)',fontSize:11,fontWeight:600,color:'#fff',textShadow:'0 1px 3px rgba(0,0,0,.8)'}}>
+                        {fmt(step.reached)}
+                      </span>
+                    </div>
+                    <div style={{width:42,textAlign:'right',fontSize:12,color:pctCol(step.percentOfTop),fontWeight:700,flexShrink:0}}>{step.percentOfTop}%</div>
+                    <div style={{width:46,textAlign:'right',fontSize:11,flexShrink:0,color:step.dropFromPrevious>0?dropCol(step.dropFromPrevious):'#374151'}}>
+                      {i>0&&step.dropFromPrevious>0?<span>-{step.dropFromPrevious}%</span>:'—'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p style={{fontSize:11,color:'#374151',marginTop:8}}>Clique em uma etapa para filtrar usuários que pararam ali.</p>
+          </Block>
+
+          {/* ── Gargalos ── */}
+          {data.topBottlenecks.length>0&&<Block title="Gargalos Principais">
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
+              {data.topBottlenecks.slice(0,4).map((b,i)=>(
+                <div key={i} style={{background:'#111827',border:`1px solid ${b.dropPercent>40?'rgba(239,68,68,.3)':'rgba(245,158,11,.2)'}`,borderRadius:10,padding:'12px 16px'}}>
+                  <div style={{fontSize:10,color:'#6b7280',marginBottom:6,textTransform:'uppercase',letterSpacing:.8}}>
+                    {i===0?'🔴 Maior gargalo':i===1?'🟠 2º gargalo':'📉 Gargalo'}
+                  </div>
+                  <div style={{fontSize:12,color:'#d1d5db',marginBottom:4}}>{b.fromSection} <span style={{color:'#6b7280'}}>→</span> {b.toSection}</div>
+                  <div style={{fontSize:22,fontWeight:800,color:dropCol(b.dropPercent)}}>-{b.dropPercent}%</div>
+                  <div style={{fontSize:11,color:'#6b7280'}}>{fmt(b.dropUsers)} usuários abandonaram nessa etapa</div>
+                </div>
+              ))}
+            </div>
+          </Block>}
+
+          {/* ── Onde pararam ── */}
+          {data.stopPoints.length>0&&<Block title="Onde os Leads Pararam">
+            <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+              {data.stopPoints.slice(0,10).map((sp,i)=>(
+                <button key={i} onClick={()=>{setStopFilter(s=>s===sp.sectionTitle?null:sp.sectionTitle);setSelectedStep(s=>s===sp.sectionTitle?null:sp.sectionTitle);setTab('usuarios');setUserFilter('todos');}}
+                  style={{background: stopFilter===sp.sectionTitle?'rgba(249,115,22,.15)':'#111827',border:`1px solid ${stopFilter===sp.sectionTitle?'rgba(249,115,22,.4)':'#1f2937'}`,borderRadius:8,padding:'8px 14px',cursor:'pointer',textAlign:'left'}}>
+                  <div style={{fontSize:12,color:'#d1d5db',marginBottom:2}}>{sp.sectionTitle}</div>
+                  <div style={{fontSize:18,fontWeight:700,color:i<2?'#ef4444':i<5?'#f59e0b':'#6b7280'}}>{fmt(sp.usersStopped)}</div>
+                  <div style={{fontSize:10,color:'#6b7280'}}>leads pararam aqui</div>
+                </button>
+              ))}
+            </div>
+            {stopFilter&&<p style={{fontSize:11,color:'#f59e0b',marginTop:8}}>Filtrando: "{stopFilter}" — <button onClick={()=>{setStopFilter(null);setSelectedStep(null);}} style={{background:'none',border:'none',color:'#6b7280',cursor:'pointer',fontSize:11}}>limpar</button></p>}
+          </Block>}
+
+          {/* ── Diagnóstico por seção ── */}
+          <Block title="Diagnóstico por Seção">
+            <div style={{overflowX:'auto'}}>
+              <table style={g.tbl}><thead><tr>
+                <TH>Seção</TH><TH r>Chegaram</TH><TH r>% Topo</TH><TH r>Drop</TH><TH r>Drop Acum.</TH><TH>Top Campanha</TH><TH>Top Criativo</TH>
               </tr></thead><tbody>
-              {data.sections.map(sec=>(
-                <tr key={sec.id} style={{...s.tr, background:sec.id==='oferta'?'rgba(249,115,22,.06)':undefined}}>
-                  <TD>{sec.id==='oferta'&&<span style={{color:'#f97316',marginRight:6}}>★</span>}<span style={{color:sec.id==='oferta'?'#fdba74':'#e5e7eb'}}>{sec.title}</span></TD>
-                  <TD r bold>{fmt(sec.reached)}</TD>
-                  <TD r style={{color:pctCol(sec.percentOfHero)}}>{sec.percentOfHero}%</TD>
-                  <TD r style={{color:sec.dropFromPrevious>30?'#ef4444':'#6b7280'}}>
-                    {sec.dropFromPrevious>0?`-${sec.dropFromPrevious}%`:'—'}
-                    {sec.dropFromPrevious>30&&<span style={{marginLeft:4,fontSize:10,color:'#ef4444'}}>⚠</span>}
-                  </TD>
-                  <TD><div style={s.barBg}><div style={{...s.barFill,width:`${Math.min(sec.percentOfHero,100)}%`}}/></div></TD>
+              {data.sectionDiagnostics.map(d=>(
+                <tr key={d.sectionId} style={{...g.tr,background:d.sectionId==='oferta'?'rgba(249,115,22,.05)':undefined}}>
+                  <TD style={{fontSize:12,color:d.sectionId==='oferta'?'#fdba74':'#d1d5db'}}>{d.sectionId==='oferta'&&<span style={{marginRight:4}}>★</span>}{d.sectionTitle}</TD>
+                  <TD r bold>{fmt(d.reached)}</TD>
+                  <TD r style={{color:pctCol(d.percentOfTop)}}>{d.percentOfTop}%</TD>
+                  <TD r style={{color:d.dropFromPrevious>0?dropCol(d.dropFromPrevious):'#374151'}}>{d.dropFromPrevious>0?`-${d.dropFromPrevious}%`:'—'}</TD>
+                  <TD r style={{color:d.dropAccumulated>50?'#ef4444':d.dropAccumulated>20?'#f59e0b':'#9ca3af'}}>{d.dropAccumulated>0?`-${d.dropAccumulated}%`:'—'}</TD>
+                  <TD style={{fontSize:11,color:'#9ca3af'}}>{d.topCampaign||'—'}</TD>
+                  <TD style={{fontSize:11,color:'#9ca3af'}}>{d.topCreative||'—'}</TD>
                 </tr>
               ))}</tbody></table>
             </div>
           </Block>
 
-          {/* Checkout clicks */}
-          <Block title="Cliques em Checkout">
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
-              {([['Básico→popup','plano_basico_popup_open','#6366f1'],['Kit R$29','kit_completo','#f59e0b'],['Kit R$24','kit_desconto_popup','#22c55e'],['Continua Básico','plano_basico','#3b82f6']] as [string,keyof CheckoutClicks,string][]).map(([l,k,c])=>(
-                <div key={k} style={s.miniCard}>
-                  <p style={s.miniLabel}>{l}</p>
-                  <p style={{...s.miniVal,color:c}}>{fmt(data.checkoutClicks[k]||0)}</p>
-                </div>
-              ))}
-            </div>
-          </Block>
-
-          {/* Preview últimos 5 usuários */}
-          <Block title="Usuários Recentes">
-            <table style={s.tbl}><thead><tr>
-              <TH>Usuário</TH><TH>Status</TH><TH>Visto há</TH><TH>Campanha</TH><TH>Última seção</TH><TH>Última oferta</TH>
+          {/* Preview usuários */}
+          <Block title="Últimos Usuários">
+            <table style={g.tbl}><thead><tr>
+              <TH>Usuário</TH><TH>Status</TH><TH>Visto há</TH><TH>Campanha</TH><TH>Parou em</TH><TH>Última oferta</TH>
             </tr></thead><tbody>
             {data.sessions.slice(0,5).map(sess=>(
-              <tr key={sess.sessionId} style={{...s.tr,cursor:'pointer'}} onClick={()=>{setTab('usuarios');openDetail(sess.sessionId);}}>
-                <TD><span style={{color:'#60a5fa',fontFamily:'monospace',fontSize:11}}>{sess.label}</span></TD>
-                <TD><span style={{color:STATUS_COLOR[sess.status],fontSize:12}}>{STATUS_DOT[sess.status]} {sess.status}</span></TD>
-                <TD style={{fontSize:11,color:'#9ca3af'}}>{secsAgo(sess.secondsSinceLastSeen)}</TD>
+              <tr key={sess.sessionId} style={{...g.tr,cursor:'pointer'}} onClick={()=>{openDetail(sess.sessionId);}}>
+                <TD style={{fontSize:11,fontFamily:'monospace',color:'#60a5fa'}}>{sess.label}</TD>
+                <TD><span style={{color:STATUS_COLOR[sess.status],fontSize:12}}>● {sess.status}</span></TD>
+                <TD style={{fontSize:11,color:'#6b7280'}}>{secsAgo(sess.secondsSinceLastSeen)}</TD>
                 <TD style={{fontSize:12}}>{sess.utmCampaign||'—'}</TD>
-                <TD style={{fontSize:12}}>{sess.maxSectionTitle||'—'}</TD>
-                <TD>{sess.lastCheckoutClick?<span style={{...s.clickBadge,...{background:(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#6b7280')+'22',color:(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#9ca3af'),border:`1px solid ${(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#6b7280')}44`}}}>{CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.label||sess.lastCheckoutClick.checkoutType}</span>:'—'}</TD>
+                <TD style={{fontSize:12,color:'#d1d5db'}}>{sess.maxSectionTitle||'—'}</TD>
+                <TD>{sess.lastCheckoutClick?<span style={{...g.clickBadge,background:(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#6b7280')+'22',color:(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#9ca3af')}}>{CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.label||sess.lastCheckoutClick.checkoutType}</span>:'—'}</TD>
               </tr>
             ))}</tbody></table>
-            {data.sessions.length>5&&<button style={{...s.linkBtn,marginTop:12}} onClick={()=>setTab('usuarios')}>Ver todos os {data.sessions.length} usuários →</button>}
+            {data.sessions.length>5&&<button style={g.linkBtn} onClick={()=>setTab('usuarios')}>Ver todos os {data.sessions.length} usuários →</button>}
           </Block>
 
-          {/* Debug */}
-          <div style={s.debugBar}>
+          <div style={g.debugBar}>
             <span>all today: <b>{data.debug?.allSessionsTodayCount??data.totalSessionsToday}</b></span>
             <span>returned: <b>{data.debug?.returnedSessionsCount??data.sessions.length}</b></span>
-            <span>date: <b>{data.date}</b></span>
-            <span>window: <b>{data.window}</b></span>
+            <span>date: <b>{data.date}</b></span><span>window: <b>{data.window}</b></span>
             {data.debug?.sessQueryError&&<span style={{color:'#ef4444'}}>err: {data.debug.sessQueryError}</span>}
           </div>
         </>}
 
-        {/* ══════════════ TAB: USUÁRIOS ══════════════ */}
+        {/* ════ TAB USUÁRIOS ════ */}
         {tab==='usuarios'&&<>
-          {/* Filtros */}
           <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12,alignItems:'center'}}>
-            <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Buscar campanha, criativo, usuário..." style={{...s.inp,flex:1,minWidth:200}}/>
-            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-              {USER_FILTERS.map(f=>(
-                <button key={f} onClick={()=>setUserFilter(f)} style={{...s.filterBtn,...(userFilter===f?s.filterActive:{})}}>{f}</button>
-              ))}
-            </div>
+            <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Buscar..." style={{...g.inp,flex:1,minWidth:180}}/>
+            <select value={userFilter} onChange={e=>setUserFilter(e.target.value as UserFilter)} style={g.inp}>
+              {(['todos','online','recentes','saíram','compraram','clicaram','chegaram_oferta','nao_oferta'] as UserFilter[]).map(f=><option key={f} value={f}>{f}</option>)}
+            </select>
+            {stopFilter&&<span style={{background:'rgba(249,115,22,.1)',border:'1px solid rgba(249,115,22,.3)',borderRadius:16,padding:'4px 12px',fontSize:11,color:'#f59e0b'}}>
+              Parou em: {stopFilter} <button onClick={()=>setStopFilter(null)} style={{background:'none',border:'none',color:'#6b7280',cursor:'pointer',marginLeft:4}}>✕</button>
+            </span>}
           </div>
 
-          <Block title={`Usuários Anônimos (${filteredUsers.length}${data.showingMax?' — mostrando 100':''})`}>
-            {filteredUsers.length===0?(
-              <p style={{color:'#6b7280',fontSize:13,padding:'12px 0'}}>Nenhuma sessão{userSearch||userFilter!=='todos'?' com os filtros selecionados':' no período selecionado.'}.</p>
-            ):(
+          <Block title={`Usuários Anônimos (${filteredUsers.length})`}>
+            {filteredUsers.length===0?<p style={{color:'#6b7280',fontSize:13,padding:'12px 0'}}>Nenhuma sessão encontrada.</p>:(
               <div style={{overflowX:'auto'}}>
-                <table style={s.tbl}><thead><tr>
-                  <TH>Usuário</TH><TH>Status</TH><TH>1ª visita</TH><TH>Visto há</TH>
-                  <TH>Campanha</TH><TH>Conjunto</TH><TH>Criativo</TH>
-                  <TH>Última seção</TH><TH>Última oferta</TH><TH r>Cliques</TH><TH r>Comprou</TH>
+                <table style={g.tbl}><thead><tr>
+                  <TH>Usuário</TH><TH>Status</TH><TH>Visto há</TH><TH>Campanha</TH><TH>Criativo</TH>
+                  <TH>Parou em</TH><TH>Última oferta clicada</TH><TH r>Cliques</TH><TH r>Comprou</TH>
                 </tr></thead><tbody>
                 {filteredUsers.map(sess=>(
-                  <tr key={sess.sessionId} style={{...s.tr,cursor:'pointer'}} onClick={()=>openDetail(sess.sessionId)} title="Ver detalhes">
-                    <TD><span style={{color:'#60a5fa',fontFamily:'monospace',fontSize:12}}>{sess.label}</span><span style={{color:'#374151',fontSize:10,marginLeft:6}}>#{sess.shortId}</span></TD>
-                    <TD><span style={{color:STATUS_COLOR[sess.status],fontSize:12}}>{STATUS_DOT[sess.status]} {sess.status}</span></TD>
-                    <TD style={{fontSize:11,color:'#9ca3af'}}>{fmtTime(sess.firstSeen)}</TD>
-                    <TD style={{fontSize:11,color:'#9ca3af'}}>{secsAgo(sess.secondsSinceLastSeen)}</TD>
+                  <tr key={sess.sessionId} style={{...g.tr,cursor:'pointer'}} onClick={()=>openDetail(sess.sessionId)}>
+                    <TD><span style={{color:'#60a5fa',fontFamily:'monospace',fontSize:11}}>{sess.label}</span><span style={{color:'#374151',fontSize:10,marginLeft:5}}>#{sess.shortId}</span></TD>
+                    <TD><span style={{color:STATUS_COLOR[sess.status],fontSize:12}}>● {sess.status}</span></TD>
+                    <TD style={{fontSize:11,color:'#6b7280'}}>{secsAgo(sess.secondsSinceLastSeen)}</TD>
                     <TD style={{fontSize:12}}>{sess.utmCampaign||'—'}</TD>
-                    <TD style={{fontSize:12}}>{sess.adsetId||'—'}</TD>
                     <TD style={{fontSize:12}}>{sess.utmContent||'—'}</TD>
                     <TD style={{fontSize:12,color:'#d1d5db'}}>{sess.maxSectionTitle||'—'}</TD>
-                    <TD>{sess.lastCheckoutClick?<span style={{...s.clickBadge,...{background:(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#6b7280')+'22',color:(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#9ca3af'),border:`1px solid ${(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#6b7280')}44`}}}>{CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.label||sess.lastCheckoutClick.checkoutType}</span>:'—'}</TD>
+                    <TD>{sess.lastCheckoutClick?<span style={{...g.clickBadge,background:(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#6b7280')+'22',color:(CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.color||'#9ca3af')}}>{CLICK_BADGE[sess.lastCheckoutClick.checkoutType]?.label||sess.lastCheckoutClick.checkoutType}</span>:'—'}</TD>
                     <TD r>{fmt(sess.clicksCount)}</TD>
                     <TD r>{sess.purchased?<span style={{color:'#22c55e',fontWeight:700}}>✓</span>:'—'}</TD>
                   </tr>
@@ -295,80 +362,62 @@ export default function FunilPage() {
           </Block>
         </>}
 
-        {/* ══════════════ TAB: CAMPANHAS ══════════════ */}
+        {/* ════ TAB CAMPANHAS ════ */}
         {tab==='campanhas'&&<>
-          {data.campaigns.length>0&&<Block title="Por Campanha"><DataGrid headers={['Campanha','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']} rows={data.campaigns.map(c=>[c.utmCampaign,fmt(c.sessions),fmt(c.reachedOffer),fmt(c.clicks),fmt(c.purchases),fmtBRL(c.revenue),c.conversionClick+'%',c.conversionPurchase+'%'])}/></Block>}
-          {data.adsets.length>0&&<Block title="Por Conjunto (adset_id)"><DataGrid headers={['Conjunto','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']} rows={data.adsets.map(a=>[a.adsetId,fmt(a.sessions),fmt(a.reachedOffer),fmt(a.clicks),fmt(a.purchases),fmtBRL(a.revenue),a.conversionClick+'%',a.conversionPurchase+'%'])}/></Block>}
-          {data.creatives.length>0&&<Block title="Por Criativo (utm_content)"><DataGrid headers={['Criativo','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']} rows={data.creatives.map(c=>[c.utmContent,fmt(c.sessions),fmt(c.reachedOffer),fmt(c.clicks),fmt(c.purchases),fmtBRL(c.revenue),c.conversionClick+'%',c.conversionPurchase+'%'])}/></Block>}
-          {data.campaigns.length===0&&data.adsets.length===0&&data.creatives.length===0&&<p style={{color:'#6b7280',padding:24}}>Nenhum dado de campanha disponível para este período.</p>}
+          {data.campaigns.length>0&&<Block title="Por Campanha"><DGrid headers={['Campanha','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']} rows={data.campaigns.map(c=>[c.utmCampaign,fmt(c.sessions),fmt(c.reachedOffer),fmt(c.clicks),fmt(c.purchases),fmtBRL(c.revenue),c.conversionClick+'%',c.conversionPurchase+'%'])}/></Block>}
+          {data.adsets.length>0&&<Block title="Por Conjunto (adset_id)"><DGrid headers={['Conjunto','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']} rows={data.adsets.map(a=>[a.adsetId,fmt(a.sessions),fmt(a.reachedOffer),fmt(a.clicks),fmt(a.purchases),fmtBRL(a.revenue),a.conversionClick+'%',a.conversionPurchase+'%'])}/></Block>}
+          {data.creatives.length>0&&<Block title="Por Criativo (utm_content)"><DGrid headers={['Criativo','Sessões','Oferta','Cliques','Compras','Receita','CTR%','CVR%']} rows={data.creatives.map(c=>[c.utmContent,fmt(c.sessions),fmt(c.reachedOffer),fmt(c.clicks),fmt(c.purchases),fmtBRL(c.revenue),c.conversionClick+'%',c.conversionPurchase+'%'])}/></Block>}
         </>}
 
-        {/* ══════════════ TAB: EXPORTAÇÕES ══════════════ */}
+        {/* ════ TAB EXPORTAÇÕES ════ */}
         {tab==='exportacoes'&&<>
           <Block title="Exportar Dados">
-            <p style={{color:'#9ca3af',fontSize:13,marginBottom:16}}>Exporta todas as sessões da data selecionada: <strong style={{color:'#f3f4f6'}}>{date}</strong></p>
-            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              <Btn onClick={()=>window.open(`/api/funnel-export?token=${encodeURIComponent(token)}&date=${date}&type=csv`,'_blank')}>⬇ Exportar CSV</Btn>
-              <Btn onClick={()=>window.open(`/api/funnel-export?token=${encodeURIComponent(token)}&date=${date}&type=json`,'_blank')}>⬇ Exportar JSON</Btn>
+            <p style={{color:'#9ca3af',fontSize:13,marginBottom:16}}>Data: <strong style={{color:'#f3f4f6'}}>{date}</strong></p>
+            <div style={{display:'flex',gap:10}}>
+              <Btn onClick={()=>window.open(`/api/funnel-export?token=${encodeURIComponent(token)}&date=${date}&type=csv`,'_blank')}>⬇ CSV</Btn>
+              <Btn onClick={()=>window.open(`/api/funnel-export?token=${encodeURIComponent(token)}&date=${date}&type=json`,'_blank')}>⬇ JSON</Btn>
             </div>
           </Block>
           <Block title="Limpar Dados">
             <div style={{background:'rgba(239,68,68,.05)',border:'1px solid rgba(239,68,68,.2)',borderRadius:8,padding:16,marginBottom:16}}>
-              <p style={{color:'#fca5a5',fontSize:13,margin:0}}>⚠️ Isso apagará <strong>todos os dados do Supabase</strong> para {date}. Exporte antes de continuar. Esta ação não pode ser desfeita.</p>
+              <p style={{color:'#fca5a5',fontSize:13,margin:0}}>⚠️ Apaga todos os dados do Supabase para {date}. Exporte antes.</p>
             </div>
-            {!showClear?(
-              <Btn danger onClick={()=>setShowClear(true)}>🗑 Limpar dados de {date}</Btn>
-            ):(
-              <>
-                <p style={{color:'#9ca3af',fontSize:12,marginBottom:8}}>Digite <strong style={{color:'#ef4444'}}>LIMPAR</strong> para confirmar:</p>
-                <input value={clearTxt} onChange={e=>setClearTxt(e.target.value)} placeholder="LIMPAR" style={{...s.inp,marginBottom:12,color:'#ef4444',width:200}}/>
-                <div style={{display:'flex',gap:8}}>
-                  <Btn danger onClick={async()=>{
-                    if(clearTxt!=='LIMPAR') return;
-                    await fetch('/api/funnel-clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,date})});
-                    setShowClear(false); setClearTxt(''); load(token,date,win);
-                  }} disabled={clearTxt!=='LIMPAR'}>Confirmar limpeza</Btn>
-                  <Btn onClick={()=>{setShowClear(false);setClearTxt('');}}>Cancelar</Btn>
-                </div>
-              </>
-            )}
+            {!showClear?<Btn danger onClick={()=>setShowClear(true)}>🗑 Limpar {date}</Btn>:<>
+              <p style={{color:'#9ca3af',fontSize:12,marginBottom:8}}>Digite <strong style={{color:'#ef4444'}}>LIMPAR</strong>:</p>
+              <input value={clearTxt} onChange={e=>setClearTxt(e.target.value)} placeholder="LIMPAR" style={{...g.inp,marginBottom:10,color:'#ef4444',width:160}}/>
+              <div style={{display:'flex',gap:8}}>
+                <Btn danger onClick={async()=>{if(clearTxt!=='LIMPAR')return;await fetch('/api/funnel-clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,date})});setShowClear(false);setClearTxt('');load(token,date,win);}} disabled={clearTxt!=='LIMPAR'}>Confirmar</Btn>
+                <Btn onClick={()=>{setShowClear(false);setClearTxt('');}}>Cancelar</Btn>
+              </div>
+            </>}
           </Block>
         </>}
 
         <p style={{textAlign:'center',fontSize:10,color:'#1f2937',paddingBottom:32,marginTop:8}}>Sem dados pessoais · {data.updatedAt}</p>
+      </div>
 
-      </div>{/* /wrap */}
-
-      {/* ── Session drawer ── */}
+      {/* Session drawer */}
       {selSid&&(
-        <div style={s.overlay} onClick={closeDetail}>
-          <aside style={s.drawer} onClick={e=>e.stopPropagation()}>
-            <div style={s.drawerHdr}>
-              <h2 style={s.drawerTitle}>{detSess?.label||'Detalhe da Sessão'}</h2>
+        <div style={g.overlay} onClick={closeDetail}>
+          <aside style={g.drawer} onClick={e=>e.stopPropagation()}>
+            <div style={g.drawerHdr}>
+              <h2 style={g.drawerTitle}>{detSess?.label||'Detalhe'}</h2>
               <button onClick={closeDetail} style={{background:'none',border:'none',color:'#6b7280',cursor:'pointer',fontSize:20}}>✕</button>
             </div>
             <div style={{flex:1,overflowY:'auto',padding:'20px 22px'}}>
               {detL?<p style={{color:'#6b7280',textAlign:'center',padding:32}}>Carregando…</p>:detail?(
                 <>
-                  {/* Bloco 1 — ID */}
                   {detSess&&<DBlock title="Identificação">
-                    <DRow k="Usuário"     v={detSess.label}/>
-                    <DRow k="Status"      v={<span style={{color:STATUS_COLOR[detSess.status]}}>{STATUS_DOT[detSess.status]} {detSess.status}</span>}/>
-                    <DRow k="Session"     v={<code style={{fontSize:10}}>{selSid.slice(0,20)}…</code>}/>
-                    <DRow k="1ª visita"   v={fmtTime(detSess.firstSeen)}/>
-                    <DRow k="Última ativ." v={fmtTime(detSess.lastSeen)}/>
-                    {detSess.leftAt&&<DRow k="Saiu em" v={fmtTime(detSess.leftAt)}/>}
+                    <DR k="Usuário" v={detSess.label}/><DR k="Status" v={<span style={{color:STATUS_COLOR[detSess.status]}}>● {detSess.status}</span>}/>
+                    <DR k="Session" v={<code style={{fontSize:10}}>{selSid.slice(0,20)}…</code>}/>
+                    <DR k="1ª visita" v={fmtTime(detSess.firstSeen)}/><DR k="Última ativ." v={fmtTime(detSess.lastSeen)}/>
+                    {detSess.leftAt&&<DR k="Saiu em" v={fmtTime(detSess.leftAt)}/>}
                   </DBlock>}
-
-                  {/* Bloco 2 — UTM */}
                   {detail.session&&<DBlock title="Origem">
-                    {(['utm_source','utm_medium','utm_campaign','utm_term','utm_content','campaign_id','adset_id','ad_id','placement','site_source_name'] as string[]).map(k=>
-                      detail.session![k]?<DRow key={k} k={k} v={String(detail.session![k])}/>:null
-                    )}
+                    {['utm_source','utm_medium','utm_campaign','utm_term','utm_content','campaign_id','adset_id','ad_id','placement','site_source_name'].map(k=>
+                      detail.session![k]?<DR key={k} k={k} v={String(detail.session![k])}/>:null)}
                   </DBlock>}
-
-                  {/* Bloco 3 — Timeline */}
-                  {detail.sectionsReached.length>0&&<DBlock title={`Percurso (${detail.sectionsReached.length})`}>
+                  {detail.sectionsReached.length>0&&<DBlock title={`Percurso (${detail.sectionsReached.length} seções)`}>
                     <div style={{background:'#070a0f',borderRadius:6,overflow:'hidden'}}>
                       {detail.sectionsReached.map((ev,i)=>{
                         const isLast=i===detail.sectionsReached.length-1;
@@ -379,8 +428,6 @@ export default function FunilPage() {
                       })}
                     </div>
                   </DBlock>}
-
-                  {/* Bloco 4 — Cliques em checkout */}
                   <DBlock title={`Cliques em Checkout (${detail.clicks.length})`}>
                     {detail.clicks.length===0?<p style={{color:'#6b7280',fontSize:12,margin:0}}>Sem clique em checkout.</p>:(
                       <div style={{background:'#070a0f',borderRadius:6,overflow:'hidden'}}>
@@ -388,7 +435,7 @@ export default function FunilPage() {
                           const badge=CLICK_BADGE[cl.checkout_type];
                           return <div key={i} style={{padding:'10px 12px',borderBottom:'1px solid #111827',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
                             <div>
-                              <span style={{...s.clickBadge,...{background:(badge?.color||'#6b7280')+'22',color:(badge?.color||'#9ca3af'),border:`1px solid ${(badge?.color||'#6b7280')}44`,marginRight:8}}}>{badge?.label||cl.checkout_type}</span>
+                              <span style={{...g.clickBadge,background:(badge?.color||'#6b7280')+'22',color:(badge?.color||'#9ca3af'),marginRight:8}}>{badge?.label||cl.checkout_type}</span>
                               {cl.checkout_price&&<span style={{color:'#22c55e',fontSize:12,fontWeight:700}}>{fmtBRL(cl.checkout_price)}</span>}
                               {cl.current_section_title&&<p style={{fontSize:10,color:'#6b7280',margin:'4px 0 0'}}>na seção: {cl.current_section_title}</p>}
                             </div>
@@ -398,14 +445,8 @@ export default function FunilPage() {
                       </div>
                     )}
                   </DBlock>
-
-                  {/* Bloco 5 — Compra */}
                   <DBlock title="Compra">
-                    {detail.purchase?(
-                      <>{<DRow k="Produto" v={String(detail.purchase.checkout_title||'')}/>}
-                      <DRow k="Valor" v={<span style={{color:'#22c55e',fontWeight:700}}>{fmtBRL(detail.purchase.amount as number)}</span>}/>
-                      <DRow k="Horário" v={fmtTime(detail.purchase.created_at as string)}/></>
-                    ):<p style={{color:'#6b7280',fontSize:12,margin:0}}>Sem compra registrada.</p>}
+                    {detail.purchase?<><DR k="Produto" v={String(detail.purchase.checkout_title||'')}/><DR k="Valor" v={<span style={{color:'#22c55e',fontWeight:700}}>{fmtBRL(detail.purchase.amount as number)}</span>}/><DR k="Horário" v={fmtTime(detail.purchase.created_at as string)}/></>:<p style={{color:'#6b7280',fontSize:12,margin:0}}>Sem compra registrada.</p>}
                   </DBlock>
                 </>
               ):<p style={{color:'#6b7280',textAlign:'center',padding:24}}>Sessão não encontrada.</p>}
@@ -417,71 +458,43 @@ export default function FunilPage() {
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-function Block({title,children}:{title:string;children:React.ReactNode}){
-  return <div style={s.block}><h2 style={s.blockTitle}>{title}</h2>{children}</div>;
-}
-function SCard({label,value,color,hint}:{label:string;value:string;color:string;hint?:string}){
-  return <div style={s.card} title={hint}><p style={s.cardLabel}>{label}</p><p style={{...s.cardVal,color}}>{value}</p>{hint&&<p style={{fontSize:10,color:'#374151',margin:'4px 0 0'}}>{hint}</p>}</div>;
-}
-function DataGrid({headers,rows}:{headers:string[];rows:string[][]}){
-  return <div style={{overflowX:'auto'}}><table style={s.tbl}><thead><tr>{headers.map((h,i)=><TH key={h} r={i>0}>{h}</TH>)}</tr></thead><tbody>{rows.map((row,ri)=><tr key={ri} style={s.tr}>{row.map((cell,ci)=><TD key={ci} r={ci>0} bold={ci>0}>{cell}</TD>)}</tr>)}</tbody></table></div>;
-}
-function DBlock({title,children}:{title:string;children:React.ReactNode}){
-  return <div style={{marginBottom:20}}><p style={{fontSize:10,color:'#f59e0b',textTransform:'uppercase',letterSpacing:1,margin:'0 0 8px',fontWeight:700}}>{title}</p><div style={{background:'#0d1117',border:'1px solid #1f2937',borderRadius:8,padding:'10px 14px'}}>{children}</div></div>;
-}
-function DRow({k,v}:{k:string;v:React.ReactNode}){
-  return <div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #111827'}}>
-    <span style={{fontSize:11,color:'#6b7280'}}>{k}</span>
-    <span style={{fontSize:12,color:'#d1d5db',textAlign:'right',maxWidth:'65%',wordBreak:'break-all'}}>{v}</span>
-  </div>;
-}
-function Btn({children,onClick,active,danger,disabled}:{children:React.ReactNode;onClick?:()=>void;active?:boolean;danger?:boolean;disabled?:boolean}){
-  return <button onClick={onClick} disabled={disabled} style={{border:'1px solid',borderRadius:6,padding:'7px 14px',fontSize:12,cursor:disabled?'not-allowed':'pointer',
-    background:active?'#14532d':danger?'#450a0a':'#111827',
-    color:active?'#4ade80':danger?'#f87171':'#d1d5db',
-    borderColor:active?'#166534':danger?'#991b1b':'#1f2937',
-    opacity:disabled?.5:1}}>{children}</button>;
-}
-const TH=({children,r}:{children?:React.ReactNode;r?:boolean})=>
-  <th style={{padding:'10px 12px',fontWeight:600,fontSize:11,textTransform:'uppercase',letterSpacing:.8,borderBottom:'1px solid #1f2937',color:'#4b5563',textAlign:r?'right':'left',whiteSpace:'nowrap'}}>{children}</th>;
-const TD=({children,r,bold,style}:{children?:React.ReactNode;r?:boolean;bold?:boolean;style?:React.CSSProperties})=>
-  <td style={{padding:'10px 12px',color:'#9ca3af',verticalAlign:'middle',textAlign:r?'right':'left',fontWeight:bold?600:400,...style}}>{children}</td>;
+// ─── Components ───────────────────────────────────────────────────────────────
+function Block({title,children}:{title:string;children:React.ReactNode}){return <div style={g.block}><h2 style={g.blockTitle}>{title}</h2>{children}</div>;}
+function Card({label,value,color,hint}:{label:string;value:string;color:string;hint?:string}){return <div style={g.card} title={hint}><p style={g.cardLabel}>{label}</p><p style={{...g.cardVal,color}}>{value}</p></div>;}
+function DGrid({headers,rows}:{headers:string[];rows:string[][]}){return <div style={{overflowX:'auto'}}><table style={g.tbl}><thead><tr>{headers.map((h,i)=><TH key={h} r={i>0}>{h}</TH>)}</tr></thead><tbody>{rows.map((row,ri)=><tr key={ri} style={g.tr}>{row.map((cell,ci)=><TD key={ci} r={ci>0} bold={ci>0}>{cell}</TD>)}</tr>)}</tbody></table></div>;}
+function DBlock({title,children}:{title:string;children:React.ReactNode}){return <div style={{marginBottom:20}}><p style={{fontSize:10,color:'#f59e0b',textTransform:'uppercase',letterSpacing:1,margin:'0 0 8px',fontWeight:700}}>{title}</p><div style={{background:'#0d1117',border:'1px solid #1f2937',borderRadius:8,padding:'10px 14px'}}>{children}</div></div>;}
+function DR({k,v}:{k:string;v:React.ReactNode}){return <div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #111827'}}><span style={{fontSize:11,color:'#6b7280'}}>{k}</span><span style={{fontSize:12,color:'#d1d5db',textAlign:'right',maxWidth:'65%',wordBreak:'break-all'}}>{v}</span></div>;}
+function Pill({children,active,onClick}:{children:React.ReactNode;active:boolean;onClick:()=>void}){return <button onClick={onClick} style={{border:'1px solid',borderRadius:16,padding:'3px 10px',fontSize:11,cursor:'pointer',background:active?'rgba(249,115,22,.15)':'#111827',color:active?'#f59e0b':'#6b7280',borderColor:active?'rgba(249,115,22,.4)':'#1f2937'}}>{children}</button>;}
+function Btn({children,onClick,active,danger,disabled}:{children:React.ReactNode;onClick?:()=>void;active?:boolean;danger?:boolean;disabled?:boolean}){return <button onClick={onClick} disabled={disabled} style={{border:'1px solid',borderRadius:6,padding:'7px 14px',fontSize:12,cursor:disabled?'not-allowed':'pointer',background:active?'#14532d':danger?'#450a0a':'#111827',color:active?'#4ade80':danger?'#f87171':'#d1d5db',borderColor:active?'#166534':danger?'#991b1b':'#1f2937',opacity:disabled?.5:1}}>{children}</button>;}
+const TH=({children,r}:{children?:React.ReactNode;r?:boolean})=><th style={{padding:'9px 12px',fontWeight:600,fontSize:11,textTransform:'uppercase',letterSpacing:.8,borderBottom:'1px solid #1f2937',color:'#4b5563',textAlign:r?'right':'left',whiteSpace:'nowrap'}}>{children}</th>;
+const TD=({children,r,bold,style}:{children?:React.ReactNode;r?:boolean;bold?:boolean;style?:React.CSSProperties})=><td style={{padding:'9px 12px',color:'#9ca3af',verticalAlign:'middle',textAlign:r?'right':'left',fontWeight:bold?600:400,...style}}>{children}</td>;
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const s:Record<string,React.CSSProperties>={
+const g:Record<string,React.CSSProperties>={
   page:       {minHeight:'100vh',background:'#070a0f',color:'#fff',fontFamily:'system-ui,sans-serif',padding:'20px 16px'},
   wrap:       {maxWidth:1440,margin:'0 auto'},
   center:     {minHeight:'100vh',background:'#070a0f',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12},
   ebox:       {background:'#0d1117',border:'1px solid #1f2937',borderRadius:12,padding:32,textAlign:'center'},
-  hdr:        {display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,flexWrap:'wrap',gap:12},
+  hdr:        {display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14,flexWrap:'wrap',gap:12},
   title:      {fontSize:22,fontWeight:800,margin:0,color:'#f3f4f6',letterSpacing:'-.01em'},
   sub:        {fontSize:12,color:'#374151',margin:'4px 0 0'},
   inp:        {background:'#0d1117',border:'1px solid #1f2937',borderRadius:6,color:'#d1d5db',padding:'7px 12px',fontSize:12},
-  tabBar:     {display:'flex',gap:4,borderBottom:'1px solid #1f2937',marginBottom:20},
-  tabBtn:     {background:'none',border:'none',color:'#6b7280',padding:'10px 18px',fontSize:13,cursor:'pointer',borderBottom:'2px solid transparent',display:'flex',alignItems:'center',gap:6},
+  tabBar:     {display:'flex',gap:2,borderBottom:'1px solid #1f2937',marginBottom:18},
+  tabBtn:     {background:'none',border:'none',borderBottom:'2px solid transparent',color:'#6b7280',padding:'10px 18px',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6},
   tabActive:  {color:'#f59e0b',borderBottom:'2px solid #f59e0b'},
   badge:      {background:'#1f2937',color:'#9ca3af',borderRadius:10,padding:'1px 7px',fontSize:11,fontWeight:700},
-  grid6:      {display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:18},
+  grid6:      {display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:16},
   card:       {background:'#0d1117',border:'1px solid #1f2937',borderRadius:10,padding:'14px 18px'},
   cardLabel:  {fontSize:11,color:'#374151',margin:'0 0 6px',textTransform:'uppercase',letterSpacing:.9},
   cardVal:    {fontSize:26,fontWeight:800,margin:0},
-  block:      {background:'#0d1117',border:'1px solid #1f2937',borderRadius:12,padding:'18px 20px',marginBottom:16},
+  block:      {background:'#0d1117',border:'1px solid #1f2937',borderRadius:12,padding:'18px 20px',marginBottom:14},
   blockTitle: {fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:1,margin:'0 0 14px'},
   tbl:        {width:'100%',borderCollapse:'collapse',fontSize:13},
   tr:         {borderBottom:'1px solid #111827',transition:'background .1s'},
-  barBg:      {height:5,background:'#1f2937',borderRadius:3,overflow:'hidden',minWidth:60},
-  barFill:    {height:'100%',background:'#f59e0b',borderRadius:3,transition:'width .5s'},
-  miniCard:   {background:'#111827',border:'1px solid #1f2937',borderRadius:8,padding:'12px 16px'},
-  miniLabel:  {fontSize:11,color:'#374151',margin:'0 0 4px',textTransform:'uppercase',letterSpacing:.8},
-  miniVal:    {fontSize:22,fontWeight:800,margin:0},
-  filterBtn:  {background:'#0d1117',border:'1px solid #1f2937',borderRadius:16,padding:'4px 12px',fontSize:11,cursor:'pointer',color:'#6b7280'},
-  filterActive:{background:'#1f2937',color:'#f3f4f6',border:'1px solid #374151'},
   clickBadge: {display:'inline-block',padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:600},
-  linkBtn:    {background:'none',border:'none',color:'#f59e0b',cursor:'pointer',fontSize:13,padding:0,textDecoration:'underline'},
+  linkBtn:    {background:'none',border:'none',color:'#f59e0b',cursor:'pointer',fontSize:13,padding:'8px 0 0',display:'block'},
   overlay:    {position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:999,display:'flex',justifyContent:'flex-end'},
-  drawer:     {background:'#0d1117',borderLeft:'1px solid #1f2937',width:'100%',maxWidth:500,height:'100vh',display:'flex',flexDirection:'column',zIndex:1000},
+  drawer:     {background:'#0d1117',borderLeft:'1px solid #1f2937',width:'100%',maxWidth:500,height:'100vh',display:'flex',flexDirection:'column'},
   drawerHdr:  {display:'flex',justifyContent:'space-between',alignItems:'center',padding:'18px 22px',borderBottom:'1px solid #1f2937'},
   drawerTitle:{margin:0,fontSize:16,fontWeight:700,color:'#f59e0b'},
-  debugBar:   {background:'#0d1117',border:'1px solid #1f2937',borderRadius:8,padding:'10px 16px',marginBottom:24,fontSize:11,color:'#374151',display:'flex',gap:20,flexWrap:'wrap'},
+  debugBar:   {background:'#070a0f',border:'1px solid #111827',borderRadius:8,padding:'8px 16px',marginBottom:24,fontSize:11,color:'#374151',display:'flex',gap:20,flexWrap:'wrap'},
 };

@@ -248,6 +248,60 @@ export async function GET(request: NextRequest) {
     })).sort((a, b) => b.sessions - a.sessions);
 
   // ── 12. Response ────────────────────────────────────────────────────────
+  // Extra analytics
+  const heroCount2 = secCounts['hero'] || 1;
+
+  // funnelVisual — proportional widths
+  let dropAccum = 0;
+  const funnelVisual = SECTION_ORDER.map((s, i) => {
+    const reached   = secCounts[s.id] || 0;
+    const prevCount = i > 0 ? (secCounts[SECTION_ORDER[i - 1].id] || reached) : reached;
+    const pctTop    = heroCount2 > 0 ? Math.round((reached / heroCount2) * 100) : 0;
+    const drop      = prevCount > 0 ? Math.round(((prevCount - reached) / prevCount) * 100) : 0;
+    dropAccum       = heroCount2 > 0 ? Math.round(((heroCount2 - reached) / heroCount2) * 100) : 0;
+    return { sectionId: s.id, sectionTitle: s.title, sectionOrder: s.order, reached, percentOfTop: pctTop, dropFromPrevious: drop, dropAccumulated: dropAccum };
+  });
+
+  // topBottlenecks — sorted by dropPercent
+  const topBottlenecks = funnelVisual
+    .filter((_, i) => i > 0)
+    .map((s, i) => ({ fromSection: funnelVisual[i].sectionTitle, toSection: s.sectionTitle, dropUsers: (secCounts[SECTION_ORDER[i].id] || 0) - s.reached, dropPercent: s.dropFromPrevious }))
+    .filter(b => b.dropPercent > 0)
+    .sort((a, b) => b.dropPercent - a.dropPercent)
+    .slice(0, 5);
+
+  // stopPoints — where max_section_title ends for most users
+  const stopCounts: Record<string, number> = {};
+  allSessionsToday.forEach(s => {
+    const t = s.max_section_title;
+    if (t) stopCounts[t] = (stopCounts[t] || 0) + 1;
+  });
+  const stopPoints = Object.entries(stopCounts)
+    .map(([sectionTitle, usersStopped]) => ({ sectionTitle, usersStopped }))
+    .sort((a, b) => b.usersStopped - a.usersStopped);
+
+  // sectionDiagnostics — per section, top campaign and creative
+  const secCampaign: Record<string, Record<string, number>> = {};
+  const secCreative: Record<string, Record<string, number>> = {};
+  filteredSessions.forEach(s => {
+    const maxTitle = s.max_section_title;
+    if (!maxTitle) return;
+    const camp = s.utm_campaign || 'direct';
+    const cont = s.utm_content  || 'none';
+    if (!secCampaign[maxTitle]) secCampaign[maxTitle] = {};
+    if (!secCreative[maxTitle]) secCreative[maxTitle] = {};
+    secCampaign[maxTitle][camp] = (secCampaign[maxTitle][camp] || 0) + 1;
+    secCreative[maxTitle][cont] = (secCreative[maxTitle][cont] || 0) + 1;
+  });
+
+  const sectionDiagnostics = funnelVisual.map(f => {
+    const campMap = secCampaign[f.sectionTitle] || {};
+    const contMap = secCreative[f.sectionTitle] || {};
+    const topCampaign = Object.entries(campMap).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const topCreative = Object.entries(contMap).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    return { ...f, topCampaign, topCreative };
+  });
+
   return NextResponse.json({
     date, window: win,
     activeNow:          activeNow  || 0,
@@ -259,14 +313,19 @@ export async function GET(request: NextRequest) {
     campaigns: toArr(campaignMap, 'utmCampaign'),
     adsets:    toArr(adsetMap,    'adsetId'),
     creatives: toArr(contentMap,  'utmContent'),
-    sessions,                                  // ALWAYS all sessions today
+    sessions,
     showingMax: allSessionsToday.length >= 100,
+    // Analytics
+    funnelVisual,
+    topBottlenecks,
+    stopPoints,
+    sectionDiagnostics,
     debug: {
       date, window: win,
       allSessionsTodayCount: allSessionsToday.length,
       filteredSessionsCount: filteredSessions.length,
       returnedSessionsCount: sessions.length,
-      sessQueryError:        sessionsError?.message || null,
+      sessQueryError: sessionsError?.message || null,
     },
     updatedAt: new Date().toISOString(),
   });
