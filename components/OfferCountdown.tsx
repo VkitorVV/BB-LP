@@ -14,11 +14,12 @@ export default function OfferCountdown() {
     setIsClient(true);
 
     // Pegar ou criar o tempo de término
+    // Se já existe mas está zerado/expirado, resetar para nova visita
     let endTime = localStorage.getItem(STORAGE_KEY);
-    
-    if (!endTime) {
-      // Primeira visita - definir tempo de término
-      const now = Date.now();
+    const now = Date.now();
+
+    if (!endTime || parseInt(endTime, 10) <= now) {
+      // Primeira visita OU contador já zerou — reiniciar
       endTime = String(now + COUNTDOWN_DURATION);
       localStorage.setItem(STORAGE_KEY, endTime);
     }
