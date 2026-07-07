@@ -53,7 +53,10 @@ interface SessionDetail {
 const fmt     = (n?: number | null) => (n ?? 0).toLocaleString('pt-BR');
 const fmtBRL  = (n?: number | null) => (n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtTime = (iso?: string | null) => iso ? new Date(iso).toLocaleTimeString('pt-BR') : '—';
-const todayStr = () => new Date().toISOString().split('T')[0];
+const todayStr = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
 const pctColor = (p: number) => p >= 70 ? '#22c55e' : p >= 40 ? '#f59e0b' : '#ef4444';
 
 const STATUS_COLOR: Record<SessionStatus, string> = {
