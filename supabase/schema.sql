@@ -95,3 +95,20 @@ CREATE INDEX IF NOT EXISTS idx_funnel_sessions_page_status ON funnel_sessions(pa
 CREATE INDEX IF NOT EXISTS idx_funnel_section_events_date  ON funnel_section_events(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_click_events_date    ON funnel_click_events(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_purchases_date       ON funnel_purchases(date);
+
+-- ── Migração: CTA tracking ───────────────────────────────────────────────────
+ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS reach_method         TEXT DEFAULT 'scroll';
+ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS source_cta_label     TEXT;
+ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS source_section_id    TEXT;
+ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS source_section_title TEXT;
+ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS source_section_order INT;
+
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS click_kind             TEXT DEFAULT 'checkout';
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS cta_label              TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS source_section_id      TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS source_section_title   TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS source_section_order   INT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS target_section_id      TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS target_section_title   TEXT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS target_section_order   INT;
+ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS is_internal_jump       BOOLEAN DEFAULT FALSE;

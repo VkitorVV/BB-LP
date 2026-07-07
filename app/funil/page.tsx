@@ -34,6 +34,9 @@ interface DashData {
   topBottlenecks:Bottleneck[];
   stopPoints:StopPoint[];
   sectionDiagnostics:FunnelStep[];
+  includeCta:boolean;
+  ctaJumpCounts:Record<string,number>;
+  internalCtaClicks:{label:string;clicks:number}[];
   debug?:{allSessionsTodayCount:number;filteredSessionsCount:number;returnedSessionsCount:number;sessQueryError?:string|null};
   updatedAt:string;
 }
@@ -80,6 +83,7 @@ export default function FunilPage() {
   const [detL,setDetL]=useState(false);
   const [funnelFilter,setFunnelFilter]=useState<{type:'campaign'|'creative'|'adset';value:string}|null>(null);
   const [selectedStep,setSelectedStep]=useState<string|null>(null);
+  const [includeCta,setIncludeCta]=useState(false);
   const [userFilter,setUserFilter]=useState<UserFilter>('todos');
   const [userSearch,setUserSearch]=useState('');
   const [stopFilter,setStopFilter]=useState<string|null>(null);
@@ -94,7 +98,7 @@ export default function FunilPage() {
   const load=useCallback(async(tok:string,d:string,w:string)=>{
     if(!tok)return;setLoading(true);
     try{
-      const r=await fetch(`/api/funnel-dashboard?token=${encodeURIComponent(tok)}&date=${d}&window=${w}`);
+      const r=await fetch(`/api/funnel-dashboard?token=${encodeURIComponent(tok)}&date=${d}&window=${w}&includeCta=${includeCta?'1':'0'}`);
       if(r.status===401){setErr('Acesso negado.');setData(null);return;}
       if(!r.ok){const j=await r.json().catch(()=>({}))as{error?:string};setErr(`Erro ${r.status}${j.error?': '+j.error:''}`);return;}
       setData(await r.json() as DashData);setErr('');setLu(new Date().toLocaleTimeString('pt-BR'));
@@ -102,7 +106,7 @@ export default function FunilPage() {
   },[]);
 
   useEffect(()=>{if(token)load(token,date,win);},[token]);     // eslint-disable-line
-  useEffect(()=>{if(token)load(token,date,win);},[date,win]);  // eslint-disable-line
+  useEffect(()=>{if(token)load(token,date,win);},[date,win,includeCta]);  // eslint-disable-line
   useEffect(()=>{
     if(ivRef.current)clearInterval(ivRef.current);
     if(auto&&token)ivRef.current=setInterval(()=>load(token,date,win),60_000);
@@ -205,12 +209,20 @@ export default function FunilPage() {
 
           {/* ── Funil Visual ── */}
           <Block title="Funil Visual">
-            {/* Origin filter pills */}
-            <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
-              <span style={{fontSize:11,color:'#6b7280',marginRight:4}}>Filtrar por:</span>
-              <Pill active={!funnelFilter} onClick={()=>setFunnelFilter(null)}>Geral</Pill>
-              {data.campaigns.slice(0,4).map(c=><Pill key={c.utmCampaign} active={funnelFilter?.value===c.utmCampaign} onClick={()=>setFunnelFilter(f=>f?.value===c.utmCampaign?null:{type:'campaign',value:c.utmCampaign})}>📢 {c.utmCampaign}</Pill>)}
-              {data.creatives.slice(0,4).map(c=><Pill key={c.utmContent} active={funnelFilter?.value===c.utmContent} onClick={()=>setFunnelFilter(f=>f?.value===c.utmContent?null:{type:'creative',value:c.utmContent})}>🎨 {c.utmContent}</Pill>)}
+            {/* Controls row */}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
+                <span style={{fontSize:11,color:'#6b7280',marginRight:2}}>Filtrar:</span>
+                <Pill active={!funnelFilter} onClick={()=>setFunnelFilter(null)}>Geral</Pill>
+                {data.campaigns.slice(0,3).map(c=><Pill key={c.utmCampaign} active={funnelFilter?.value===c.utmCampaign} onClick={()=>setFunnelFilter(f=>f?.value===c.utmCampaign?null:{type:'campaign',value:c.utmCampaign})}>📢 {c.utmCampaign}</Pill>)}
+                {data.creatives.slice(0,3).map(c=><Pill key={c.utmContent} active={funnelFilter?.value===c.utmContent} onClick={()=>setFunnelFilter(f=>f?.value===c.utmContent?null:{type:'creative',value:c.utmContent})}>🎨 {c.utmContent}</Pill>)}
+              </div>
+              <button onClick={()=>setIncludeCta(p=>!p)} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'1px solid #1f2937',borderRadius:16,padding:'4px 12px',cursor:'pointer',fontSize:11,color:includeCta?'#f59e0b':'#6b7280'}}>
+                <span style={{width:26,height:14,borderRadius:7,background:includeCta?'#f59e0b':'#374151',display:'inline-block',position:'relative',flexShrink:0}}>
+                  <span style={{position:'absolute',top:2,width:10,height:10,borderRadius:'50%',background:'#fff',transition:'left .2s',left:includeCta?'14px':'2px'}}/>
+                </span>
+                {includeCta?'Scroll + CTA jump':'Scroll real apenas'}
+              </button>
             </div>
 
             <div style={{overflowX:'auto'}}>
@@ -241,6 +253,11 @@ export default function FunilPage() {
                     <div style={{width:46,textAlign:'right',fontSize:11,flexShrink:0,color:step.dropFromPrevious>0?dropCol(step.dropFromPrevious):'#374151'}}>
                       {i>0&&step.dropFromPrevious>0?<span>-{step.dropFromPrevious}%</span>:'—'}
                     </div>
+                    {!includeCta&&(data.ctaJumpCounts[step.sectionId]||0)>0&&(
+                      <div style={{width:60,textAlign:'right',fontSize:10,color:'#f59e0b',flexShrink:0}} title="Chegaram via CTA jump">
+                        ↗ {data.ctaJumpCounts[step.sectionId]}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -248,9 +265,25 @@ export default function FunilPage() {
             <p style={{fontSize:11,color:'#374151',marginTop:8}}>Clique em uma etapa para filtrar usuários que pararam ali.</p>
           </Block>
 
+          {/* ── CTA Interno + Gargalos ── */}
+          {data.internalCtaClicks&&data.internalCtaClicks.length>0&&<Block title="Cliques em CTA Interno">
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginBottom:8}}>
+              {data.internalCtaClicks.map((c,i)=>(
+                <div key={i} style={{background:'#111827',border:'1px solid #1f2937',borderRadius:10,padding:'12px 16px'}}>
+                  <p style={{fontSize:11,color:'#6b7280',margin:'0 0 4px',textTransform:'uppercase',letterSpacing:.8}}>{c.label}</p>
+                  <p style={{fontSize:22,fontWeight:800,color:'#f59e0b',margin:0}}>{fmt(c.clicks)}</p>
+                  <p style={{fontSize:10,color:'#374151',margin:'4px 0 0'}}>→ 11 - Oferta (salto)</p>
+                </div>
+              ))}
+            </div>
+            <p style={{fontSize:11,color:'#374151',margin:0}}>
+              Esses cliques saltam para a oferta sem passar pelas seções intermediárias.
+              {!includeCta&&' O funil acima mostra apenas scroll real.'}
+            </p>
+          </Block>}
+
           {/* ── Gargalos ── */}
-          {data.topBottlenecks.length>0&&<Block title="Gargalos Principais">
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
+          {data.topBottlenecks.length>0&&<Block title="Gargalos Principais">            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
               {data.topBottlenecks.slice(0,4).map((b,i)=>(
                 <div key={i} style={{background:'#111827',border:`1px solid ${b.dropPercent>40?'rgba(239,68,68,.3)':'rgba(245,158,11,.2)'}`,borderRadius:10,padding:'12px 16px'}}>
                   <div style={{fontSize:10,color:'#6b7280',marginBottom:6,textTransform:'uppercase',letterSpacing:.8}}>

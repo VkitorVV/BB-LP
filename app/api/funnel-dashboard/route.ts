@@ -173,16 +173,28 @@ export async function GET(request: NextRequest) {
       .gte('last_seen', now30m),
   ]);
 
-  // ── 8. Funnel sections (filtered sessions) ──────────────────────────────
+  // ── 8. Funnel sections (with toggle: scroll only vs all) ────────────────
+  const includeCta = searchParams.get('includeCta') === '1';
   const filteredIds = filteredSessions.map(s => s.session_id);
-  let secQ = supabaseAdmin.from('funnel_section_events').select('section_id').eq('date', date);
+
+  let secQ = supabaseAdmin
+    .from('funnel_section_events')
+    .select('section_id, reach_method')
+    .eq('date', date);
   if (filteredIds.length > 0) secQ = secQ.in('session_id', filteredIds);
   const { data: secData } = filteredIds.length > 0 ? await secQ : { data: [] };
 
-  const secCounts: Record<string, number> = {};
-  (secData || []).forEach((r: { section_id: string }) => {
-    secCounts[r.section_id] = (secCounts[r.section_id] || 0) + 1;
+  // Count scroll-only and all (scroll + cta_jump)
+  const secCountsScroll: Record<string, number> = {};
+  const secCountsAll:    Record<string, number> = {};
+  (secData || []).forEach((r: { section_id: string; reach_method?: string }) => {
+    secCountsAll[r.section_id] = (secCountsAll[r.section_id] || 0) + 1;
+    if (!r.reach_method || r.reach_method === 'scroll') {
+      secCountsScroll[r.section_id] = (secCountsScroll[r.section_id] || 0) + 1;
+    }
   });
+
+  const secCounts = includeCta ? secCountsAll : secCountsScroll;
   const heroCount = secCounts['hero'] || 1;
   const sections  = SECTION_ORDER.map((s, i) => {
     const reached = secCounts[s.id] || 0;
@@ -194,16 +206,34 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  // ── 9. Checkout clicks (filtered sessions) ──────────────────────────────
+  // CTA jump counts per section (for info card)
+  const ctaJumpCounts: Record<string, number> = {};
+  (secData || []).forEach((r: { section_id: string; reach_method?: string }) => {
+    if (r.reach_method === 'cta_jump') {
+      ctaJumpCounts[r.section_id] = (ctaJumpCounts[r.section_id] || 0) + 1;
+    }
+  });
+
+  // ── 9. Checkout clicks + internal CTA clicks ────────────────────────────
   const checkoutClicks: Record<string, number> = {
     plano_basico_popup_open: 0, plano_basico: 0, kit_completo: 0, kit_desconto_popup: 0,
   };
+  const internalCtaClicks: Record<string, number> = {};
+
   if (filteredIds.length > 0) {
-    let cq = supabaseAdmin.from('funnel_click_events').select('checkout_type').eq('date', date);
-    cq = cq.in('session_id', filteredIds);
+    let cq = supabaseAdmin
+      .from('funnel_click_events')
+      .select('checkout_type, click_kind, cta_label')
+      .eq('date', date)
+      .in('session_id', filteredIds);
     const { data: cData } = await cq;
-    (cData || []).forEach((r: { checkout_type: string }) => {
-      if (r.checkout_type in checkoutClicks) checkoutClicks[r.checkout_type]++;
+    (cData || []).forEach((r: { checkout_type: string; click_kind?: string; cta_label?: string }) => {
+      if (r.click_kind === 'internal_cta') {
+        const label = r.cta_label || 'CTA desconhecido';
+        internalCtaClicks[label] = (internalCtaClicks[label] || 0) + 1;
+      } else {
+        if (r.checkout_type in checkoutClicks) checkoutClicks[r.checkout_type]++;
+      }
     });
   }
 
@@ -249,13 +279,13 @@ export async function GET(request: NextRequest) {
 
   // ── 12. Response ────────────────────────────────────────────────────────
   // Extra analytics
-  const heroCount2 = secCounts['hero'] || 1;
+  const heroCount2 = secCountsAll['hero'] || 1;
 
   // funnelVisual — proportional widths
   let dropAccum = 0;
   const funnelVisual = SECTION_ORDER.map((s, i) => {
-    const reached   = secCounts[s.id] || 0;
-    const prevCount = i > 0 ? (secCounts[SECTION_ORDER[i - 1].id] || reached) : reached;
+    const reached   = secCountsAll[s.id] || 0;
+    const prevCount = i > 0 ? (secCountsAll[SECTION_ORDER[i - 1].id] || reached) : reached;
     const pctTop    = heroCount2 > 0 ? Math.round((reached / heroCount2) * 100) : 0;
     const drop      = prevCount > 0 ? Math.round(((prevCount - reached) / prevCount) * 100) : 0;
     dropAccum       = heroCount2 > 0 ? Math.round(((heroCount2 - reached) / heroCount2) * 100) : 0;
@@ -315,6 +345,11 @@ export async function GET(request: NextRequest) {
     creatives: toArr(contentMap,  'utmContent'),
     sessions,
     showingMax: allSessionsToday.length >= 100,
+    includeCta,
+    ctaJumpCounts,
+    internalCtaClicks: Object.entries(internalCtaClicks)
+      .map(([label, clicks]) => ({ label, clicks }))
+      .sort((a, b) => b.clicks - a.clicks),
     // Analytics
     funnelVisual,
     topBottlenecks,

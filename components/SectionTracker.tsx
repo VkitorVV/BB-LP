@@ -5,6 +5,16 @@ import { useEffect } from 'react';
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
+    __internalCtaJump?: {
+      active: boolean;
+      targetSectionId: string;
+      targetSectionOrder: number;
+      sourceSectionId: string;
+      sourceSectionTitle: string;
+      sourceSectionOrder: number;
+      ctaLabel: string;
+      startedAt: number;
+    } | null;
   }
 }
 
@@ -25,12 +35,8 @@ const sections = [
   { id: 'rodape',              title: '14 - Rodape',              order: 14 },
 ];
 
-// GA4 deduplication — per session (sessionStorage)
-const GA4_PREFIX = 'ga4_fired_';
-// Panel deduplication — per PAGE LOAD only (in-memory set, resets on refresh)
-// This ensures the panel always gets events on each page load, even if GA4 already fired
+const GA4_PREFIX   = 'ga4_fired_';
 const panelFiredThisLoad = new Set<string>();
-
 const SESSION_ID_KEY = 'mapa_degrade_session_id';
 
 function getSessionId(): string {
@@ -55,68 +61,86 @@ function getUtmParams() {
   };
 }
 
-// ── GA4 event (deduplicated per session via sessionStorage) ─────────────────
+// ── GA4 event (sessionStorage dedup) ─────────────────────────────────────────
 function fireGA4(id: string, title: string, order: number) {
   if (!title || !id) return;
   if (sessionStorage.getItem(GA4_PREFIX + id)) return;
   if (typeof window.gtag !== 'function') return;
-
   try {
     sessionStorage.setItem(GA4_PREFIX + id, '1');
     window.gtag('event', 'section_reached', {
-      section_title:  title,
-      section_id:     id,
-      section_order:  order,
-      transport_type: 'beacon',
+      section_title: title, section_id: id, section_order: order, transport_type: 'beacon',
     });
     window.gtag('event', 'page_view', {
-      page_title:    title,
+      page_title: title,
       page_location: window.location.origin + window.location.pathname + '#' + id,
       page_path:     window.location.pathname + '#' + id,
       transport_type: 'beacon',
     });
-  } catch { /* silently ignore */ }
+  } catch { /* ignore */ }
 }
 
-// ── Panel event (deduplicated per PAGE LOAD via in-memory set) ─────────────
-// Resets on every refresh — so panel always gets fresh data on each page load
-function firePanel(sessionId: string, id: string, title: string, order: number) {
+// ── Panel event (page-load dedup) ─────────────────────────────────────────────
+function firePanel(sessionId: string, id: string, title: string, order: number, reachMethod = 'scroll', ctaInfo?: typeof window.__internalCtaJump) {
   if (!title || !id) return;
-  if (panelFiredThisLoad.has(id)) return; // already sent this session+load
+  if (panelFiredThisLoad.has(id)) return;
   panelFiredThisLoad.add(id);
-
   try {
     fetch('/api/track-section', {
-      method:    'POST',
-      headers:   { 'Content-Type': 'application/json' },
-      keepalive: true,
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
       body: JSON.stringify({
-        sessionId,
-        sectionId:    id,
-        sectionTitle: title,
-        sectionOrder: order,
-        timestamp:    new Date().toISOString(),
+        sessionId, sectionId: id, sectionTitle: title, sectionOrder: order,
+        reachMethod,
+        sourceCtaLabel:     ctaInfo?.ctaLabel        || undefined,
+        sourceSectionId:    ctaInfo?.sourceSectionId || undefined,
+        sourceSectionTitle: ctaInfo?.sourceSectionTitle || undefined,
+        sourceSectionOrder: ctaInfo?.sourceSectionOrder || undefined,
+        timestamp: new Date().toISOString(),
         ...getUtmParams(),
       }),
-    }).catch(() => { /* silently ignore */ });
-  } catch { /* silently ignore */ }
+    }).catch(() => {});
+  } catch { /* ignore */ }
 }
 
 export default function SectionTracker() {
   useEffect(() => {
     const sessionId = getSessionId();
     let rafId: number | null = null;
+    // Timeout to auto-clear stuck CTA jump flag
+    let jumpTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const checkSections = () => {
       const triggerLine = window.scrollY + window.innerHeight * 0.75;
+      const jump = window.__internalCtaJump;
+      const isJumping = jump?.active && (Date.now() - (jump?.startedAt || 0)) < 2500;
+
       sections.forEach(({ id, title, order }) => {
         const el = document.getElementById(id);
         if (!el) return;
         const top = el.getBoundingClientRect().top + window.scrollY;
         if (top > triggerLine) return;
-        // GA4 and panel are independent — one doesn't block the other
-        fireGA4(id, title, order);
-        firePanel(sessionId, id, title, order);
+
+        // During a CTA jump: skip intermediate sections, only mark target
+        if (isJumping && jump) {
+          if (id === jump.targetSectionId) {
+            // Mark target as cta_jump
+            fireGA4(id, title, order);
+            firePanel(sessionId, id, title, order, 'cta_jump', jump);
+            window.__internalCtaJump = null; // clear flag
+            if (jumpTimeout) clearTimeout(jumpTimeout);
+          } else if (order > jump.sourceSectionOrder && order < jump.targetSectionOrder) {
+            // Skip intermediate sections — do not mark
+            return;
+          } else {
+            // Sections before source — mark as scroll
+            fireGA4(id, title, order);
+            firePanel(sessionId, id, title, order, 'scroll');
+          }
+        } else {
+          // Normal scroll
+          fireGA4(id, title, order);
+          firePanel(sessionId, id, title, order, 'scroll');
+        }
       });
     };
 
@@ -125,7 +149,7 @@ export default function SectionTracker() {
       rafId = requestAnimationFrame(() => { checkSections(); rafId = null; });
     };
 
-    // Initial check — panel sends immediately (no gtag dependency)
+    // Initial check — panel fires immediately
     checkSections();
 
     // GA4 retry after gtag loads
@@ -135,10 +159,20 @@ export default function SectionTracker() {
     };
     tryGA4();
 
+    // Auto-clear stale jump flag after 2500ms
+    const jumpGuard = setInterval(() => {
+      const j = window.__internalCtaJump;
+      if (j?.active && Date.now() - (j?.startedAt || 0) > 2500) {
+        window.__internalCtaJump = null;
+      }
+    }, 500);
+
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
       if (rafId !== null) cancelAnimationFrame(rafId);
+      if (jumpTimeout) clearTimeout(jumpTimeout);
+      clearInterval(jumpGuard);
     };
   }, []);
 

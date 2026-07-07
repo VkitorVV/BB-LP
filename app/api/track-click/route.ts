@@ -10,9 +10,11 @@ export async function POST(request: NextRequest) {
   const {
     sessionId, checkoutType, checkoutLabel, checkoutPrice, buttonLocation,
     targetUrl, currentSectionTitle, currentSectionOrder,
+    clickKind, ctaLabel, sourceSectionId, sourceSectionTitle, sourceSectionOrder,
+    targetSectionId, targetSectionTitle, targetSectionOrder, isInternalJump,
     utmSource, utmMedium, utmCampaign, utmContent, utmTerm,
     campaignId, adsetId, adId,
-  } = body as Record<string, string | number | undefined>;
+  } = body as Record<string, string | number | boolean | undefined>;
 
   if (!sessionId || !checkoutType) {
     return NextResponse.json({ ok: false }, { status: 400 });
@@ -66,13 +68,22 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.from('funnel_click_events').insert({
         session_id:            sessionId,
         date:                  today,
-        checkout_type:         checkoutType,
+        checkout_type:         (checkoutType as string | undefined) || 'internal_cta',
         checkout_label:        checkoutLabel   || null,
         checkout_price:        priceNum,
         button_location:       buttonLocation  || null,
         target_url:            targetUrl       || null,
         current_section_title: currentSectionTitle || null,
         current_section_order: currentSectionOrder ? Number(currentSectionOrder) : null,
+        click_kind:            (clickKind as string | undefined) || 'checkout',
+        cta_label:             ctaLabel        || null,
+        source_section_id:     sourceSectionId || null,
+        source_section_title:  sourceSectionTitle || null,
+        source_section_order:  sourceSectionOrder ? Number(sourceSectionOrder) : null,
+        target_section_id:     targetSectionId || null,
+        target_section_title:  targetSectionTitle || null,
+        target_section_order:  targetSectionOrder ? Number(targetSectionOrder) : null,
+        is_internal_jump:      Boolean(isInternalJump),
         utm_source:            utmSource       || null,
         utm_medium:            utmMedium       || null,
         utm_campaign:          utmCampaign     || null,

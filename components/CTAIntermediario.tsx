@@ -1,9 +1,32 @@
 'use client';
 
 import React from 'react';
+import { trackInternalCta } from '@/lib/trackInternalCta';
+
+const SESSION_ID_KEY = 'mapa_degrade_session_id';
+function getSessionId() {
+  if (typeof window === 'undefined') return '';
+  let id = sessionStorage.getItem(SESSION_ID_KEY);
+  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(SESSION_ID_KEY, id); }
+  return id;
+}
+function getUtms() {
+  if (typeof window === 'undefined') return {};
+  const p = new URLSearchParams(window.location.search);
+  return { utmSource: p.get('utm_source')||undefined, utmCampaign: p.get('utm_campaign')||undefined, utmContent: p.get('utm_content')||undefined };
+}
 
 export default function CTAIntermediario() {
   const handleScrollToOffer = () => {
+    trackInternalCta({
+      ctaLabel: 'CTA Intermediário',
+      buttonLocation: 'cta-intermediario',
+      sourceSectionId: 'cta-intermediario',
+      sourceSectionTitle: '05 - CTA intermediario',
+      sourceSectionOrder: 5,
+      sessionId: getSessionId(),
+      utms: getUtms(),
+    });
     document.getElementById('oferta')?.scrollIntoView({ behavior: 'smooth' });
   };
 

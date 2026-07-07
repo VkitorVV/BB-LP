@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Mail, X, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { trackInternalCta } from '@/lib/trackInternalCta';
 
 type ModalType = 'termos' | 'privacidade' | 'reembolso' | null;
 
@@ -10,6 +11,15 @@ export default function Rodape() {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
 
   const handleScrollToOffer = () => {
+    trackInternalCta({
+      ctaLabel: 'CTA Rodapé',
+      buttonLocation: 'rodape',
+      sourceSectionId: 'rodape',
+      sourceSectionTitle: '14 - Rodape',
+      sourceSectionOrder: 14,
+      sessionId: typeof window !== 'undefined' ? (sessionStorage.getItem('mapa_degrade_session_id') || '') : '',
+      utms: typeof window !== 'undefined' ? { utmSource: new URLSearchParams(window.location.search).get('utm_source')||undefined, utmCampaign: new URLSearchParams(window.location.search).get('utm_campaign')||undefined } : {},
+    });
     document.getElementById('oferta')?.scrollIntoView({ behavior: 'smooth' });
   };
 

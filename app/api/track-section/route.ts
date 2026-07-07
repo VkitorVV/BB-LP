@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
     sessionId, sectionId, sectionTitle, sectionOrder,
     utmSource, utmMedium, utmCampaign, utmContent, utmTerm,
     campaignId, adsetId, adId, placement, siteSourceName,
+    reachMethod, sourceCtaLabel, sourceSectionId, sourceSectionTitle, sourceSectionOrder,
   } = body as Record<string, string | number | undefined>;
 
   if (!sessionId || !sectionId || !sectionTitle) {
@@ -68,11 +69,16 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin
       .from('funnel_section_events')
       .upsert({
-        session_id:    sessionId,
-        date:          today,
-        section_id:    sectionId as string,
-        section_title: sectionTitle as string,
-        section_order: order,
+        session_id:           sessionId,
+        date:                 today,
+        section_id:           sectionId as string,
+        section_title:        sectionTitle as string,
+        section_order:        order,
+        reach_method:         (reachMethod as string | undefined) || 'scroll',
+        source_cta_label:     (sourceCtaLabel as string | undefined) || null,
+        source_section_id:    (sourceSectionId as string | undefined) || null,
+        source_section_title: (sourceSectionTitle as string | undefined) || null,
+        source_section_order: sourceSectionOrder ? Number(sourceSectionOrder) : null,
       }, { onConflict: 'session_id,date,section_id' });
 
   } catch (err) {

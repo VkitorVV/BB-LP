@@ -4,9 +4,36 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import Image from 'next/image';
+import { trackInternalCta } from '@/lib/trackInternalCta';
+
+const SESSION_ID_KEY = 'mapa_degrade_session_id';
+function getSessionId() {
+  if (typeof window === 'undefined') return '';
+  let id = sessionStorage.getItem(SESSION_ID_KEY);
+  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(SESSION_ID_KEY, id); }
+  return id;
+}
+function getUtms() {
+  if (typeof window === 'undefined') return {};
+  const p = new URLSearchParams(window.location.search);
+  return {
+    utmSource: p.get('utm_source') || undefined, utmMedium: p.get('utm_medium') || undefined,
+    utmCampaign: p.get('utm_campaign') || undefined, utmContent: p.get('utm_content') || undefined,
+    utmTerm: p.get('utm_term') || undefined,
+  };
+}
 
 export default function Hero() {
   const handleScrollToOffer = () => {
+    trackInternalCta({
+      ctaLabel: 'CTA Hero',
+      buttonLocation: 'hero',
+      sourceSectionId: 'hero',
+      sourceSectionTitle: '01 - Hero',
+      sourceSectionOrder: 1,
+      sessionId: getSessionId(),
+      utms: getUtms(),
+    });
     document.getElementById('oferta')?.scrollIntoView({ behavior: 'smooth' });
   };
 
