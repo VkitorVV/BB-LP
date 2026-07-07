@@ -25,73 +25,67 @@ const sections = [
   { id: 'rodape',              title: '14 - Rodape',              order: 14 },
 ];
 
-// Prefixos separados para GA4 e painel próprio
-// Assim um não bloqueia o outro caso um falhe
-const GA4_PREFIX    = 'ga4_fired_';
-const PANEL_PREFIX  = 'panel_fired_';
+// GA4 deduplication — per session (sessionStorage)
+const GA4_PREFIX = 'ga4_fired_';
+// Panel deduplication — per PAGE LOAD only (in-memory set, resets on refresh)
+// This ensures the panel always gets events on each page load, even if GA4 already fired
+const panelFiredThisLoad = new Set<string>();
+
 const SESSION_ID_KEY = 'mapa_degrade_session_id';
 
 function getSessionId(): string {
   let id = sessionStorage.getItem(SESSION_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    sessionStorage.setItem(SESSION_ID_KEY, id);
-  }
+  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(SESSION_ID_KEY, id); }
   return id;
 }
 
 function getUtmParams() {
-  const params = new URLSearchParams(window.location.search);
+  const p = new URLSearchParams(window.location.search);
   return {
-    utmSource:      params.get('utm_source')       || undefined,
-    utmMedium:      params.get('utm_medium')       || undefined,
-    utmCampaign:    params.get('utm_campaign')     || undefined,
-    utmContent:     params.get('utm_content')      || undefined,
-    utmTerm:        params.get('utm_term')         || undefined,
-    campaignId:     params.get('campaign_id')      || undefined,
-    adsetId:        params.get('adset_id')         || undefined,
-    adId:           params.get('ad_id')            || undefined,
-    placement:      params.get('placement')        || undefined,
-    siteSourceName: params.get('site_source_name') || undefined,
+    utmSource:      p.get('utm_source')       || undefined,
+    utmMedium:      p.get('utm_medium')       || undefined,
+    utmCampaign:    p.get('utm_campaign')     || undefined,
+    utmContent:     p.get('utm_content')      || undefined,
+    utmTerm:        p.get('utm_term')         || undefined,
+    campaignId:     p.get('campaign_id')      || undefined,
+    adsetId:        p.get('adset_id')         || undefined,
+    adId:           p.get('ad_id')            || undefined,
+    placement:      p.get('placement')        || undefined,
+    siteSourceName: p.get('site_source_name') || undefined,
   };
 }
 
-// ── GA4: dispara section_reached + page_view virtual ─────────────────────────
+// ── GA4 event (deduplicated per session via sessionStorage) ─────────────────
 function fireGA4(id: string, title: string, order: number) {
   if (!title || !id) return;
   if (sessionStorage.getItem(GA4_PREFIX + id)) return;
-
-  if (typeof window.gtag !== 'function') return; // gtag ainda não carregou
+  if (typeof window.gtag !== 'function') return;
 
   try {
     sessionStorage.setItem(GA4_PREFIX + id, '1');
-
     window.gtag('event', 'section_reached', {
       section_title:  title,
       section_id:     id,
       section_order:  order,
       transport_type: 'beacon',
     });
-
     window.gtag('event', 'page_view', {
-      page_title:     title,
-      page_location:  window.location.origin + window.location.pathname + '#' + id,
-      page_path:      window.location.pathname + '#' + id,
+      page_title:    title,
+      page_location: window.location.origin + window.location.pathname + '#' + id,
+      page_path:     window.location.pathname + '#' + id,
       transport_type: 'beacon',
     });
-  } catch {
-    // silently ignore
-  }
+  } catch { /* silently ignore */ }
 }
 
-// ── Painel próprio: dispara track-section ─────────────────────────────────────
+// ── Panel event (deduplicated per PAGE LOAD via in-memory set) ─────────────
+// Resets on every refresh — so panel always gets fresh data on each page load
 function firePanel(sessionId: string, id: string, title: string, order: number) {
   if (!title || !id) return;
-  if (sessionStorage.getItem(PANEL_PREFIX + id)) return;
+  if (panelFiredThisLoad.has(id)) return; // already sent this session+load
+  panelFiredThisLoad.add(id);
 
   try {
-    sessionStorage.setItem(PANEL_PREFIX + id, '1');
-
     fetch('/api/track-section', {
       method:    'POST',
       headers:   { 'Content-Type': 'application/json' },
@@ -105,9 +99,7 @@ function firePanel(sessionId: string, id: string, title: string, order: number) 
         ...getUtmParams(),
       }),
     }).catch(() => { /* silently ignore */ });
-  } catch {
-    // silently ignore
-  }
+  } catch { /* silently ignore */ }
 }
 
 export default function SectionTracker() {
@@ -117,15 +109,12 @@ export default function SectionTracker() {
 
     const checkSections = () => {
       const triggerLine = window.scrollY + window.innerHeight * 0.75;
-
       sections.forEach(({ id, title, order }) => {
         const el = document.getElementById(id);
         if (!el) return;
-
         const top = el.getBoundingClientRect().top + window.scrollY;
         if (top > triggerLine) return;
-
-        // Cada rastreamento é independente — um não bloqueia o outro
+        // GA4 and panel are independent — one doesn't block the other
         fireGA4(id, title, order);
         firePanel(sessionId, id, title, order);
       });
@@ -133,24 +122,18 @@ export default function SectionTracker() {
 
     const onScroll = () => {
       if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        checkSections();
-        rafId = null;
-      });
+      rafId = requestAnimationFrame(() => { checkSections(); rafId = null; });
     };
 
-    // Dispara painel imediatamente (não precisa esperar gtag)
+    // Initial check — panel sends immediately (no gtag dependency)
     checkSections();
 
-    // Tenta disparar GA4 assim que o gtag carregar (para a Hero e seções já visíveis)
-    const tryGA4Initial = (attempts = 0) => {
-      if (typeof window.gtag === 'function') {
-        checkSections(); // re-verifica para seções visíveis que o gtag perdeu
-      } else if (attempts < 20) {
-        setTimeout(() => tryGA4Initial(attempts + 1), 250);
-      }
+    // GA4 retry after gtag loads
+    const tryGA4 = (attempts = 0) => {
+      if (typeof window.gtag === 'function') { checkSections(); }
+      else if (attempts < 20) { setTimeout(() => tryGA4(attempts + 1), 250); }
     };
-    tryGA4Initial();
+    tryGA4();
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {

@@ -63,14 +63,22 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .gte('last_seen', now30m);
 
-    // ── Sessões no período ────────────────────────────────────────────────
-    let sq = supabaseAdmin
+    // ── Sessões no período (para métricas) ───────────────────────────────
+    // sessions[] sempre retorna TODAS as sessões do dia (não filtra por window)
+    // O window só afeta métricas agregadas (funil, cliques, compras)
+    const { data: sessionData } = await supabaseAdmin
       .from('funnel_sessions')
       .select('session_id,first_seen,last_seen,left_at,page_status,utm_source,utm_medium,utm_campaign,utm_content,utm_term,campaign_id,adset_id,ad_id,placement,site_source_name,max_section_order,max_section_title,clicks_count,purchased,revenue')
       .eq('date', date)
       .order('last_seen', { ascending: false });
-    if (since) sq = sq.gte('last_seen', since);
-    const { data: sessionData } = await sq;
+
+    // Para métricas filtradas pelo window
+    let sessionDataFiltered = sessionData;
+    if (since && sessionData) {
+      sessionDataFiltered = sessionData.filter(s =>
+        new Date((s as { last_seen: string }).last_seen) >= new Date(since)
+      );
+    }
 
     // totalSessionsToday = full day count
     const { count: totalSessionsToday } = await supabaseAdmin
@@ -114,7 +122,7 @@ export async function GET(request: NextRequest) {
     }));
 
     const sessionIds = sessions.map(s => s.sessionId);
-    const totalInWindow = (sessionData || []).length;
+    const totalInWindow = (sessionDataFiltered || []).length;
 
     // ── Funil ─────────────────────────────────────────────────────────────
     let secQ = supabaseAdmin.from('funnel_section_events').select('section_id').eq('date', date);
