@@ -31,7 +31,7 @@ interface SessionRow {
 interface DashData {
   date: string; window: string;
   activeNow: number; active30m: number;
-  totalSessionsToday: number; totalSessionsInWindow: number; totalClicks: number;
+  totalSessionsToday: number; sessionsPeriod: number; totalClicks: number;
   sections: SectionRow[];
   checkoutClicks: CheckoutClicks;
   purchases: { count: number; revenue: number };
@@ -40,6 +40,7 @@ interface DashData {
   creatives: (MapRow & { utmContent: string })[];
   sessions: SessionRow[];
   showingMax: boolean;
+  debug?: { date: string; window: string; allSessionsTodayCount: number; filteredSessionsCount: number; returnedSessionsCount: number; sessQueryError?: string | null };
   updatedAt: string;
 }
 interface SessionDetail {
@@ -230,8 +231,7 @@ export default function FunilPage() {
         <div style={g.cards6}>
           <StatCard label="Ativos agora" value={fmt(data.activeNow)} color="#22c55e" hint="last_seen ≤ 25s e não saiu" />
           <StatCard label="Ativos 30min" value={fmt(data.active30m)} color="#3b82f6" />
-          <StatCard label="Sessões hoje" value={fmt(data.totalSessionsToday)} color="#06b6d4" />
-          <StatCard label="Cliques CTA" value={fmt(totalClicks)} color="#f59e0b" />
+          <StatCard label="Sessões hoje" value={fmt(data.totalSessionsToday)} color="#06b6d4" />          <StatCard label="Cliques CTA" value={fmt(totalClicks)} color="#f59e0b" />
           <StatCard label="Compras" value={fmt(data.purchases.count)} color="#f97316" />
           <StatCard label="Receita" value={fmtBRL(data.purchases.revenue)} color="#a855f7" />
         </div>
@@ -409,11 +409,12 @@ export default function FunilPage() {
         </p>
         {/* Debug bar */}
         <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 16px', marginBottom: 32, fontSize: 11, color: '#475569', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-          <span>sessões retornadas: <strong style={{ color: '#94a3b8' }}>{data.sessions.length}</strong></span>
-          <span>sessões hoje: <strong style={{ color: '#94a3b8' }}>{data.totalSessionsToday}</strong></span>
-          <span>seções contadas: <strong style={{ color: '#94a3b8' }}>{data.sections.reduce((a, s) => a + s.reached, 0)}</strong></span>
+          <span>all today: <strong style={{ color: '#94a3b8' }}>{data.debug?.allSessionsTodayCount ?? data.totalSessionsToday}</strong></span>
+          <span>filtered: <strong style={{ color: '#94a3b8' }}>{data.debug?.filteredSessionsCount ?? data.sessionsPeriod}</strong></span>
+          <span>returned: <strong style={{ color: '#94a3b8' }}>{data.debug?.returnedSessionsCount ?? data.sessions.length}</strong></span>
           <span>date: <strong style={{ color: '#94a3b8' }}>{data.date}</strong></span>
           <span>window: <strong style={{ color: '#94a3b8' }}>{data.window}</strong></span>
+          {data.debug?.sessQueryError && <span style={{ color: '#ef4444' }}>err: {data.debug.sessQueryError}</span>}
         </div>
 
       </div>{/* /wrap */}
