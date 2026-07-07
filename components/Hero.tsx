@@ -98,7 +98,7 @@ export default function Hero() {
             fetchPriority="high"
             loading="eager"
             decoding="async"
-            sizes="(max-width: 480px) 92vw, (max-width: 768px) 92vw, (max-width: 1024px) 620px, 648px"
+            sizes="(max-width: 640px) 92vw, (max-width: 768px) 648px, 648px"
             className="w-full h-auto rounded-2xl"
           />
         </div>

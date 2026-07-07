@@ -5,10 +5,13 @@ import { Analytics } from '@vercel/analytics/next';
 import Script from 'next/script';
 import './globals.css';
 
+// next/font/google automaticamente baixa e serve as fontes do próprio domínio
+// na Vercel — não gera request para fonts.googleapis.com nem fonts.gstatic.com
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',
+  preload: true,
 });
 
 const bebasNeue = Bebas_Neue({
@@ -16,6 +19,7 @@ const bebasNeue = Bebas_Neue({
   variable: '--font-display',
   weight: '400',
   display: 'swap',
+  preload: true,
 });
 
 export const metadata: Metadata = {

@@ -193,7 +193,7 @@ export default function Oferta() {
                 </div>
                 <div className="flex items-center gap-2.5 text-xs text-[#D9C3A3]">
                   <Check size={12} style={{ color: '#F28A1A' }} />
-                  <span className="font-medium">15 dias de garantia</span>
+                  <span className="font-medium">7 dias de garantia</span>
                 </div>
                 {['Tabela dos Pentes e Alturas', 'Checklist do Corte Sem Marca', 'Os 7 Erros Comuns', 'Pack de Referências de Fade', 'Mini Guia de Acabamento'].map(item => (
                   <div key={item} className="flex items-center gap-2.5 text-xs text-[#B8A688] line-through">
@@ -285,7 +285,7 @@ export default function Oferta() {
                   '🎁 Bônus 5: Mini Guia de Acabamento',
                   'Atualizações futuras',
                   'Acesso vitalício',
-                  '15 dias de garantia',
+                  '7 dias de garantia',
                 ].map(item => (
                   <div key={item} className="flex items-center gap-2.5 text-xs text-[#FFF4E6]">
                     <Check size={12} style={{ color: '#F28A1A' }} />
@@ -421,7 +421,7 @@ export default function Oferta() {
                       'Mini Guia de Acabamento',
                       'Atualizações futuras',
                       'Acesso vitalício',
-                      '15 dias de garantia',
+                      '7 dias de garantia',
                     ].map((item) => (
                       <div key={item} className="flex items-center gap-2.5 text-xs text-[#FFF4E6]">
                         <Check size={11} style={{ color: '#F28A1A' }} strokeWidth={3} />

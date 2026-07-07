@@ -35,7 +35,7 @@ export default function Garantia() {
           <span className="text-[10px] font-mono font-black text-[#D8A64A] uppercase tracking-widest">
             Compromisso de Satisfação
           </span>
-          <span className="font-display text-4xl text-[#FFF4E6] mt-1">15 DIAS</span>
+          <span className="font-display text-4xl text-[#FFF4E6] mt-1">7 DIAS</span>
           <span className="text-[10px] font-bold text-[#D9C3A3] uppercase mt-1 tracking-wider">
             DE GARANTIA
           </span>
@@ -45,11 +45,11 @@ export default function Garantia() {
         <div className="divider-copper w-24 mx-auto mb-6" />
 
         <h2 className="font-display text-[2.2rem] leading-none uppercase text-[#FFF4E6] mb-4">
-          Acesse o material por 15 dias sem compromisso
+          Acesse o material por 7 dias sem compromisso
         </h2>
 
         <p className="text-xs text-[#D9C3A3] leading-relaxed max-w-sm mx-auto">
-          Se dentro de 15 dias o material não fizer sentido para você, pode solicitar reembolso.
+          Se dentro de 7 dias o material não fizer sentido para você, pode solicitar reembolso.
         </p>
 
       </div>

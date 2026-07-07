@@ -168,9 +168,9 @@ export default function Rodape() {
                 {activeModal === 'reembolso' && (
                   <>
                     <p className="font-extrabold text-[#FFF4E6] text-xs uppercase font-display tracking-wider">1. Garantia Legal de Reembolso</p>
-                    <p>Oferecemos uma política incondicional de reembolso válida por até 15 dias corridos contados a partir da data de confirmação da compra.</p>
+                    <p>Oferecemos uma política incondicional de reembolso válida por até 7 dias corridos contados a partir da data de confirmação da compra.</p>
                     <p className="font-extrabold text-[#FFF4E6] text-xs uppercase font-display tracking-wider">2. Processo de Solicitação</p>
-                    <p>Você pode solicitar o estorno integral enviando uma mensagem ao nosso email oficial de suporte dentro dos 15 dias.</p>
+                    <p>Você pode solicitar o estorno integral enviando uma mensagem ao nosso email oficial de suporte dentro dos 7 dias.</p>
                     <p className="font-extrabold text-[#FFF4E6] text-xs uppercase font-display tracking-wider">3. Estorno do Pagamento</p>
                     <p>O reembolso será efetuado pelo mesmo método de pagamento utilizado na compra, sem taxas extras ou burocracia desnecessária.</p>
                   </>

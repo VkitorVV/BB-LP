@@ -14,7 +14,7 @@ const faqItems: FAQItem[] = [
   { question: 'O pagamento é seguro?',                   answer: 'Sim. A compra é processada por uma plataforma segura de pagamento.' },
   { question: 'Quais formas de pagamento?',              answer: 'Você poderá pagar pelas formas disponíveis no checkout, como Pix e cartão, se estiverem habilitadas.' },
   { question: 'Preciso de uma máquina específica?',      answer: 'Não. O material trabalha a lógica de pentes, alturas, transições e acabamento. Você adapta ao equipamento que já usa.' },
-  { question: 'Tem garantia?',                           answer: 'Sim. Você tem 15 dias de garantia.' },
+  { question: 'Tem garantia?', answer: 'Sim. Você tem 7 dias de garantia.' },
   { question: 'Vou aprender todos os cortes masculinos?', answer: 'Não. O foco do material é degradê, transição e acabamento.' },
 ];
 
