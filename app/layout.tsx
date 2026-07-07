@@ -59,6 +59,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SpeedInsights />
         <Analytics />
 
+        {/* ── UTMify — afterInteractive: captura UTMs antes dos eventos de checkout ── */}
+        <Script
+          src="https://cdn.utmify.com.br/scripts/utms/latest.js"
+          data-utmify-prevent-xcod-sck=""
+          data-utmify-prevent-subids=""
+          strategy="afterInteractive"
+        />
+
+        {/* ── Pixel Facebook via UTMify — afterInteractive ── */}
+        <Script id="utmify-pixel" strategy="afterInteractive">
+          {`window.pixelId="6a4b090cd0b0714e73bcc2f6";var a=document.createElement("script");a.setAttribute("async","");a.setAttribute("defer","");a.setAttribute("src","https://cdn.utmify.com.br/scripts/pixel/pixel.js");document.head.appendChild(a);`}
+        </Script>
+
         {/* Microsoft Clarity — lazyOnload, carrega apenas após idle */}
         {clarityId && (
           <Script id="clarity-init" strategy="lazyOnload">
