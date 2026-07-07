@@ -149,15 +149,21 @@ export default function SectionTracker() {
       rafId = requestAnimationFrame(() => { checkSections(); rafId = null; });
     };
 
-    // Initial check — panel fires immediately
-    checkSections();
-
-    // GA4 retry after gtag loads
-    const tryGA4 = (attempts = 0) => {
-      if (typeof window.gtag === 'function') { checkSections(); }
-      else if (attempts < 20) { setTimeout(() => tryGA4(attempts + 1), 250); }
+    // Defer initial check to after LCP — avoids reflow during first paint
+    const scheduleInitialCheck = () => {
+      checkSections();
+      const tryGA4 = (attempts = 0) => {
+        if (typeof window.gtag === 'function') { checkSections(); }
+        else if (attempts < 20) { setTimeout(() => tryGA4(attempts + 1), 250); }
+      };
+      tryGA4();
     };
-    tryGA4();
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(scheduleInitialCheck, { timeout: 3000 });
+    } else {
+      setTimeout(scheduleInitialCheck, 500);
+    }
 
     // Auto-clear stale jump flag after 2500ms
     const jumpGuard = setInterval(() => {

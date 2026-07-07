@@ -64,7 +64,7 @@ export default function PresenceTracker() {
 
     function startInterval() {
       if (interval) clearInterval(interval);
-      interval = setInterval(sendHeartbeat, 15_000); // every 15s — threshold 25s
+      interval = setInterval(sendHeartbeat, 15_000);
     }
 
     function stopInterval() {
@@ -83,13 +83,22 @@ export default function PresenceTracker() {
 
     const onExit = () => sendExit();
 
-    // Initial heartbeat + start interval
-    sendHeartbeat();
-    startInterval();
+    // Defer initial heartbeat to requestIdleCallback / setTimeout
+    // to avoid competing with LCP and third-party scripts on first paint
+    const scheduleInit = () => {
+      sendHeartbeat();
+      startInterval();
+      document.addEventListener('visibilitychange', onVisibility);
+      window.addEventListener('pagehide', onExit);
+      window.addEventListener('beforeunload', onExit);
+    };
 
-    document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('pagehide', onExit);
-    window.addEventListener('beforeunload', onExit);
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(scheduleInit, { timeout: 3000 });
+    } else {
+      // Fallback: defer 2s — page is interactive by then, LCP already painted
+      setTimeout(scheduleInit, 2000);
+    }
 
     return () => {
       stopInterval();
