@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 const bonuses = [
@@ -31,12 +30,8 @@ export default function Bonus() {
         {/* Bonus cards */}
         <div className="space-y-8">
           {bonuses.map((bonus, idx) => (
-            <motion.div
+            <div
               key={idx}
-              initial={{ opacity: 0, y: 15 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-20px' }}
-              transition={{ duration: 0.3, ease: 'easeOut', delay: idx * 0.05 }}
               className="rounded-2xl p-5 relative overflow-hidden"
               style={{ background: '#2A130B', border: '1px solid #5A321C' }}
             >
@@ -77,7 +72,7 @@ export default function Bonus() {
                   {bonus.desc}
                 </p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 

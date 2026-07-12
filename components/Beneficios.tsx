@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 
 const benefitsList = [
@@ -29,12 +28,8 @@ export default function Beneficios() {
         {/* Cards */}
         <div className="space-y-4">
           {benefitsList.map((benefit, idx) => (
-            <motion.div
+            <div
               key={idx}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-20px' }}
-              transition={{ duration: 0.25, ease: 'easeOut', delay: idx * 0.04 }}
               className="rounded-xl p-5 flex items-start gap-4 transition-all duration-200"
               style={{ background: '#160D08', border: '1px solid #3A1D10' }}
             >
@@ -52,7 +47,7 @@ export default function Beneficios() {
                   {benefit.desc}
                 </p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 

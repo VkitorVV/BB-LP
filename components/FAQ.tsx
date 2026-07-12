@@ -64,7 +64,7 @@ export default function FAQ() {
                   style={{ background: isOpen ? 'rgba(242,138,26,0.04)' : 'transparent' }}
                 >
                   <span
-                    className="text-xs font-extrabold uppercase font-display tracking-wide transition-colors duration-200"
+                    className="text-[12px] font-black uppercase leading-relaxed tracking-wide transition-colors duration-200"
                     style={{ color: isOpen ? '#F28A1A' : '#FFF4E6' }}
                   >
                     {item.question}
@@ -86,7 +86,7 @@ export default function FAQ() {
                       className="overflow-hidden"
                       style={{ borderTop: '1px solid #3A1D10' }}
                     >
-                      <div className="p-5 text-xs text-[#D9C3A3] leading-relaxed" style={{ background: '#0B0704' }}>
+                      <div className="p-5 text-sm text-[#D9C3A3] leading-relaxed" style={{ background: '#0B0704' }}>
                         {item.answer}
                       </div>
                     </motion.div>

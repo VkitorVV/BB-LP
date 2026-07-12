@@ -26,7 +26,7 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
     : `@keyframes scrollRight { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }`;
   
   const animationName = direction === 'left' ? 'scrollLeft' : 'scrollRight';
-  const duration = direction === 'left' ? '35s' : '40s';
+  const duration = direction === 'left' ? '22s' : '25s';
 
   return (
     <>

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { XCircle, CheckCircle } from 'lucide-react';
 
 const comparisons = [
@@ -27,12 +26,8 @@ export default function Comparativo() {
 
         <div className="space-y-6">
           {comparisons.map((item, idx) => (
-            <motion.div
+            <div
               key={idx}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-20px' }}
-              transition={{ duration: 0.25, ease: 'easeOut', delay: idx * 0.04 }}
               className="space-y-2"
               style={{ paddingBottom: '1.5rem', borderBottom: idx < comparisons.length - 1 ? '1px solid #2A130B' : 'none' }}
             >
@@ -43,7 +38,7 @@ export default function Comparativo() {
               >
                 <XCircle className="shrink-0 mt-0.5" size={16} style={{ color: '#B33A2E' }} />
                 <div>
-                  <p className="text-[9px] font-black text-[#B33A2E] uppercase tracking-wider font-display mb-1">
+                  <p className="text-xs font-black text-[#B33A2E] uppercase tracking-wider font-display mb-2">
                     Tentando no Improviso
                   </p>
                   <p className="text-xs text-[#D9C3A3] leading-relaxed">{item.bad}</p>
@@ -57,13 +52,13 @@ export default function Comparativo() {
               >
                 <CheckCircle className="shrink-0 mt-0.5" size={16} style={{ color: '#F28A1A' }} />
                 <div>
-                  <p className="text-[9px] font-black text-[#F28A1A] uppercase tracking-wider font-display mb-1">
+                  <p className="text-xs font-black text-[#F28A1A] uppercase tracking-wider font-display mb-2">
                     Com o Mapa do Degradê
                   </p>
                   <p className="text-xs text-[#FFF4E6] leading-relaxed font-bold">{item.good}</p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 

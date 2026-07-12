@@ -82,6 +82,15 @@
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--copper); }
 
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* ============================================================
    TEXTURE UTILITIES
    ============================================================ */

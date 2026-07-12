@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 
 const cards = [
@@ -27,13 +26,9 @@ export default function IdealPara() {
 
         <div className="space-y-4">
           {cards.map((card, idx) => (
-            <motion.div
+            <div
               key={idx}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-20px' }}
-              transition={{ duration: 0.25, ease: 'easeOut', delay: idx * 0.04 }}
-              className="rounded-xl p-5 flex items-start gap-4 transition-all duration-200"
+              className="rounded-xl p-5 flex items-start gap-4"
               style={{
                 background: '#2A130B',
                 border: '1px solid #5A321C',
@@ -53,7 +48,7 @@ export default function IdealPara() {
                   {card.desc}
                 </p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 

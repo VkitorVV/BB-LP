@@ -32,6 +32,49 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={`${inter.variable} ${bebasNeue.variable}`}>
       <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: `
+            (function(){
+              var ATTR = 'bis_skin_checked';
+              function clean(root){
+                try {
+                  if (!root || !root.querySelectorAll) return;
+                  if (root.hasAttribute && root.hasAttribute(ATTR)) root.removeAttribute(ATTR);
+                  root.querySelectorAll('[' + ATTR + ']').forEach(function(el){
+                    el.removeAttribute(ATTR);
+                  });
+                } catch (_) {}
+              }
+              clean(document.documentElement);
+              if (typeof MutationObserver === 'undefined') return;
+              var observer = new MutationObserver(function(mutations){
+                mutations.forEach(function(mutation){
+                  if (mutation.type === 'attributes' && mutation.attributeName === ATTR) {
+                    mutation.target.removeAttribute(ATTR);
+                  }
+                  mutation.addedNodes && mutation.addedNodes.forEach(function(node){
+                    if (node && node.nodeType === 1) clean(node);
+                  });
+                });
+              });
+              observer.observe(document.documentElement, {
+                attributes: true,
+                childList: true,
+                subtree: true,
+                attributeFilter: [ATTR]
+              });
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function(){ clean(document.documentElement); }, { once: true });
+              } else {
+                clean(document.documentElement);
+              }
+              window.addEventListener('load', function(){
+                clean(document.documentElement);
+                setTimeout(function(){ observer.disconnect(); }, 3000);
+              }, { once: true });
+            })();
+          ` }}
+        />
         {/* ── Preconnect para origens críticas de terceiros ──────────────────
             Antecipa a conexão TCP+TLS antes dos scripts carregarem.
             Economiza ~320–410ms de latência (api6.ipify, cdn.utmify, tracking.utmify).

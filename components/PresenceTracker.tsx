@@ -6,7 +6,12 @@ const SESSION_ID_KEY = 'mapa_degrade_session_id';
 
 function getSessionId(): string {
   let id = sessionStorage.getItem(SESSION_ID_KEY);
-  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(SESSION_ID_KEY, id); }
+  if (!id) {
+    id = typeof crypto?.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem(SESSION_ID_KEY, id);
+  }
   return id;
 }
 

@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 
-const COUNTDOWN_DURATION = 10 * 60 * 1000; // 10 minutos em milissegundos
-const STORAGE_KEY = 'offer_countdown_end_time';
+const COUNTDOWN_DURATION = 15 * 60 * 1000; // 15 minutos em milissegundos
+const STORAGE_KEY = 'offer_countdown_end_time_v2';
 
 export default function OfferCountdown() {
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 10, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 15, seconds: 0 });
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function OfferCountdown() {
                     boxShadow: '0 4px 16px rgba(11,7,4,0.6)',
                   }}
                 >
-                  <span className="font-display text-3xl text-[#F28A1A]">10</span>
+                  <span className="font-display text-3xl text-[#F28A1A]">15</span>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#D9C3A3]">
                   Minutos
