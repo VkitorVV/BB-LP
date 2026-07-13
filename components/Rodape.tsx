@@ -77,8 +77,8 @@ export default function Rodape() {
               <Mail size={14} style={{ color: '#F28A1A' }} />
               <span className="font-bold text-[#C9B89A]">E-mail de Suporte:</span>
             </div>
-            <a href="mailto:suporte@mapadodegrade.com.br" className="font-mono hover:underline" style={{ color: '#F28A1A' }}>
-              suporte@mapadodegrade.com.br
+            <a href="mailto:entregamateriaisadquiridos@gmail.com" className="font-mono hover:underline" style={{ color: '#F28A1A' }}>
+              entregamateriaisadquiridos@gmail.com
             </a>
           </div>
 
