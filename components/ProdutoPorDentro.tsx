@@ -21,23 +21,35 @@ const row1Loop = [...row1Images, ...row1Images];
 const row2Loop = [...row2Images, ...row2Images];
 
 function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction: 'left' | 'right' }) {
-  const animationKeyframes = direction === 'left' 
+  const [isPaused, setIsPaused] = React.useState(false);
+  const animationKeyframes = direction === 'left'
     ? `@keyframes scrollLeft { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`
     : `@keyframes scrollRight { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }`;
-  
+
   const animationName = direction === 'left' ? 'scrollLeft' : 'scrollRight';
   const duration = direction === 'left' ? '22s' : '25s';
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: animationKeyframes }} />
-      <div style={{
-        width: '100%',
-        overflow: 'hidden',
-        position: 'relative',
-        WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
-        maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
-      }}>
+      <div
+        onMouseDown={() => setIsPaused(true)}
+        onMouseUp={() => setIsPaused(false)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setIsPaused(false)}
+        onTouchCancel={() => setIsPaused(false)}
+        style={{
+          width: '100%',
+          overflow: 'hidden',
+          position: 'relative',
+          touchAction: 'pan-y',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
+          maskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
+        }}
+      >
         <div style={{
           display: 'flex',
           gap: '16px',
@@ -45,6 +57,7 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
           width: 'max-content',
           willChange: 'transform',
           animation: `${animationName} ${duration} linear infinite`,
+          animationPlayState: isPaused ? 'paused' : 'running',
         }}>
           {images.map((img, idx) => (
             <div key={idx} style={{
@@ -62,6 +75,7 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
                 height={1200}
                 loading="lazy"
                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 45vw, 280px"
+                draggable={false}
                 style={{ width: '100%', height: 'auto', display: 'block' }}
               />
             </div>
