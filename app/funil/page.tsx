@@ -10,6 +10,15 @@ interface FunnelStep  { sectionId:string; sectionTitle:string; sectionOrder:numb
 interface Bottleneck  { fromSection:string; toSection:string; dropUsers:number; dropPercent:number; }
 interface StopPoint   { sectionTitle:string; usersStopped:number; }
 interface CheckoutClicks { plano_basico_popup_open:number; plano_basico:number; kit_completo:number; kit_desconto_popup:number; }
+interface CheckoutSummary {
+  rawCheckoutEvents:number;
+  basicPopupOpens:number;
+  checkoutRedirects:number;
+  uniqueCheckoutSessions:number;
+  basicSelected:number;
+  completeSelected:number;
+  upgradeAccepted:number;
+}
 interface MapRow      { sessions:number; clicks:number; reachedOffer:number; purchases:number; revenue:number; conversionClick:number; conversionPurchase:number; }
 interface LastClick   { checkoutType:string; checkoutLabel:string|null; checkoutPrice:number|null; buttonLocation:string|null; clickedAt:string|null; }
 interface SessionRow  {
@@ -26,7 +35,7 @@ interface DashData {
   date:string; window:string;
   activeNow:number; active30m:number;
   totalSessionsToday:number; sessionsPeriod:number;
-  sections:SectionRow[]; checkoutClicks:CheckoutClicks;
+  sections:SectionRow[]; checkoutClicks:CheckoutClicks; checkoutSummary?:CheckoutSummary;
   purchases:{count:number;revenue:number};
   campaigns:(MapRow&{utmCampaign:string})[]; adsets:(MapRow&{adsetId:string})[]; creatives:(MapRow&{utmContent:string})[];
   sessions:SessionRow[]; showingMax:boolean;
@@ -164,6 +173,15 @@ export default function FunilPage() {
   if(!data)return(<div style={g.center}><p style={{color:'#9ca3af'}}>Carregando…</p></div>);
 
   const totalClicks=Object.values(data.checkoutClicks).reduce((a,b)=>a+b,0);
+  const checkoutSummary=data.checkoutSummary||{
+    rawCheckoutEvents:totalClicks,
+    basicPopupOpens:data.checkoutClicks.plano_basico_popup_open,
+    checkoutRedirects:data.checkoutClicks.plano_basico+data.checkoutClicks.kit_completo+data.checkoutClicks.kit_desconto_popup,
+    uniqueCheckoutSessions:0,
+    basicSelected:data.checkoutClicks.plano_basico,
+    completeSelected:data.checkoutClicks.kit_completo,
+    upgradeAccepted:data.checkoutClicks.kit_desconto_popup,
+  };
   const detSess=selSid?data.sessions.find(s=>s.sessionId===selSid):null;
   void tick;
 
@@ -202,10 +220,23 @@ export default function FunilPage() {
             <Card label="● Ativos agora"  value={fmt(data.activeNow)}            color="#22c55e" hint="≤25s"/>
             <Card label="◑ Ativos 30min"  value={fmt(data.active30m)}            color="#3b82f6"/>
             <Card label="Sessões hoje"    value={fmt(data.totalSessionsToday)}   color="#06b6d4"/>
-            <Card label="Cliques CTA"     value={fmt(totalClicks)}               color="#f59e0b"/>
+            <Card label="Checkout unico"  value={fmt(checkoutSummary.uniqueCheckoutSessions)} color="#22c55e" hint="Sessoes com redirecionamento real"/>
+            <Card label="Redirect Wiapy"  value={fmt(checkoutSummary.checkoutRedirects)} color="#f59e0b" hint="Cliques que abrem checkout"/>
+            <Card label="Popup Basico"   value={fmt(checkoutSummary.basicPopupOpens)} color="#6366f1" hint="Apenas abertura do popup"/>
             <Card label="Compras"         value={fmt(data.purchases.count)}      color="#f97316"/>
             <Card label="Receita"         value={fmtBRL(data.purchases.revenue)} color="#a855f7"/>
           </div>
+
+          <Block title="Resumo Checkout">
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
+              <MiniMetric label="Cliques brutos" value={fmt(checkoutSummary.rawCheckoutEvents)} color="#9ca3af"/>
+              <MiniMetric label="Popup Basico" value={fmt(checkoutSummary.basicPopupOpens)} color="#6366f1"/>
+              <MiniMetric label="Basico selecionado" value={fmt(checkoutSummary.basicSelected)} color="#3b82f6"/>
+              <MiniMetric label="Kit R$29" value={fmt(checkoutSummary.completeSelected)} color="#f59e0b"/>
+              <MiniMetric label="Upgrade R$24" value={fmt(checkoutSummary.upgradeAccepted)} color="#22c55e"/>
+              <MiniMetric label="Sessoes unicas" value={fmt(checkoutSummary.uniqueCheckoutSessions)} color="#22c55e"/>
+            </div>
+          </Block>
 
           {/* ── Funil Visual ── */}
           <Block title="Funil Visual">
@@ -494,6 +525,7 @@ export default function FunilPage() {
 // ─── Components ───────────────────────────────────────────────────────────────
 function Block({title,children}:{title:string;children:React.ReactNode}){return <div style={g.block}><h2 style={g.blockTitle}>{title}</h2>{children}</div>;}
 function Card({label,value,color,hint}:{label:string;value:string;color:string;hint?:string}){return <div style={g.card} title={hint}><p style={g.cardLabel}>{label}</p><p style={{...g.cardVal,color}}>{value}</p></div>;}
+function MiniMetric({label,value,color}:{label:string;value:string;color:string}){return <div style={{background:'#111827',border:'1px solid #1f2937',borderRadius:8,padding:'10px 12px'}}><p style={{fontSize:10,color:'#6b7280',margin:'0 0 4px',textTransform:'uppercase',letterSpacing:.7}}>{label}</p><p style={{fontSize:20,fontWeight:800,color,margin:0}}>{value}</p></div>;}
 function DGrid({headers,rows}:{headers:string[];rows:string[][]}){return <div style={{overflowX:'auto'}}><table style={g.tbl}><thead><tr>{headers.map((h,i)=><TH key={h} r={i>0}>{h}</TH>)}</tr></thead><tbody>{rows.map((row,ri)=><tr key={ri} style={g.tr}>{row.map((cell,ci)=><TD key={ci} r={ci>0} bold={ci>0}>{cell}</TD>)}</tr>)}</tbody></table></div>;}
 function DBlock({title,children}:{title:string;children:React.ReactNode}){return <div style={{marginBottom:20}}><p style={{fontSize:10,color:'#f59e0b',textTransform:'uppercase',letterSpacing:1,margin:'0 0 8px',fontWeight:700}}>{title}</p><div style={{background:'#0d1117',border:'1px solid #1f2937',borderRadius:8,padding:'10px 14px'}}>{children}</div></div>;}
 function DR({k,v}:{k:string;v:React.ReactNode}){return <div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #111827'}}><span style={{fontSize:11,color:'#6b7280'}}>{k}</span><span style={{fontSize:12,color:'#d1d5db',textAlign:'right',maxWidth:'65%',wordBreak:'break-all'}}>{v}</span></div>;}
