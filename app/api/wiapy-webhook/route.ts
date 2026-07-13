@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getBrazilDate } from '@/lib/brazilDate';
 
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
 export async function POST(request: NextRequest) {
   console.warn('[WIAPY_WEBHOOK] POST route called');
 
-  // ── 1. Validar Authorization ──────────────────────────────────────────────
+  // â”€â”€ 1. Validar Authorization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const authHeader = request.headers.get('authorization');
 
   console.warn('[WIAPY_WEBHOOK] Authorization received', {
@@ -17,7 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // ── 2. Ler payload ────────────────────────────────────────────────────────
+  // â”€â”€ 2. Ler payload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let payload: Record<string, unknown>;
   try {
     payload = await request.json();
@@ -30,6 +34,7 @@ export async function POST(request: NextRequest) {
   const customer = payload.customer as Record<string, unknown> | undefined;
   const checkout = payload.checkout as Record<string, unknown> | undefined;
   const tracking = payload.tracking as Record<string, unknown> | undefined;
+  const metadata = payload.metadata as Record<string, unknown> | undefined;
   const products = payload.products as Record<string, unknown>[] | undefined;
 
   const status        = payment?.status        as string | undefined;
@@ -39,6 +44,14 @@ export async function POST(request: NextRequest) {
   const utmCampaign   = tracking?.utm_campaign as string | undefined;
   const utmContent    = tracking?.utm_content  as string | undefined;
   const utmTerm       = tracking?.utm_term     as string | undefined;
+  const trackingSessionId =
+    readString(tracking?.session_id) ||
+    readString(tracking?.sid) ||
+    readString(metadata?.session_id) ||
+    readString(metadata?.sid) ||
+    readString(checkout?.session_id) ||
+    readString(payload.session_id) ||
+    readString(payload.sid);
 
   console.warn('[WIAPY_WEBHOOK] Payload parsed', {
     paymentStatus: status,
@@ -46,9 +59,10 @@ export async function POST(request: NextRequest) {
     amount,
     checkoutTitle,
     productsCount: products?.length || 0,
+    hasTrackingSessionId: Boolean(trackingSessionId),
   });
 
-  // ── 3. Processar apenas pagamentos confirmados ────────────────────────────
+  // â”€â”€ 3. Processar apenas pagamentos confirmados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (status !== 'paid') {
     return NextResponse.json(
       { received: true, ignored: true, reason: 'not_paid' },
@@ -56,7 +70,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 4. Variáveis GA4 ─────────────────────────────────────────────────────
+  // â”€â”€ 4. VariÃ¡veis GA4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const apiSecret     = process.env.GA4_API_SECRET;
 
@@ -69,7 +83,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'GA4 configuration missing' }, { status: 500 });
   }
 
-  // ── 5. Montar evento GA4 ──────────────────────────────────────────────────
+  // â”€â”€ 5. Montar evento GA4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const clientId      = (tracking?.ga_client_id as string | undefined)
     || `wiapy.${(customer?.id as string | undefined) || paymentId || Date.now()}`;
   const value         = typeof amount === 'number' ? amount / 100 : 0;
@@ -111,7 +125,7 @@ export async function POST(request: NextRequest) {
     }],
   };
 
-  // ── 6. Enviar GA4 ─────────────────────────────────────────────────────────
+  // â”€â”€ 6. Enviar GA4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   try {
     const ga4Res = await fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
@@ -135,28 +149,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 7. Salvar no Supabase ─────────────────────────────────────────────────
+  // â”€â”€ 7. Salvar no Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   try {
     const today = getBrazilDate();
 
-    await supabaseAdmin.from('funnel_purchases').insert({
+    const approvedAt = new Date().toISOString();
+    const { error: purchaseError } = await supabaseAdmin.from('funnel_purchases').upsert({
+      session_id:     trackingSessionId || null,
       date:           today,
       payment_id:     transactionId,
+      status,
       checkout_title: checkoutTitle,
       amount:         value,
       utm_campaign:   utmCampaign,
       utm_content:    utmContent,
       utm_term:       utmTerm,
-    });
+      approved_at:    approvedAt,
+    }, { onConflict: 'payment_id' });
 
-    // Atualizar sessão se tiver session_id no tracking
-    const trackingSessionId = tracking?.session_id as string | undefined;
-    if (trackingSessionId) {
-      await supabaseAdmin
-        .from('funnel_sessions')
-        .update({ purchased: true, revenue: value })
-        .eq('session_id', trackingSessionId)
-        .eq('date', today);
+    if (purchaseError) {
+      console.error('[WIAPY_WEBHOOK] Purchase upsert error', purchaseError.message);
     }
 
     console.warn('[WIAPY_WEBHOOK] Supabase purchase saved');
