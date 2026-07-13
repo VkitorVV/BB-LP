@@ -39,6 +39,24 @@ function getUtms() {
   };
 }
 
+function buildCheckoutUrl(baseUrl: string): string {
+  const url = new URL(baseUrl);
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = getSessionId();
+
+  if (sessionId) {
+    url.searchParams.set('session_id', sessionId);
+    url.searchParams.set('sid', sessionId);
+  }
+
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'campaign_id', 'adset_id', 'ad_id', 'placement', 'site_source_name'].forEach((key) => {
+    const value = params.get(key);
+    if (value && !url.searchParams.has(key)) url.searchParams.set(key, value);
+  });
+
+  return url.toString();
+}
+
 function trackClick(
   checkoutType: string,
   checkoutLabel: string,
@@ -75,11 +93,12 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('plano_basico_popup_open', 'Plano Básico - abriu popup', 19.90, 'oferta');
+    trackClick('plano_basico_popup_open', 'Plano BÃ¡sico - abriu popup', 19.90, 'oferta');
     setShowUpgradeModal(true);
   };
 
   const handleUpgradeToKit = () => {
+    const checkoutUrl = buildCheckoutUrl(CHECKOUT_KIT_DESCONTO_URL);
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'checkout_click', {
         checkout_type:   'kit_desconto_popup',
@@ -88,12 +107,13 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('kit_desconto_popup', 'Kit Completo com Desconto', 24.90, 'popup_upgrade', CHECKOUT_KIT_DESCONTO_URL);
-    window.open(CHECKOUT_KIT_DESCONTO_URL, '_blank');
+    trackClick('kit_desconto_popup', 'Kit Completo com Desconto', 24.90, 'popup_upgrade', checkoutUrl);
+    window.open(checkoutUrl, '_blank');
     setShowUpgradeModal(false);
   };
 
   const handleContinueBasic = () => {
+    const checkoutUrl = buildCheckoutUrl(CHECKOUT_BASICO_URL);
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'checkout_click', {
         checkout_type:   'plano_basico',
@@ -102,12 +122,13 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('plano_basico', 'Plano Básico', 19.90, 'popup_upgrade', CHECKOUT_BASICO_URL);
-    window.open(CHECKOUT_BASICO_URL, '_blank');
+    trackClick('plano_basico', 'Plano BÃ¡sico', 19.90, 'popup_upgrade', checkoutUrl);
+    window.open(checkoutUrl, '_blank');
     setShowUpgradeModal(false);
   };
 
   const handleCheckoutComplete = () => {
+    const checkoutUrl = buildCheckoutUrl(CHECKOUT_KIT_COMPLETO_URL);
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'checkout_click', {
         checkout_type:   'kit_completo',
@@ -116,8 +137,8 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('kit_completo', 'Kit Completo', 29.90, 'oferta', CHECKOUT_KIT_COMPLETO_URL);
-    window.open(CHECKOUT_KIT_COMPLETO_URL, '_blank');
+    trackClick('kit_completo', 'Kit Completo', 29.90, 'oferta', checkoutUrl);
+    window.open(checkoutUrl, '_blank');
   };
 
   // Lock body scroll when modal is open
@@ -151,7 +172,7 @@ export default function Oferta() {
           Escolha o seu plano de acesso ao material
         </h2>
         <p className="text-xs text-[#D9C3A3] mb-10 leading-relaxed">
-          Acesso imediato e digital. Escolha o formato ideal para você consultar no seu dia a dia.
+          Acesso imediato e digital. Escolha o formato ideal para vocÃª consultar no seu dia a dia.
         </p>
 
         <div className="space-y-8">
@@ -164,16 +185,16 @@ export default function Oferta() {
             <div>
               <span className="badge-copper mb-3 inline-block">Apenas o Guia</span>
               <h3 className="font-display text-2xl text-[#FFF4E6] uppercase tracking-wide mb-2">
-                Plano Básico
+                Plano BÃ¡sico
               </h3>
               <p className="text-xs text-[#D9C3A3] mb-5 leading-relaxed">
-                Acesso exclusivo ao Guia Principal Mapa do Degradê em formato digital (Ebook).
+                Acesso exclusivo ao Guia Principal Mapa do DegradÃª em formato digital (Ebook).
               </p>
 
               <div className="mb-5 rounded-xl overflow-hidden" style={{ border: '1.5px solid #5A321C', boxShadow: '0 4px 16px rgba(11,7,4,0.65)' }}>
                 <Image
                   src="/images/oferta/mockup-plano-basico.webp"
-                  alt="Mockup do Plano Básico com o guia principal Mapa do Degradê Sem Marca"
+                  alt="Mockup do Plano BÃ¡sico com o guia principal Mapa do DegradÃª Sem Marca"
                   width={1000}
                   height={1000}
                   loading="lazy"
@@ -185,15 +206,15 @@ export default function Oferta() {
               <div className="space-y-2 pt-4" style={{ borderTop: '1px solid rgba(90,50,28,0.5)' }}>
                 <div className="flex items-center gap-2.5 text-xs text-[#D9C3A3]">
                   <Check size={12} style={{ color: '#F28A1A' }} />
-                  <span className="font-medium">Guia Digital Mapa do Degradê (Ebook)</span>
+                  <span className="font-medium">Guia Digital Mapa do DegradÃª (Ebook)</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-xs text-[#D9C3A3]">
                   <Check size={12} style={{ color: '#F28A1A' }} />
                   <span className="font-medium">7 dias de garantia</span>
                 </div>
-                {['Tabela dos Pentes e Alturas', 'Checklist do Corte Sem Marca', 'Os 7 Erros Comuns', 'Pack de Referências de Fade', 'Mini Guia de Acabamento'].map(item => (
+                {['Tabela dos Pentes e Alturas', 'Checklist do Corte Sem Marca', 'Os 7 Erros Comuns', 'Pack de ReferÃªncias de Fade', 'Mini Guia de Acabamento'].map(item => (
                   <div key={item} className="flex items-center gap-2.5 text-xs text-[#B8A688] line-through">
-                    <span className="text-[10px] font-mono shrink-0">✕</span>
+                    <span className="text-[10px] font-mono shrink-0">âœ•</span>
                     <span>{item}</span>
                   </div>
                 ))}
@@ -207,7 +228,7 @@ export default function Oferta() {
               <div className="flex items-baseline gap-1 mt-0.5 mb-5">
                 <span className="text-xs font-mono text-[#FFF4E6] font-black">Por apenas</span>
                 <span className="font-display text-3xl text-[#FFF4E6]">R$ 19,90</span>
-                <span className="text-[10px] text-[#C9B89A] font-bold">à vista</span>
+                <span className="text-[10px] text-[#C9B89A] font-bold">Ã  vista</span>
               </div>
               <button
                 onClick={handleCheckoutBasic}
@@ -220,7 +241,7 @@ export default function Oferta() {
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(242,138,26,0.08)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
               >
-                Quero o Plano Básico
+                Quero o Plano BÃ¡sico
               </button>
             </div>
           </div>
@@ -244,7 +265,7 @@ export default function Oferta() {
             </div>
 
             <div className="pt-2">
-              <span className="badge-gold mb-3 inline-block">O Kit Completo + 5 Bônus</span>
+              <span className="badge-gold mb-3 inline-block">O Kit Completo + 5 BÃ´nus</span>
               <h3 className="font-display text-2xl text-[#FFF4E6] uppercase tracking-wide mb-2">
                 Kit Completo
               </h3>
@@ -255,7 +276,7 @@ export default function Oferta() {
               <div className="mb-5 rounded-xl overflow-hidden" style={{ border: '2px solid #F28A1A', boxShadow: '0 6px 24px rgba(242,138,26,0.18)' }}>
                 <Image
                   src="/images/oferta/mockup-kit-completo.webp"
-                  alt="Mockup do Kit Completo com guia principal e cinco bônus"
+                  alt="Mockup do Kit Completo com guia principal e cinco bÃ´nus"
                   width={1400}
                   height={1400}
                   loading="lazy"
@@ -266,17 +287,17 @@ export default function Oferta() {
 
               <div className="space-y-2.5 pt-4" style={{ borderTop: '1px solid rgba(242,138,26,0.2)' }}>
                 <p className="text-[9px] font-display tracking-wider text-[#D8A64A] font-extrabold uppercase mb-2">
-                  ✓ Tudo incluso neste plano:
+                  âœ“ Tudo incluso neste plano:
                 </p>
                 {[
-                  'Guia Digital Mapa do Degradê (Ebook)',
-                  '🎁 Bônus 1: Tabela dos Pentes e Alturas',
-                  '🎁 Bônus 2: Checklist do Corte Sem Marca',
-                  '🎁 Bônus 3: Guia dos 7 Erros Comuns',
-                  '🎁 Bônus 4: Pack de Referências de Fade',
-                  '🎁 Bônus 5: Mini Guia de Acabamento',
-                  'Atualizações futuras',
-                  'Acesso vitalício',
+                  'Guia Digital Mapa do DegradÃª (Ebook)',
+                  'ðŸŽ BÃ´nus 1: Tabela dos Pentes e Alturas',
+                  'ðŸŽ BÃ´nus 2: Checklist do Corte Sem Marca',
+                  'ðŸŽ BÃ´nus 3: Guia dos 7 Erros Comuns',
+                  'ðŸŽ BÃ´nus 4: Pack de ReferÃªncias de Fade',
+                  'ðŸŽ BÃ´nus 5: Mini Guia de Acabamento',
+                  'AtualizaÃ§Ãµes futuras',
+                  'Acesso vitalÃ­cio',
                   '7 dias de garantia',
                 ].map(item => (
                   <div key={item} className="flex items-center gap-2.5 text-xs text-[#FFF4E6]">
@@ -294,10 +315,10 @@ export default function Oferta() {
               <div className="flex items-baseline gap-1 mt-0.5 mb-2">
                 <span className="text-xs font-mono text-[#F28A1A] font-black">Por apenas</span>
                 <span className="font-display text-3xl text-[#F28A1A]">R$ 29,90</span>
-                <span className="text-[10px] text-[#C9B89A] font-bold">à vista</span>
+                <span className="text-[10px] text-[#C9B89A] font-bold">Ã  vista</span>
               </div>
               <p className="text-[11px] text-[#D8A64A] font-bold mb-5 leading-relaxed">
-                Por apenas R$10,00 a mais que o Plano Básico, você leva o guia principal e todos os 5 bônus.
+                Por apenas R$10,00 a mais que o Plano BÃ¡sico, vocÃª leva o guia principal e todos os 5 bÃ´nus.
               </p>
               <button
                 onClick={handleCheckoutComplete}
@@ -306,7 +327,7 @@ export default function Oferta() {
                 onMouseEnter={e => (e.currentTarget.style.background = '#D87512')}
                 onMouseLeave={e => (e.currentTarget.style.background = '#F28A1A')}
               >
-                Quero o Kit Completo + Bônus
+                Quero o Kit Completo + BÃ´nus
               </button>
             </div>
           </div>
@@ -375,18 +396,18 @@ export default function Oferta() {
                   </h2>
 
                   <p className="text-sm font-bold text-[#F28A1A] mb-4 leading-relaxed">
-                    Antes de continuar com o Plano Básico, você pode liberar o Kit Completo com desconto especial.
+                    Antes de continuar com o Plano BÃ¡sico, vocÃª pode liberar o Kit Completo com desconto especial.
                   </p>
 
                   <p className="text-xs text-[#D9C3A3] mb-5 leading-relaxed">
-                    Em vez de levar apenas o guia principal, você recebe o guia completo + todos os bônus por um valor menor que o preço normal do Kit Completo.
+                    Em vez de levar apenas o guia principal, vocÃª recebe o guia completo + todos os bÃ´nus por um valor menor que o preÃ§o normal do Kit Completo.
                   </p>
 
                   {/* Imagem do Kit Completo */}
                   <div className="mb-6 flex justify-center">
                     <Image
                       src="/images/popup/mockup-upgrade-kit-completo.webp"
-                      alt="Mockup do Kit Completo Mapa do Degradê Sem Marca com bônus inclusos"
+                      alt="Mockup do Kit Completo Mapa do DegradÃª Sem Marca com bÃ´nus inclusos"
                       width={1000}
                       height={1000}
                       loading="lazy"
@@ -402,17 +423,17 @@ export default function Oferta() {
                     style={{ background: '#2A130B', border: '1px solid #5A321C' }}
                   >
                     <p className="text-[9px] font-display tracking-wider text-[#D8A64A] font-extrabold uppercase mb-3">
-                      ✓ Tudo incluso nesta oferta:
+                      âœ“ Tudo incluso nesta oferta:
                     </p>
                     {[
-                      'Guia Digital Mapa do Degradê',
+                      'Guia Digital Mapa do DegradÃª',
                       'Tabela dos Pentes e Alturas',
                       'Checklist do Corte Sem Marca',
                       'Guia dos 7 Erros Comuns',
-                      'Pack de Referências de Fade',
+                      'Pack de ReferÃªncias de Fade',
                       'Mini Guia de Acabamento',
-                      'Atualizações futuras',
-                      'Acesso vitalício',
+                      'AtualizaÃ§Ãµes futuras',
+                      'Acesso vitalÃ­cio',
                       '7 dias de garantia',
                     ].map((item) => (
                       <div key={item} className="flex items-center gap-2.5 text-xs text-[#FFF4E6]">
@@ -422,7 +443,7 @@ export default function Oferta() {
                     ))}
                   </div>
 
-                  {/* Preço */}
+                  {/* PreÃ§o */}
                   <div
                     className="rounded-xl p-4 mb-4 text-center"
                     style={{ background: 'rgba(242,138,26,0.08)', border: '1px solid rgba(242,138,26,0.3)' }}
@@ -435,11 +456,11 @@ export default function Oferta() {
                       <span className="font-display text-4xl text-[#F28A1A]">R$ 24,90</span>
                     </div>
                     <p className="text-[11px] text-[#D8A64A] font-bold leading-relaxed">
-                      Por apenas R$5,00 a mais que o Plano Básico, você leva o Kit Completo.
+                      Por apenas R$5,00 a mais que o Plano BÃ¡sico, vocÃª leva o Kit Completo.
                     </p>
                   </div>
 
-                  {/* Botão principal */}
+                  {/* BotÃ£o principal */}
                   <button
                     onClick={handleUpgradeToKit}
                     className="w-full py-4 text-sm font-black uppercase rounded-lg tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer font-display mb-3"
@@ -450,7 +471,7 @@ export default function Oferta() {
                     Quero o Kit Completo por R$ 24,90
                   </button>
 
-                  {/* Botão secundário */}
+                  {/* BotÃ£o secundÃ¡rio */}
                   <button
                     onClick={handleContinueBasic}
                     className="w-full py-3 text-xs font-bold uppercase rounded-lg tracking-wider transition-all duration-150 cursor-pointer"
@@ -468,7 +489,7 @@ export default function Oferta() {
                       e.currentTarget.style.borderColor = 'rgba(217,195,163,0.3)';
                     }}
                   >
-                    Não, quero continuar com o Plano Básico
+                    NÃ£o, quero continuar com o Plano BÃ¡sico
                   </button>
                 </div>
               </motion.div>
