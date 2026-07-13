@@ -33,6 +33,7 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
     <>
       <style dangerouslySetInnerHTML={{ __html: animationKeyframes }} />
       <div
+        onContextMenu={(event) => event.preventDefault()}
         onMouseDown={() => setIsPaused(true)}
         onMouseUp={() => setIsPaused(false)}
         onMouseLeave={() => setIsPaused(false)}
@@ -44,6 +45,7 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
           overflow: 'hidden',
           position: 'relative',
           touchAction: 'pan-y',
+          WebkitTouchCallout: 'none',
           WebkitUserSelect: 'none',
           userSelect: 'none',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)',
@@ -67,6 +69,9 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
               overflow: 'hidden',
               border: '1.5px solid #5A321C',
               boxShadow: '0 6px 20px rgba(11,7,4,0.75)',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
             }}>
               <Image
                 src={img.src}
@@ -76,7 +81,8 @@ function MarqueeRow({ images, direction }: { images: typeof row1Loop; direction:
                 loading="lazy"
                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 45vw, 280px"
                 draggable={false}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
+                onContextMenu={(event) => event.preventDefault()}
+                style={{ width: '100%', height: 'auto', display: 'block', WebkitTouchCallout: 'none', userSelect: 'none' }}
               />
             </div>
           ))}
