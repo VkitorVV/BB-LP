@@ -1,4 +1,4 @@
--- ── funnel_sessions ─────────────────────────────────────────────────────────
+-- â”€â”€ funnel_sessions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS funnel_sessions (
   id               BIGSERIAL PRIMARY KEY,
   session_id       TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS funnel_sessions (
 ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS left_at TIMESTAMPTZ;
 ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS page_status TEXT NOT NULL DEFAULT 'active';
 
--- ── funnel_section_events ────────────────────────────────────────────────────
+-- â”€â”€ funnel_section_events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS funnel_section_events (
   id            BIGSERIAL PRIMARY KEY,
   session_id    TEXT NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS funnel_section_events (
   UNIQUE(session_id, date, section_id)
 );
 
--- ── funnel_click_events ──────────────────────────────────────────────────────
+-- â”€â”€ funnel_click_events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS funnel_click_events (
   id                     BIGSERIAL PRIMARY KEY,
   session_id             TEXT NOT NULL,
@@ -74,29 +74,38 @@ ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS adset_id              T
 ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS ad_id                 TEXT;
 ALTER TABLE funnel_click_events ADD COLUMN IF NOT EXISTS clicked_at            TIMESTAMPTZ;
 
--- ── funnel_purchases ─────────────────────────────────────────────────────────
+-- â”€â”€ funnel_purchases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS funnel_purchases (
   id             BIGSERIAL PRIMARY KEY,
   session_id     TEXT,
   date           DATE NOT NULL DEFAULT CURRENT_DATE,
   payment_id     TEXT,
+  status         TEXT,
   checkout_title TEXT,
   amount         NUMERIC(10,2),
   utm_campaign   TEXT,
   utm_content    TEXT,
   utm_term       TEXT,
+  approved_at    TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS session_id TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS payment_id TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS status TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
 
--- ── Indexes ───────────────────────────────────────────────────────────────────
+-- â”€â”€ Indexes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE INDEX IF NOT EXISTS idx_funnel_sessions_date        ON funnel_sessions(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_sessions_last_seen   ON funnel_sessions(last_seen);
 CREATE INDEX IF NOT EXISTS idx_funnel_sessions_page_status ON funnel_sessions(page_status);
 CREATE INDEX IF NOT EXISTS idx_funnel_section_events_date  ON funnel_section_events(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_click_events_date    ON funnel_click_events(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_purchases_date       ON funnel_purchases(date);
+CREATE INDEX IF NOT EXISTS idx_funnel_purchases_session_id ON funnel_purchases(session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_purchases_payment_id_unique
+  ON funnel_purchases(payment_id);
 
--- ── Migração: CTA tracking ───────────────────────────────────────────────────
+-- â”€â”€ MigraÃ§Ã£o: CTA tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS reach_method         TEXT DEFAULT 'scroll';
 ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS source_cta_label     TEXT;
 ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS source_section_id    TEXT;
