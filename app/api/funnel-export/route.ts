@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getBrazilDate } from '@/lib/brazilDate';
 
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows(
+  buildQuery: () => any,
+): Promise<Record<string, unknown>[]> {
+  const rows: Record<string, unknown>[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await buildQuery().range(from, to);
+    if (error) throw new Error(error.message || 'Erro ao buscar dados paginados');
+
+    const page = (data || []) as Record<string, unknown>[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token  = searchParams.get('token');
@@ -12,42 +30,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // â”€â”€ 1. Buscar dados do Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const [sessionsRes, sectionEventsRes, clickEventsRes, purchasesRes] = await Promise.all([
-    supabaseAdmin
+  const [sessions, sectionEvts, clickEvts, purchases] = await Promise.all([
+    fetchAllRows(() => supabaseAdmin
       .from('funnel_sessions')
       .select('session_id,date,first_seen,last_seen,left_at,page_status,utm_source,utm_medium,utm_campaign,utm_content,utm_term,campaign_id,adset_id,ad_id,placement,site_source_name,max_section_order,max_section_title')
       .eq('date', date)
-      .order('last_seen', { ascending: false }),
+      .order('last_seen', { ascending: false })),
 
-    supabaseAdmin
+    fetchAllRows(() => supabaseAdmin
       .from('funnel_section_events')
       .select('session_id,section_id,section_title,section_order,reach_method,source_cta_label,source_section_title,created_at')
       .eq('date', date)
-      .order('section_order', { ascending: true }),
+      .order('section_order', { ascending: true })),
 
-    supabaseAdmin
+    fetchAllRows(() => supabaseAdmin
       .from('funnel_click_events')
       .select('session_id,checkout_type,checkout_label,checkout_price,button_location,click_kind,cta_label,source_section_title,target_section_title,current_section_title,clicked_at,utm_campaign,utm_content,utm_term')
       .eq('date', date)
-      .order('clicked_at', { ascending: true }),
+      .order('clicked_at', { ascending: true })),
 
-    supabaseAdmin
+    fetchAllRows(() => supabaseAdmin
       .from('funnel_purchases')
       .select('session_id,payment_id,status,checkout_title,amount,utm_campaign,utm_content,utm_term,approved_at,created_at')
       .eq('date', date)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })),
   ]);
 
-  const sessions     = (sessionsRes.data    || []) as Record<string, unknown>[];
-  const sectionEvts  = (sectionEventsRes.data || []) as Record<string, unknown>[];
-  const clickEvts    = (clickEventsRes.data  || []) as Record<string, unknown>[];
-  const purchases    = (purchasesRes.data    || []) as Record<string, unknown>[];
-
-  // Debug log
   console.log('[funnel-export]', { date, type: format, sessionsFound: sessions.length, sectionEventsFound: sectionEvts.length, clickEventsFound: clickEvts.length, purchasesFound: purchases.length });
 
-  // â”€â”€ 2. Build per-session indexes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const sectionsBySession: Record<string, Record<string, unknown>[]> = {};
   sectionEvts.forEach(e => {
     const sid = e.session_id as string;
@@ -68,7 +78,6 @@ export async function GET(request: NextRequest) {
     if (sid && !purchaseBySession[sid]) purchaseBySession[sid] = p;
   });
 
-  // â”€â”€ 3. JSON response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (format === 'json') {
     const body = JSON.stringify({
       date,
@@ -127,7 +136,6 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // â”€â”€ 4. CSV response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const DELIM = ';';
   const CRLF  = '\r\n';
   const BOM   = '\uFEFF';
