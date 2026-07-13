@@ -82,6 +82,7 @@ export default function ProvaSocial() {
           </button>
 
           <div
+            onContextMenu={(event) => event.preventDefault()}
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerCancel}
@@ -93,6 +94,9 @@ export default function ProvaSocial() {
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
               touchAction: 'pan-y',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
             }}
           >
             <div
@@ -100,7 +104,7 @@ export default function ProvaSocial() {
               style={{ transform: `translate3d(-${current * 100}%, 0, 0)` }}
             >
               {stories.map((story) => (
-                <div key={story.src} className="w-full shrink-0">
+                <div key={story.src} className="w-full shrink-0" style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}>
                   <Image
                     src={story.src}
                     alt="Print real de story com prova social sobre o Mapa do Degradê Sem Marca"
@@ -109,7 +113,8 @@ export default function ProvaSocial() {
                     loading="eager"
                     sizes="(max-width: 640px) calc(100vw - 40px), 448px"
                     draggable={false}
-                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                    onContextMenu={(event) => event.preventDefault()}
+                    style={{ width: '100%', height: 'auto', display: 'block', WebkitTouchCallout: 'none', userSelect: 'none' }}
                   />
                 </div>
               ))}
