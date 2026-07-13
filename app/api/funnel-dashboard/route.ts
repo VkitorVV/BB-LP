@@ -31,7 +31,7 @@ function calcStatus(lastSeen: string, pageStatus: string | null): 'online'|'rece
   if (pageStatus === 'left') return 'saiu';
   const sec = (Date.now() - new Date(lastSeen).getTime()) / 1000;
   if (sec <= 25) return 'online';
-  if (sec <= 1800) return 'recente';
+  if (sec <= 90) return 'recente';
   return 'inativo';
 }
 
@@ -60,12 +60,13 @@ type RawSession = {
 type ClickEvent = {
   session_id: string;
   checkout_type: string;
+  click_kind?: string | null;
   checkout_label?: string | null;
   checkout_price?: number | null;
   button_location?: string | null;
   clicked_at?: string | null;
 };
-type PurchaseEvent = { session_id: string; amount?: number | null };
+type PurchaseEvent = { session_id: string | null; amount?: number | null; created_at?: string | null };
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
   const now25  = new Date(Date.now() -     25_000).toISOString();
   const now30m = new Date(Date.now() - 30*60_000).toISOString();
 
-  // ── 1. All sessions today (only real columns) ───────────────────────────
+  // â”€â”€ 1. All sessions today (only real columns) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { data: rawSessions, error: sessionsError } = await supabaseAdmin
     .from('funnel_sessions')
     .select(`
@@ -96,19 +97,19 @@ export async function GET(request: NextRequest) {
 
   const allSessionsToday: RawSession[] = (rawSessions || []) as RawSession[];
 
-  // ── 2. Clicks for this day ──────────────────────────────────────────────
+  // â”€â”€ 2. Clicks for this day â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { data: clickEvents } = await supabaseAdmin
     .from('funnel_click_events')
-    .select('session_id, checkout_type, checkout_label, checkout_price, button_location, clicked_at')
+    .select('session_id, checkout_type, click_kind, checkout_label, checkout_price, button_location, clicked_at')
     .eq('date', date);
 
-  // ── 3. Purchases for this day ───────────────────────────────────────────
+  // â”€â”€ 3. Purchases for this day â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { data: purchasesData } = await supabaseAdmin
     .from('funnel_purchases')
-    .select('session_id, amount')
+    .select('session_id, amount, created_at')
     .eq('date', date);
 
-  // ── 4. Build per-session maps ───────────────────────────────────────────
+  // â”€â”€ 4. Build per-session maps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const clicksBySession: Record<string, number> = {};
   const lastClickBySession: Record<string, { checkoutType: string; checkoutLabel: string | null; checkoutPrice: number | null; buttonLocation: string | null; clickedAt: string | null }> = {};
 
@@ -127,20 +128,21 @@ export async function GET(request: NextRequest) {
   const purchasedBySession: Record<string, boolean> = {};
   const revenueBySession:   Record<string, number>  = {};
   (purchasesData || [] as PurchaseEvent[]).forEach((p: PurchaseEvent) => {
+    if (!p.session_id) return;
     purchasedBySession[p.session_id] = true;
     revenueBySession[p.session_id]   = (revenueBySession[p.session_id] || 0) + (p.amount || 0);
   });
 
-  // ── 5. Filtered sessions (for period metrics only) ──────────────────────
+  // â”€â”€ 5. Filtered sessions (for period metrics only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filteredSessions = since
     ? allSessionsToday.filter(s => new Date(s.last_seen) >= new Date(since))
     : allSessionsToday;
 
-  // ── 6. Map sessions → camelCase with calculated fields ─────────────────
+  // â”€â”€ 6. Map sessions â†’ camelCase with calculated fields â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const sessions = allSessionsToday.map((s, idx) => ({
     sessionId:            s.session_id,
     shortId:              s.session_id.slice(0, 8),
-    label:                `Usuário #${String(idx + 1).padStart(3, '0')}`,
+    label:                `UsuÃ¡rio #${String(idx + 1).padStart(3, '0')}`,
     firstSeen:            s.first_seen,
     lastSeen:             s.last_seen,
     leftAt:               s.left_at,
@@ -165,7 +167,7 @@ export async function GET(request: NextRequest) {
     lastCheckoutClick:  lastClickBySession[s.session_id] || null,
   }));
 
-  // ── 7. Presence counters (global, no date filter) ───────────────────────
+  // â”€â”€ 7. Presence counters (global, no date filter) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [{ count: activeNow }, { count: active30m }] = await Promise.all([
     supabaseAdmin.from('funnel_sessions').select('*', { count: 'exact', head: true })
       .gte('last_seen', now25).neq('page_status', 'left'),
@@ -173,7 +175,7 @@ export async function GET(request: NextRequest) {
       .gte('last_seen', now30m),
   ]);
 
-  // ── 8. Funnel sections (with toggle: scroll only vs all) ────────────────
+  // â”€â”€ 8. Funnel sections (with toggle: scroll only vs all) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const includeCta = searchParams.get('includeCta') === '1';
   const filteredIds = filteredSessions.map(s => s.session_id);
 
@@ -214,30 +216,48 @@ export async function GET(request: NextRequest) {
     }
   });
 
-  // ── 9. Checkout clicks + internal CTA clicks ────────────────────────────
+  // â”€â”€ 9. Checkout clicks + internal CTA clicks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const checkoutClicks: Record<string, number> = {
     plano_basico_popup_open: 0, plano_basico: 0, kit_completo: 0, kit_desconto_popup: 0,
   };
   const internalCtaClicks: Record<string, number> = {};
+  const checkoutRedirectTypes = new Set(['plano_basico', 'kit_completo', 'kit_desconto_popup']);
+  const uniqueCheckoutSessionIds = new Set<string>();
+  let rawCheckoutEvents = 0;
+  let checkoutRedirects = 0;
 
   if (filteredIds.length > 0) {
     let cq = supabaseAdmin
       .from('funnel_click_events')
-      .select('checkout_type, click_kind, cta_label')
+      .select('session_id, checkout_type, click_kind, cta_label')
       .eq('date', date)
       .in('session_id', filteredIds);
     const { data: cData } = await cq;
-    (cData || []).forEach((r: { checkout_type: string; click_kind?: string; cta_label?: string }) => {
+    (cData || []).forEach((r: { session_id: string; checkout_type: string; click_kind?: string; cta_label?: string }) => {
       if (r.click_kind === 'internal_cta') {
         const label = r.cta_label || 'CTA desconhecido';
         internalCtaClicks[label] = (internalCtaClicks[label] || 0) + 1;
       } else {
+        rawCheckoutEvents++;
         if (r.checkout_type in checkoutClicks) checkoutClicks[r.checkout_type]++;
+        if (checkoutRedirectTypes.has(r.checkout_type)) {
+          checkoutRedirects++;
+          uniqueCheckoutSessionIds.add(r.session_id);
+        }
       }
     });
   }
+  const checkoutSummary = {
+    rawCheckoutEvents,
+    basicPopupOpens: checkoutClicks.plano_basico_popup_open,
+    checkoutRedirects,
+    uniqueCheckoutSessions: uniqueCheckoutSessionIds.size,
+    basicSelected: checkoutClicks.plano_basico,
+    completeSelected: checkoutClicks.kit_completo,
+    upgradeAccepted: checkoutClicks.kit_desconto_popup,
+  };
 
-  // ── 10. Purchases summary ───────────────────────────────────────────────
+  // â”€â”€ 10. Purchases summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const periodPurchases = since
     ? (purchasesData || []).filter((p: PurchaseEvent & { created_at?: string }) =>
         p.created_at && new Date(p.created_at) >= new Date(since))
@@ -245,7 +265,7 @@ export async function GET(request: NextRequest) {
   const purchaseCount   = periodPurchases.length;
   const purchaseRevenue = periodPurchases.reduce((sum: number, p: PurchaseEvent) => sum + (p.amount || 0), 0);
 
-  // ── 11. Campaign / Adset / Creative tables ──────────────────────────────
+  // â”€â”€ 11. Campaign / Adset / Creative tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   type MapEntry = { sessions: number; clicks: number; reachedOffer: number; purchases: number; revenue: number };
   const campaignMap: Record<string, MapEntry> = {};
   const adsetMap:    Record<string, MapEntry> = {};
@@ -277,11 +297,11 @@ export async function GET(request: NextRequest) {
       conversionPurchase: d.sessions > 0 ? Math.round((d.purchases / d.sessions) * 100) : 0,
     })).sort((a, b) => b.sessions - a.sessions);
 
-  // ── 12. Response ────────────────────────────────────────────────────────
+  // â”€â”€ 12. Response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Extra analytics
   const heroCount2 = secCountsAll['hero'] || 1;
 
-  // funnelVisual — proportional widths
+  // funnelVisual â€” proportional widths
   let dropAccum = 0;
   const funnelVisual = SECTION_ORDER.map((s, i) => {
     const reached   = secCountsAll[s.id] || 0;
@@ -292,7 +312,7 @@ export async function GET(request: NextRequest) {
     return { sectionId: s.id, sectionTitle: s.title, sectionOrder: s.order, reached, percentOfTop: pctTop, dropFromPrevious: drop, dropAccumulated: dropAccum };
   });
 
-  // topBottlenecks — sorted by dropPercent
+  // topBottlenecks â€” sorted by dropPercent
   const topBottlenecks = funnelVisual
     .filter((_, i) => i > 0)
     .map((s, i) => ({ fromSection: funnelVisual[i].sectionTitle, toSection: s.sectionTitle, dropUsers: (secCounts[SECTION_ORDER[i].id] || 0) - s.reached, dropPercent: s.dropFromPrevious }))
@@ -300,7 +320,7 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => b.dropPercent - a.dropPercent)
     .slice(0, 5);
 
-  // stopPoints — where max_section_title ends for most users
+  // stopPoints â€” where max_section_title ends for most users
   const stopCounts: Record<string, number> = {};
   allSessionsToday.forEach(s => {
     const t = s.max_section_title;
@@ -310,7 +330,7 @@ export async function GET(request: NextRequest) {
     .map(([sectionTitle, usersStopped]) => ({ sectionTitle, usersStopped }))
     .sort((a, b) => b.usersStopped - a.usersStopped);
 
-  // sectionDiagnostics — per section, top campaign and creative
+  // sectionDiagnostics â€” per section, top campaign and creative
   const secCampaign: Record<string, Record<string, number>> = {};
   const secCreative: Record<string, Record<string, number>> = {};
   filteredSessions.forEach(s => {
@@ -338,7 +358,7 @@ export async function GET(request: NextRequest) {
     active30m:          active30m  || 0,
     totalSessionsToday: allSessionsToday.length,
     sessionsPeriod:     filteredSessions.length,
-    sections, checkoutClicks,
+    sections, checkoutClicks, checkoutSummary,
     purchases: { count: purchaseCount, revenue: purchaseRevenue },
     campaigns: toArr(campaignMap, 'utmCampaign'),
     adsets:    toArr(adsetMap,    'adsetId'),
