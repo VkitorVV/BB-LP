@@ -6,6 +6,115 @@ function readString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
+type CheckoutClickCandidate = {
+  session_id: string;
+  checkout_type: string | null;
+  checkout_price: number | string | null;
+  target_url: string | null;
+  clicked_at: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+};
+
+function sameTrackingValue(a: string | undefined, b: string | null): boolean {
+  return Boolean(a && b && a === b);
+}
+
+async function findSessionIdFromRecentCheckoutClick({
+  date,
+  value,
+  tracking,
+  paymentCreatedAt,
+}: {
+  date: string;
+  value: number;
+  tracking?: Record<string, unknown>;
+  paymentCreatedAt?: string;
+}): Promise<string | null> {
+  const paymentDate = paymentCreatedAt ? new Date(paymentCreatedAt) : null;
+  const paymentMs = paymentDate && !Number.isNaN(paymentDate.getTime()) ? paymentDate.getTime() : null;
+  const referenceMs = paymentMs ?? Date.now();
+  const lowerBound = new Date(referenceMs - 2 * 60 * 60_000).toISOString();
+  const upperBound = new Date(referenceMs + 30 * 60_000).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from('funnel_click_events')
+    .select('session_id,checkout_type,checkout_price,target_url,clicked_at,utm_source,utm_medium,utm_campaign,utm_content,utm_term')
+    .eq('date', date)
+    .neq('click_kind', 'internal_cta')
+    .gte('clicked_at', lowerBound)
+    .lte('clicked_at', upperBound)
+    .order('clicked_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('[WIAPY_WEBHOOK] Recent click lookup error', error.message);
+    return null;
+  }
+
+  const utms = {
+    source: readString(tracking?.utm_source),
+    medium: readString(tracking?.utm_medium),
+    campaign: readString(tracking?.utm_campaign),
+    content: readString(tracking?.utm_content),
+    term: readString(tracking?.utm_term),
+  };
+
+  let best: { sessionId: string; score: number } | null = null;
+  for (const click of ((data || []) as CheckoutClickCandidate[])) {
+    let score = 0;
+    const clickPrice = typeof click.checkout_price === 'number'
+      ? click.checkout_price
+      : click.checkout_price
+        ? Number(click.checkout_price)
+        : null;
+
+    if (click.checkout_type && ['plano_basico', 'kit_completo', 'kit_desconto_popup'].includes(click.checkout_type)) score += 2;
+    if (clickPrice !== null && Number.isFinite(clickPrice) && Math.abs(clickPrice - value) < 0.01) score += 4;
+    else if (clickPrice !== null && value > 0) score -= 4;
+
+    if (sameTrackingValue(utms.source, click.utm_source)) score += 2;
+    else if (utms.source && click.utm_source) score -= 2;
+    if (sameTrackingValue(utms.medium, click.utm_medium)) score += 2;
+    else if (utms.medium && click.utm_medium) score -= 2;
+    if (sameTrackingValue(utms.campaign, click.utm_campaign)) score += 2;
+    else if (utms.campaign && click.utm_campaign) score -= 2;
+    if (sameTrackingValue(utms.content, click.utm_content)) score += 2;
+    else if (utms.content && click.utm_content) score -= 2;
+    if (sameTrackingValue(utms.term, click.utm_term)) score += 1;
+    else if (utms.term && click.utm_term) score -= 1;
+
+    if (click.target_url?.includes('session_id=') || click.target_url?.includes('sid=')) score += 1;
+
+    if (paymentMs !== null && click.clicked_at) {
+      const clickedDate = new Date(click.clicked_at);
+      if (!Number.isNaN(clickedDate.getTime())) {
+        const minutesBeforePayment = (paymentMs - clickedDate.getTime()) / 60_000;
+        if (minutesBeforePayment >= 0 && minutesBeforePayment <= 20) score += 4;
+        else if (minutesBeforePayment >= 0 && minutesBeforePayment <= 120) score += 2;
+        else if (minutesBeforePayment < 0 && minutesBeforePayment >= -5) score += 1;
+        else score -= 3;
+      }
+    }
+
+    if (!best || score > best.score) best = { sessionId: click.session_id, score };
+  }
+
+  if (!best || best.score < 6) {
+    console.warn('[WIAPY_WEBHOOK] No confident recent click match', { bestScore: best?.score ?? null });
+    return null;
+  }
+
+  console.warn('[WIAPY_WEBHOOK] Matched purchase to recent checkout click', {
+    sessionId: best.sessionId,
+    score: best.score,
+  });
+  return best.sessionId;
+}
+
 export async function POST(request: NextRequest) {
   console.warn('[WIAPY_WEBHOOK] POST route called');
 
@@ -125,7 +234,7 @@ export async function POST(request: NextRequest) {
     }],
   };
 
-  // â”€â”€ 6. Enviar GA4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ 6. Enviar GA4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   try {
     const ga4Res = await fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
@@ -154,8 +263,15 @@ export async function POST(request: NextRequest) {
     const today = getBrazilDate();
 
     const approvedAt = new Date().toISOString();
+    const matchedSessionId = trackingSessionId || await findSessionIdFromRecentCheckoutClick({
+      date: today,
+      value,
+      tracking,
+      paymentCreatedAt: readString(payment?.dt_create),
+    });
+
     const { error: purchaseError } = await supabaseAdmin.from('funnel_purchases').upsert({
-      session_id:     trackingSessionId || null,
+      session_id:     matchedSessionId || null,
       date:           today,
       payment_id:     transactionId,
       status,
@@ -171,7 +287,11 @@ export async function POST(request: NextRequest) {
       console.error('[WIAPY_WEBHOOK] Purchase upsert error', purchaseError.message);
     }
 
-    console.warn('[WIAPY_WEBHOOK] Supabase purchase saved');
+    // Atualizar sessÃ£o se tiver session_id no tracking
+    console.warn('[WIAPY_WEBHOOK] Supabase purchase saved', {
+      hasSessionId: Boolean(matchedSessionId),
+      sessionMatchSource: trackingSessionId ? 'webhook' : matchedSessionId ? 'recent_click' : 'none',
+    });
   } catch (err) {
     console.error('[WIAPY_WEBHOOK] Supabase error (non-fatal)', err instanceof Error ? err.message : err);
   }
