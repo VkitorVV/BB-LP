@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // ── 1. Buscar dados do Supabase ─────────────────────────────────────────
+  // â”€â”€ 1. Buscar dados do Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [sessionsRes, sectionEventsRes, clickEventsRes, purchasesRes] = await Promise.all([
     supabaseAdmin
       .from('funnel_sessions')
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     supabaseAdmin
       .from('funnel_purchases')
-      .select('session_id,payment_id,checkout_title,amount,utm_campaign,utm_content,utm_term,created_at')
+      .select('session_id,payment_id,status,checkout_title,amount,utm_campaign,utm_content,utm_term,approved_at,created_at')
       .eq('date', date)
       .order('created_at', { ascending: false }),
   ]);
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
   // Debug log
   console.log('[funnel-export]', { date, type: format, sessionsFound: sessions.length, sectionEventsFound: sectionEvts.length, clickEventsFound: clickEvts.length, purchasesFound: purchases.length });
 
-  // ── 2. Build per-session indexes ────────────────────────────────────────
+  // â”€â”€ 2. Build per-session indexes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const sectionsBySession: Record<string, Record<string, unknown>[]> = {};
   sectionEvts.forEach(e => {
     const sid = e.session_id as string;
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     if (sid && !purchaseBySession[sid]) purchaseBySession[sid] = p;
   });
 
-  // ── 3. JSON response ─────────────────────────────────────────────────────
+  // â”€â”€ 3. JSON response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (format === 'json') {
     const body = JSON.stringify({
       date,
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
           purchased:               Boolean(purch),
           purchaseValue:           (purch?.amount as number | null) || null,
           transactionId:           (purch?.payment_id as string | null) || null,
-          purchasedAt:             (purch?.created_at as string | null) || null,
+          purchasedAt:             (purch?.approved_at as string | null) || (purch?.created_at as string | null) || null,
         };
       }),
       sectionEvents: sectionEvts,
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // ── 4. CSV response ──────────────────────────────────────────────────────
+  // â”€â”€ 4. CSV response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const DELIM = ';';
   const CRLF  = '\r\n';
   const BOM   = '\uFEFF';
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
         escape(Boolean(purch)),
         escape(purch?.amount),
         escape(purch?.payment_id),
-        escape(purch?.created_at),
+        escape(purch?.approved_at || purch?.created_at),
       ].join(DELIM));
     });
   }
