@@ -1,35 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-
-const SESSION_ID_KEY = 'mapa_degrade_session_id';
-
-function getSessionId(): string {
-  let id = sessionStorage.getItem(SESSION_ID_KEY);
-  if (!id) {
-    id = typeof crypto?.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    sessionStorage.setItem(SESSION_ID_KEY, id);
-  }
-  return id;
-}
-
-function getUtmParams() {
-  const p = new URLSearchParams(window.location.search);
-  return {
-    utmSource:      p.get('utm_source')       || undefined,
-    utmMedium:      p.get('utm_medium')       || undefined,
-    utmCampaign:    p.get('utm_campaign')     || undefined,
-    utmContent:     p.get('utm_content')      || undefined,
-    utmTerm:        p.get('utm_term')         || undefined,
-    campaignId:     p.get('campaign_id')      || undefined,
-    adsetId:        p.get('adset_id')         || undefined,
-    adId:           p.get('ad_id')            || undefined,
-    placement:      p.get('placement')        || undefined,
-    siteSourceName: p.get('site_source_name') || undefined,
-  };
-}
+import { getSessionId, getUtmParams } from '@/lib/clientTracking';
 
 function sendHeartbeat() {
   if (document.visibilityState === 'hidden') return;

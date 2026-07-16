@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       .order('clicked_at', { ascending: true }),
     supabaseAdmin
       .from('funnel_purchases')
-      .select('payment_id,status,checkout_title,amount,approved_at,created_at')
+      .select('payment_id,status,checkout_title,approved_at,created_at')
       .eq('session_id', sessionId)
       .eq('date', date)
       .order('created_at', { ascending: false })

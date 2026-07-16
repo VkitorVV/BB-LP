@@ -20,6 +20,35 @@ async function fetchAllRows(
   }
 }
 
+async function fetchPurchases(date: string): Promise<Record<string, unknown>[]> {
+  const attempts = [
+    { select: 'session_id,payment_id,status,checkout_title,amount,utm_campaign,utm_content,utm_term,approved_at,created_at', order: 'created_at' },
+    { select: 'session_id,payment_id,status,checkout_title,utm_campaign,utm_content,utm_term,approved_at,created_at', order: 'created_at' },
+    { select: 'session_id,payment_id,status,checkout_title,utm_campaign,utm_content,utm_term,approved_at', order: 'approved_at' },
+    { select: 'session_id,payment_id,status,checkout_title,utm_campaign,utm_content,utm_term', order: null },
+  ];
+
+  let lastError: unknown = null;
+  for (const attempt of attempts) {
+    try {
+      return await fetchAllRows(() => {
+        const query = supabaseAdmin
+          .from('funnel_purchases')
+          .select(attempt.select)
+          .eq('date', date);
+
+        return attempt.order
+          ? query.order(attempt.order, { ascending: false })
+          : query;
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Erro ao buscar compras');
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token  = searchParams.get('token');
@@ -30,6 +59,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // ── 1. Buscar dados do Supabase ─────────────────────────────────────────
   const [sessions, sectionEvts, clickEvts, purchases] = await Promise.all([
     fetchAllRows(() => supabaseAdmin
       .from('funnel_sessions')
@@ -49,15 +79,13 @@ export async function GET(request: NextRequest) {
       .eq('date', date)
       .order('clicked_at', { ascending: true })),
 
-    fetchAllRows(() => supabaseAdmin
-      .from('funnel_purchases')
-      .select('session_id,payment_id,status,checkout_title,amount,utm_campaign,utm_content,utm_term,approved_at,created_at')
-      .eq('date', date)
-      .order('created_at', { ascending: false })),
+    fetchPurchases(date),
   ]);
 
+  // Debug log
   console.log('[funnel-export]', { date, type: format, sessionsFound: sessions.length, sectionEventsFound: sectionEvts.length, clickEventsFound: clickEvts.length, purchasesFound: purchases.length });
 
+  // ── 2. Build per-session indexes ────────────────────────────────────────
   const sectionsBySession: Record<string, Record<string, unknown>[]> = {};
   sectionEvts.forEach(e => {
     const sid = e.session_id as string;
@@ -78,6 +106,7 @@ export async function GET(request: NextRequest) {
     if (sid && !purchaseBySession[sid]) purchaseBySession[sid] = p;
   });
 
+  // ── 3. JSON response ─────────────────────────────────────────────────────
   if (format === 'json') {
     const body = JSON.stringify({
       date,
@@ -118,7 +147,7 @@ export async function GET(request: NextRequest) {
           lastCheckoutPrice:       lastCk?.checkout_price || null,
           lastCheckoutType:        lastCk?.checkout_type  || null,
           purchased:               Boolean(purch),
-          purchaseValue:           (purch?.amount as number | null) || null,
+          purchaseValue:           purch?.amount ?? null,
           transactionId:           (purch?.payment_id as string | null) || null,
           purchasedAt:             (purch?.approved_at as string | null) || (purch?.created_at as string | null) || null,
         };
@@ -136,6 +165,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // ── 4. CSV response ──────────────────────────────────────────────────────
   const DELIM = ';';
   const CRLF  = '\r\n';
   const BOM   = '\uFEFF';

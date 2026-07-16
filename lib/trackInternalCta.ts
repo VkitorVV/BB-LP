@@ -2,6 +2,8 @@
  * Tracks an internal CTA click (scroll-to-section button).
  * Sets window.__internalCtaJump flag so SectionTracker skips intermediaries.
  */
+import { getOfferTrackingSection } from '@/lib/clientTracking';
+
 export function trackInternalCta(params: {
   ctaLabel: string;
   buttonLocation: string;
@@ -14,12 +16,13 @@ export function trackInternalCta(params: {
   sessionId: string;
   utms: Record<string, string | undefined>;
 }) {
+  const offerSection = getOfferTrackingSection();
   const {
     ctaLabel, buttonLocation,
     sourceSectionId, sourceSectionTitle, sourceSectionOrder,
-    targetSectionId = 'oferta',
-    targetSectionTitle = '11 - Oferta',
-    targetSectionOrder = 11,
+    targetSectionId = offerSection.id,
+    targetSectionTitle = offerSection.title,
+    targetSectionOrder = offerSection.order,
     sessionId, utms,
   } = params;
 
@@ -55,6 +58,8 @@ export function trackInternalCta(params: {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
       body: JSON.stringify({
         sessionId,
+        checkoutType:       'internal_cta',
+        checkoutLabel:      ctaLabel,
         clickKind:          'internal_cta',
         ctaLabel,
         buttonLocation,

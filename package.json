@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "lint": "true",
+    "lint": "eslint .",
     "clean": "next clean"
   },
   "dependencies": {

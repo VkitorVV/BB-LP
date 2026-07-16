@@ -13,10 +13,14 @@ export async function POST(request: NextRequest) {
     clickKind, ctaLabel, sourceSectionId, sourceSectionTitle, sourceSectionOrder,
     targetSectionId, targetSectionTitle, targetSectionOrder, isInternalJump,
     utmSource, utmMedium, utmCampaign, utmContent, utmTerm,
-    campaignId, adsetId, adId,
+    campaignId, adsetId, adId, placement, siteSourceName,
   } = body as Record<string, string | number | boolean | undefined>;
 
-  if (!sessionId || !checkoutType) {
+  const normalizedClickKind = (clickKind as string | undefined) || 'checkout';
+  const normalizedCheckoutType = (checkoutType as string | undefined)
+    || (normalizedClickKind === 'internal_cta' ? 'internal_cta' : undefined);
+
+  if (!sessionId || !normalizedCheckoutType) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
@@ -40,6 +44,7 @@ export async function POST(request: NextRequest) {
           utm_source: utmSource, utm_medium: utmMedium,
           utm_campaign: utmCampaign, utm_content: utmContent, utm_term: utmTerm,
           campaign_id: campaignId, adset_id: adsetId, ad_id: adId,
+          placement, site_source_name: siteSourceName,
         });
       }
       await supabaseAdmin.from('funnel_sessions').update(update)
@@ -51,6 +56,7 @@ export async function POST(request: NextRequest) {
         utm_source: utmSource, utm_medium: utmMedium,
         utm_campaign: utmCampaign, utm_content: utmContent, utm_term: utmTerm,
         campaign_id: campaignId, adset_id: adsetId, ad_id: adId,
+        placement, site_source_name: siteSourceName,
       });
     }
 
@@ -68,14 +74,14 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.from('funnel_click_events').insert({
         session_id:            sessionId,
         date:                  today,
-        checkout_type:         (checkoutType as string | undefined) || 'internal_cta',
+        checkout_type:         normalizedCheckoutType,
         checkout_label:        checkoutLabel   || null,
         checkout_price:        priceNum,
         button_location:       buttonLocation  || null,
         target_url:            targetUrl       || null,
         current_section_title: currentSectionTitle || null,
         current_section_order: currentSectionOrder ? Number(currentSectionOrder) : null,
-        click_kind:            (clickKind as string | undefined) || 'checkout',
+        click_kind:            normalizedClickKind,
         cta_label:             ctaLabel        || null,
         source_section_id:     sourceSectionId || null,
         source_section_title:  sourceSectionTitle || null,

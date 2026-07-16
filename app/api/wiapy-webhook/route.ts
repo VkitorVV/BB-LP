@@ -118,7 +118,7 @@ async function findSessionIdFromRecentCheckoutClick({
 export async function POST(request: NextRequest) {
   console.warn('[WIAPY_WEBHOOK] POST route called');
 
-  // â”€â”€ 1. Validar Authorization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 1. Validar Authorization ──────────────────────────────────────────────
   const authHeader = request.headers.get('authorization');
 
   console.warn('[WIAPY_WEBHOOK] Authorization received', {
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // â”€â”€ 2. Ler payload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 2. Ler payload ────────────────────────────────────────────────────────
   let payload: Record<string, unknown>;
   try {
     payload = await request.json();
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     hasTrackingSessionId: Boolean(trackingSessionId),
   });
 
-  // â”€â”€ 3. Processar apenas pagamentos confirmados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 3. Processar apenas pagamentos confirmados ────────────────────────────
   if (status !== 'paid') {
     return NextResponse.json(
       { received: true, ignored: true, reason: 'not_paid' },
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // â”€â”€ 4. VariÃ¡veis GA4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 4. Variáveis GA4 ─────────────────────────────────────────────────────
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const apiSecret     = process.env.GA4_API_SECRET;
 
@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'GA4 configuration missing' }, { status: 500 });
   }
 
-  // â”€â”€ 5. Montar evento GA4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 5. Montar evento GA4 ──────────────────────────────────────────────────
   const clientId      = (tracking?.ga_client_id as string | undefined)
     || `wiapy.${(customer?.id as string | undefined) || paymentId || Date.now()}`;
   const value         = typeof amount === 'number' ? amount / 100 : 0;
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
     }],
   };
 
-  // â”€â”€ 6. Enviar GA4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 6. Enviar GA4 ─────────────────────────────────────────────────────────
   try {
     const ga4Res = await fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // â”€â”€ 7. Salvar no Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 7. Salvar no Supabase ─────────────────────────────────────────────────
   try {
     const today = getBrazilDate();
 
@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
       console.error('[WIAPY_WEBHOOK] Purchase upsert error', purchaseError.message);
     }
 
-    // Atualizar sessÃ£o se tiver session_id no tracking
+    // Atualizar sessão se tiver session_id no tracking
     console.warn('[WIAPY_WEBHOOK] Supabase purchase saved', {
       hasSessionId: Boolean(matchedSessionId),
       sessionMatchSource: trackingSessionId ? 'webhook' : matchedSessionId ? 'recent_click' : 'none',
