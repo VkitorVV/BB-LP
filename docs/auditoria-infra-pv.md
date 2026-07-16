@@ -170,6 +170,43 @@ Nenhum valor privado foi incluido.
 - Nao foram feitos cliques reais em checkout externo para evitar abrir/transmitir URLs para Wiapy durante a auditoria.
 - Popup/checkout foram validados por codigo, atributos semanticos e preservacao dos slugs oficiais.
 
+## Backups de seguranca criados em 2026-07-16
+
+Antes da limpeza, foram criados e enviados ao GitHub:
+
+- `archive/pv-pre-auditoria-2026-07-16` apontando para `4f45fde`.
+- tag `pv-pre-auditoria-2026-07-16` apontando para `4f45fde`.
+- `archive/pv-auditada-pre-cleanup-2026-07-16` apontando para `ed6adf3`.
+- tag `pv-auditada-pre-cleanup-2026-07-16` apontando para `ed6adf3`.
+- `archive/pv-antiga-completa-2026-07-16` apontando para `3ebb574`.
+- tag `pv-antiga-completa-2026-07-16` apontando para `3ebb574`.
+
+`3ebb574` foi identificado como PV antiga completa porque ainda monta a pagina com os componentes legados `Beneficios`, `Bonus`, `Comparativo`, `Oferta`, `CTAIntermediario`, `IdealPara`, `OQueRecebe`, `OfferCountdown` e `ComoAcessar`.
+
+## Limpeza segura executada em 2026-07-16
+
+Removidos apenas itens comprovadamente sem import/uso no fluxo atual:
+
+- componentes legados nao importados: `Beneficios`, `Bonus`, `CTAIntermediario`, `ComoAcessar`, `Comparativo`, `IdealPara`, `OQueRecebe`, `Oferta`, `OfferCountdown`;
+- fontes locais `public/fonts/inter-400.woff2` e `public/fonts/inter-700.woff2`, pois o layout usa `next/font/google`;
+- assets antigos nao referenciados: setas antigas de `public/images/hero/callouts` e mockups antigos de `public/images/oferta`.
+
+Nao removidos por seguranca nesta etapa:
+
+- CSS global legado sem uso claro, por baixo ganho e risco de efeito visual indireto;
+- dependencias sem uso aparente, por exigirem mudanca em lockfile e maior risco de build/deploy;
+- componentes vivos da nova PV, painel, APIs, tracking, webhook, Supabase e popup.
+
+Validacao apos limpeza:
+
+- `npm run lint`: passou com 2 warnings antigos de `<img>` em `MarcaNaoAparece` e `PrecosAcesso`.
+- `npx tsc --noEmit --incremental false`: passou.
+- `npm run build`: passou.
+- Smoke HTTP local: `/` 200, `/funil` 200 sem `err:`, assets criticos 200.
+- Smoke no browser local: GA4 1 vez, UTMify `latest.js` 1 vez, pixel presente, `window.pixelId` correto, 14 secoes rastreadas.
+- Popup: abriu sem redirecionar e fechou por X, Escape e clique no fundo.
+- Contratos de checkout no DOM: `plano_basico_popup_open`, `kit_completo`, `kit_desconto_popup` e `plano_basico` com precos e `button_location` esperados.
+
 ## Residuos classificados
 
 Necessario:
@@ -180,21 +217,29 @@ Necessario:
 - `lib/trackingConfig.ts`
 - `lib/clientTracking.ts`
 
-Historico ou legado nao importado na PV atual:
+Historico ou legado removido nesta etapa:
 
 - `components/Oferta.tsx`
 - `components/CTAIntermediario.tsx`
-- componentes antigos como `Beneficios`, `Bonus`, `Comparativo`, `IdealPara`, `OQueRecebe`, `OfferCountdown`, `ComoAcessar`
+- `components/Beneficios.tsx`
+- `components/Bonus.tsx`
+- `components/Comparativo.tsx`
+- `components/IdealPara.tsx`
+- `components/OQueRecebe.tsx`
+- `components/OfferCountdown.tsx`
+- `components/ComoAcessar.tsx`
 
 Incerto, nao removido:
 
-- assets antigos de oferta/versoes anteriores;
 - CSS global legado de carrosseis;
-- componentes antigos nao importados que podem servir como rollback/referencia.
+- dependencias herdadas sem import direto claro.
 
 Removidos:
 
-- nenhum arquivo foi removido nesta etapa.
+- componentes legados listados acima;
+- fontes locais antigas;
+- setas antigas de callout da hero;
+- mockups antigos da pasta `public/images/oferta`.
 
 ## Riscos residuais
 
