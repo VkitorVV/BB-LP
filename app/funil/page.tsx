@@ -10,6 +10,15 @@ interface FunnelStep  { sectionId:string; sectionTitle:string; sectionOrder:numb
 interface Bottleneck  { fromSection:string; toSection:string; dropUsers:number; dropPercent:number; }
 interface StopPoint   { sectionTitle:string; usersStopped:number; }
 interface CheckoutClicks { plano_basico_popup_open:number; plano_basico:number; kit_completo:number; kit_desconto_popup:number; }
+interface CheckoutSummary {
+  rawCheckoutEvents:number;
+  basicPopupOpens:number;
+  checkoutRedirects:number;
+  uniqueCheckoutSessions:number;
+  basicSelected:number;
+  completeSelected:number;
+  upgradeAccepted:number;
+}
 interface MapRow      { sessions:number; clicks:number; reachedOffer:number; purchases:number; revenue:number; conversionClick:number; conversionPurchase:number; }
 interface LastClick   { checkoutType:string; checkoutLabel:string|null; checkoutPrice:number|null; buttonLocation:string|null; clickedAt:string|null; }
 interface SessionRow  {
@@ -26,7 +35,7 @@ interface DashData {
   date:string; window:string;
   activeNow:number; active30m:number;
   totalSessionsToday:number; sessionsPeriod:number;
-  sections:SectionRow[]; checkoutClicks:CheckoutClicks;
+  sections:SectionRow[]; checkoutClicks:CheckoutClicks; checkoutSummary?:CheckoutSummary;
   purchases:{count:number;revenue:number};
   campaigns:(MapRow&{utmCampaign:string})[]; adsets:(MapRow&{adsetId:string})[]; creatives:(MapRow&{utmContent:string})[];
   sessions:SessionRow[]; showingMax:boolean;
@@ -50,6 +59,7 @@ interface SessionDetail {
 // ─── Utils ────────────────────────────────────────────────────────────────────
 const fmt     = (n?:number|null)=>(n??0).toLocaleString('pt-BR');
 const fmtBRL  = (n?:number|null)=>(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtPct  = (n:number,d:number)=>d>0?`${Math.round((n/d)*100)}%`:'0%';
 const fmtTime = (iso?:string|null)=>iso?new Date(iso).toLocaleTimeString('pt-BR'):'—';
 const pctCol  = (p:number)=>p>=70?'#22c55e':p>=40?'#f59e0b':'#ef4444';
 const dropCol = (d:number)=>d<=10?'#22c55e':d<=30?'#f59e0b':'#ef4444';
@@ -164,6 +174,18 @@ export default function FunilPage() {
   if(!data)return(<div style={g.center}><p style={{color:'#9ca3af'}}>Carregando…</p></div>);
 
   const totalClicks=Object.values(data.checkoutClicks).reduce((a,b)=>a+b,0);
+  const checkoutSummary=data.checkoutSummary||{
+    rawCheckoutEvents:totalClicks,
+    basicPopupOpens:data.checkoutClicks.plano_basico_popup_open,
+    checkoutRedirects:data.checkoutClicks.plano_basico+data.checkoutClicks.kit_completo+data.checkoutClicks.kit_desconto_popup,
+    uniqueCheckoutSessions:0,
+    basicSelected:data.checkoutClicks.plano_basico,
+    completeSelected:data.checkoutClicks.kit_completo,
+    upgradeAccepted:data.checkoutClicks.kit_desconto_popup,
+  };
+  const periodBase=data.sessionsPeriod||data.totalSessionsToday||0;
+  const periodLabel=WINDOWS.find(w=>w.v===data.window)?.l||data.window;
+  const dataIssue=data.debug?.sessQueryError||'';
   const detSess=selSid?data.sessions.find(s=>s.sessionId===selSid):null;
   void tick;
 
@@ -173,8 +195,13 @@ export default function FunilPage() {
 
         {/* Header */}
         <header style={g.hdr}>
-          <div><h1 style={g.title}>FUNIL <span style={{color:'#f59e0b'}}>—</span> Mapa do Degradê</h1>
-            <p style={g.sub}>{lu?`Atualizado às ${lu}`:'...'}{loading&&<span style={{color:'#f59e0b',marginLeft:8}}>⟳</span>}</p>
+          <div>
+            <p style={g.eyebrow}>Painel de leitura da PV</p>
+            <h1 style={g.title}>FUNIL <span style={{color:'#f59e0b'}}>—</span> Mapa do Degradê</h1>
+            <p style={g.sub}>
+              {lu?`Atualizado às ${lu}`:'Aguardando primeira leitura'} · {fmt(data.totalSessionsToday)} sessões no dia · janela {periodLabel}
+              {loading&&<span style={{color:'#f59e0b',marginLeft:8}}>atualizando</span>}
+            </p>
           </div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
             <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={g.inp}/>
@@ -195,6 +222,15 @@ export default function FunilPage() {
           ))}
         </div>
 
+        <div style={g.statusBar}>
+          <div>
+            <strong style={{color:'#f3f4f6'}}>Base carregada sem corte de 100 sessões</strong>
+            <span style={{color:'#6b7280',marginLeft:8}}>Hoje: {fmt(data.totalSessionsToday)} · Período: {fmt(data.sessionsPeriod)} · Usuários listados: {fmt(data.sessions.length)}</span>
+          </div>
+          <div style={{color:'#9ca3af'}}>Checkout único: <b style={{color:'#22c55e'}}>{fmtPct(checkoutSummary.uniqueCheckoutSessions,periodBase)}</b> · Compra: <b style={{color:'#f97316'}}>{fmtPct(data.purchases.count,periodBase)}</b></div>
+        </div>
+        {dataIssue&&<div style={g.warnBar}>Alguma consulta retornou aviso: {dataIssue}</div>}
+
         {/* ════ TAB GERAL ════ */}
         {tab==='geral'&&<>
           {/* Cards */}
@@ -202,10 +238,26 @@ export default function FunilPage() {
             <Card label="● Ativos agora"  value={fmt(data.activeNow)}            color="#22c55e" hint="≤25s"/>
             <Card label="◑ Ativos 30min"  value={fmt(data.active30m)}            color="#3b82f6"/>
             <Card label="Sessões hoje"    value={fmt(data.totalSessionsToday)}   color="#06b6d4"/>
-            <Card label="Cliques CTA"     value={fmt(totalClicks)}               color="#f59e0b"/>
+            <Card label="Sessões período" value={fmt(data.sessionsPeriod)}        color="#38bdf8" hint="Sessões consideradas na janela selecionada"/>
+            <Card label="Checkout único"  value={fmt(checkoutSummary.uniqueCheckoutSessions)} color="#22c55e" hint="Sessões com redirecionamento real"/>
+            <Card label="Taxa checkout"   value={fmtPct(checkoutSummary.uniqueCheckoutSessions,periodBase)} color="#84cc16" hint="Checkout único / sessões do período"/>
+            <Card label="Redirect Wiapy"  value={fmt(checkoutSummary.checkoutRedirects)} color="#f59e0b" hint="Cliques que abrem checkout"/>
+            <Card label="Popup Básico"   value={fmt(checkoutSummary.basicPopupOpens)} color="#6366f1" hint="Apenas abertura do popup"/>
             <Card label="Compras"         value={fmt(data.purchases.count)}      color="#f97316"/>
+            <Card label="Taxa compra"     value={fmtPct(data.purchases.count,periodBase)} color="#fb7185" hint="Compras / sessões do período"/>
             <Card label="Receita"         value={fmtBRL(data.purchases.revenue)} color="#a855f7"/>
           </div>
+
+          <Block title="Resumo Checkout">
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
+              <MiniMetric label="Cliques brutos" value={fmt(checkoutSummary.rawCheckoutEvents)} color="#9ca3af"/>
+              <MiniMetric label="Popup Básico" value={fmt(checkoutSummary.basicPopupOpens)} color="#6366f1"/>
+              <MiniMetric label="Básico selecionado" value={fmt(checkoutSummary.basicSelected)} color="#3b82f6"/>
+              <MiniMetric label="Kit R$29" value={fmt(checkoutSummary.completeSelected)} color="#f59e0b"/>
+              <MiniMetric label="Upgrade R$24" value={fmt(checkoutSummary.upgradeAccepted)} color="#22c55e"/>
+              <MiniMetric label="Sessões únicas" value={fmt(checkoutSummary.uniqueCheckoutSessions)} color="#22c55e"/>
+            </div>
+          </Block>
 
           {/* ── Funil Visual ── */}
           <Block title="Funil Visual">
@@ -493,7 +545,8 @@ export default function FunilPage() {
 
 // ─── Components ───────────────────────────────────────────────────────────────
 function Block({title,children}:{title:string;children:React.ReactNode}){return <div style={g.block}><h2 style={g.blockTitle}>{title}</h2>{children}</div>;}
-function Card({label,value,color,hint}:{label:string;value:string;color:string;hint?:string}){return <div style={g.card} title={hint}><p style={g.cardLabel}>{label}</p><p style={{...g.cardVal,color}}>{value}</p></div>;}
+function Card({label,value,color,hint}:{label:string;value:string;color:string;hint?:string}){return <div style={{...g.card,borderLeft:`3px solid ${color}`}} title={hint}><p style={g.cardLabel}>{label}</p><p style={{...g.cardVal,color}}>{value}</p></div>;}
+function MiniMetric({label,value,color}:{label:string;value:string;color:string}){return <div style={{background:'#0f172a',border:'1px solid #1e293b',borderRadius:8,padding:'10px 12px'}}><p style={{fontSize:10,color:'#64748b',margin:'0 0 4px',textTransform:'uppercase',letterSpacing:.7}}>{label}</p><p style={{fontSize:20,fontWeight:800,color,margin:0}}>{value}</p></div>;}
 function DGrid({headers,rows}:{headers:string[];rows:string[][]}){return <div style={{overflowX:'auto'}}><table style={g.tbl}><thead><tr>{headers.map((h,i)=><TH key={h} r={i>0}>{h}</TH>)}</tr></thead><tbody>{rows.map((row,ri)=><tr key={ri} style={g.tr}>{row.map((cell,ci)=><TD key={ci} r={ci>0} bold={ci>0}>{cell}</TD>)}</tr>)}</tbody></table></div>;}
 function DBlock({title,children}:{title:string;children:React.ReactNode}){return <div style={{marginBottom:20}}><p style={{fontSize:10,color:'#f59e0b',textTransform:'uppercase',letterSpacing:1,margin:'0 0 8px',fontWeight:700}}>{title}</p><div style={{background:'#0d1117',border:'1px solid #1f2937',borderRadius:8,padding:'10px 14px'}}>{children}</div></div>;}
 function DR({k,v}:{k:string;v:React.ReactNode}){return <div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #111827'}}><span style={{fontSize:11,color:'#6b7280'}}>{k}</span><span style={{fontSize:12,color:'#d1d5db',textAlign:'right',maxWidth:'65%',wordBreak:'break-all'}}>{v}</span></div>;}
@@ -503,24 +556,27 @@ const TH=({children,r}:{children?:React.ReactNode;r?:boolean})=><th style={{padd
 const TD=({children,r,bold,style}:{children?:React.ReactNode;r?:boolean;bold?:boolean;style?:React.CSSProperties})=><td style={{padding:'9px 12px',color:'#9ca3af',verticalAlign:'middle',textAlign:r?'right':'left',fontWeight:bold?600:400,...style}}>{children}</td>;
 
 const g:Record<string,React.CSSProperties>={
-  page:       {minHeight:'100vh',background:'#070a0f',color:'#fff',fontFamily:'system-ui,sans-serif',padding:'20px 16px'},
+  page:       {minHeight:'100vh',background:'linear-gradient(180deg,#080b10 0%,#0b1018 44%,#070a0f 100%)',color:'#fff',fontFamily:'system-ui,sans-serif',padding:'20px 16px'},
   wrap:       {maxWidth:1440,margin:'0 auto'},
   center:     {minHeight:'100vh',background:'#070a0f',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12},
   ebox:       {background:'#0d1117',border:'1px solid #1f2937',borderRadius:12,padding:32,textAlign:'center'},
-  hdr:        {display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14,flexWrap:'wrap',gap:12},
-  title:      {fontSize:22,fontWeight:800,margin:0,color:'#f3f4f6',letterSpacing:'-.01em'},
-  sub:        {fontSize:12,color:'#374151',margin:'4px 0 0'},
-  inp:        {background:'#0d1117',border:'1px solid #1f2937',borderRadius:6,color:'#d1d5db',padding:'7px 12px',fontSize:12},
-  tabBar:     {display:'flex',gap:2,borderBottom:'1px solid #1f2937',marginBottom:18},
-  tabBtn:     {background:'none',border:'none',borderBottom:'2px solid transparent',color:'#6b7280',padding:'10px 18px',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6},
+  hdr:        {display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14,flexWrap:'wrap',gap:12,background:'rgba(15,23,42,.62)',border:'1px solid #1e293b',borderRadius:12,padding:'16px 18px',boxShadow:'0 18px 44px rgba(0,0,0,.22)'},
+  eyebrow:    {fontSize:10,color:'#f59e0b',textTransform:'uppercase',letterSpacing:1.2,fontWeight:800,margin:'0 0 5px'},
+  title:      {fontSize:24,fontWeight:850,margin:0,color:'#f8fafc',letterSpacing:0},
+  sub:        {fontSize:12,color:'#94a3b8',margin:'5px 0 0'},
+  inp:        {background:'#0f172a',border:'1px solid #1e293b',borderRadius:6,color:'#d1d5db',padding:'7px 12px',fontSize:12},
+  tabBar:     {display:'flex',gap:2,borderBottom:'1px solid #1f2937',marginBottom:12,overflowX:'auto'},
+  tabBtn:     {background:'none',border:'none',borderBottom:'2px solid transparent',color:'#94a3b8',padding:'10px 18px',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6,whiteSpace:'nowrap'},
   tabActive:  {color:'#f59e0b',borderBottom:'2px solid #f59e0b'},
   badge:      {background:'#1f2937',color:'#9ca3af',borderRadius:10,padding:'1px 7px',fontSize:11,fontWeight:700},
   grid6:      {display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:16},
-  card:       {background:'#0d1117',border:'1px solid #1f2937',borderRadius:10,padding:'14px 18px'},
-  cardLabel:  {fontSize:11,color:'#374151',margin:'0 0 6px',textTransform:'uppercase',letterSpacing:.9},
+  statusBar:  {display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap',background:'#0f172a',border:'1px solid #1e293b',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:12},
+  warnBar:    {background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.28)',color:'#fbbf24',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:12},
+  card:       {background:'#0f172a',border:'1px solid #1e293b',borderRadius:8,padding:'13px 16px',boxShadow:'inset 0 1px 0 rgba(255,255,255,.03)'},
+  cardLabel:  {fontSize:11,color:'#64748b',margin:'0 0 6px',textTransform:'uppercase',letterSpacing:.9},
   cardVal:    {fontSize:26,fontWeight:800,margin:0},
-  block:      {background:'#0d1117',border:'1px solid #1f2937',borderRadius:12,padding:'18px 20px',marginBottom:14},
-  blockTitle: {fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:1,margin:'0 0 14px'},
+  block:      {background:'#0d1117',border:'1px solid #1e293b',borderRadius:10,padding:'18px 20px',marginBottom:14,boxShadow:'0 12px 30px rgba(0,0,0,.16)'},
+  blockTitle: {fontSize:12,fontWeight:800,color:'#64748b',textTransform:'uppercase',letterSpacing:1,margin:'0 0 14px'},
   tbl:        {width:'100%',borderCollapse:'collapse',fontSize:13},
   tr:         {borderBottom:'1px solid #111827',transition:'background .1s'},
   clickBadge: {display:'inline-block',padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:600},

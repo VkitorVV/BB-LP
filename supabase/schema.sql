@@ -80,13 +80,26 @@ CREATE TABLE IF NOT EXISTS funnel_purchases (
   session_id     TEXT,
   date           DATE NOT NULL DEFAULT CURRENT_DATE,
   payment_id     TEXT,
+  status         TEXT,
   checkout_title TEXT,
   amount         NUMERIC(10,2),
   utm_campaign   TEXT,
   utm_content    TEXT,
   utm_term       TEXT,
+  approved_at    TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS session_id TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS date DATE NOT NULL DEFAULT CURRENT_DATE;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS payment_id TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS status TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS checkout_title TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS amount NUMERIC(10,2);
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS utm_campaign TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS utm_content TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS utm_term TEXT;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 -- ── Indexes ───────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_funnel_sessions_date        ON funnel_sessions(date);
@@ -95,6 +108,9 @@ CREATE INDEX IF NOT EXISTS idx_funnel_sessions_page_status ON funnel_sessions(pa
 CREATE INDEX IF NOT EXISTS idx_funnel_section_events_date  ON funnel_section_events(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_click_events_date    ON funnel_click_events(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_purchases_date       ON funnel_purchases(date);
+CREATE INDEX IF NOT EXISTS idx_funnel_purchases_session_id ON funnel_purchases(session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_purchases_payment_id_unique
+  ON funnel_purchases(payment_id);
 
 -- ── Migração: CTA tracking ───────────────────────────────────────────────────
 ALTER TABLE funnel_section_events ADD COLUMN IF NOT EXISTS reach_method         TEXT DEFAULT 'scroll';

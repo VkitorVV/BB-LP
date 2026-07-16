@@ -39,6 +39,24 @@ function getUtms() {
   };
 }
 
+function buildCheckoutUrl(baseUrl: string): string {
+  const url = new URL(baseUrl);
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = getSessionId();
+
+  if (sessionId) {
+    url.searchParams.set('session_id', sessionId);
+    url.searchParams.set('sid', sessionId);
+  }
+
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'campaign_id', 'adset_id', 'ad_id', 'placement', 'site_source_name'].forEach((key) => {
+    const value = params.get(key);
+    if (value && !url.searchParams.has(key)) url.searchParams.set(key, value);
+  });
+
+  return url.toString();
+}
+
 function trackClick(
   checkoutType: string,
   checkoutLabel: string,
@@ -80,6 +98,7 @@ export default function Oferta() {
   };
 
   const handleUpgradeToKit = () => {
+    const checkoutUrl = buildCheckoutUrl(CHECKOUT_KIT_DESCONTO_URL);
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'checkout_click', {
         checkout_type:   'kit_desconto_popup',
@@ -88,12 +107,13 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('kit_desconto_popup', 'Kit Completo com Desconto', 24.90, 'popup_upgrade', CHECKOUT_KIT_DESCONTO_URL);
-    window.open(CHECKOUT_KIT_DESCONTO_URL, '_blank');
+    trackClick('kit_desconto_popup', 'Kit Completo com Desconto', 24.90, 'popup_upgrade', checkoutUrl);
+    window.open(checkoutUrl, '_blank');
     setShowUpgradeModal(false);
   };
 
   const handleContinueBasic = () => {
+    const checkoutUrl = buildCheckoutUrl(CHECKOUT_BASICO_URL);
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'checkout_click', {
         checkout_type:   'plano_basico',
@@ -102,12 +122,13 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('plano_basico', 'Plano Básico', 19.90, 'popup_upgrade', CHECKOUT_BASICO_URL);
-    window.open(CHECKOUT_BASICO_URL, '_blank');
+    trackClick('plano_basico', 'Plano Básico', 19.90, 'popup_upgrade', checkoutUrl);
+    window.open(checkoutUrl, '_blank');
     setShowUpgradeModal(false);
   };
 
   const handleCheckoutComplete = () => {
+    const checkoutUrl = buildCheckoutUrl(CHECKOUT_KIT_COMPLETO_URL);
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'checkout_click', {
         checkout_type:   'kit_completo',
@@ -116,8 +137,8 @@ export default function Oferta() {
         transport_type:  'beacon',
       });
     }
-    trackClick('kit_completo', 'Kit Completo', 29.90, 'oferta', CHECKOUT_KIT_COMPLETO_URL);
-    window.open(CHECKOUT_KIT_COMPLETO_URL, '_blank');
+    trackClick('kit_completo', 'Kit Completo', 29.90, 'oferta', checkoutUrl);
+    window.open(checkoutUrl, '_blank');
   };
 
   // Lock body scroll when modal is open

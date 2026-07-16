@@ -1,50 +1,131 @@
-'use client';
-
-import React from 'react';
-import { ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Garantia() {
   return (
-    <section
-      id="garantia"
-      className="py-20 px-5 texture-brick relative"
-      style={{ borderBottom: '1px solid #3A1D10' }}
-    >
-      <div className="max-w-md mx-auto text-center">
+    <section id="garantia" aria-labelledby="garantia-title">
+      <style>{`
+        #garantia {
+          position: relative;
+          left: 50%;
+          width: 100vw;
+          max-width: 100vw;
+          transform: translateX(-50%);
+          overflow: hidden;
+          box-sizing: border-box;
+          padding: 72px 18px 78px;
+          background: #0B0704;
+          color: #FFF4E6;
+          border-top: 1px solid rgba(216, 166, 74, 0.2);
+          border-bottom: 1px solid rgba(216, 166, 74, 0.18);
+        }
+        #garantia *,
+        #garantia *::before,
+        #garantia *::after {
+          box-sizing: border-box;
+        }
+        #garantia .guarantee-shell {
+          width: 100%;
+          max-width: 720px;
+          margin: 0 auto;
+          text-align: center;
+        }
+        #garantia .guarantee-badge {
+          display: block;
+          width: clamp(150px, 44vw, 220px);
+          height: auto;
+          margin: 0 auto 24px;
+          object-fit: contain;
+          filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.42));
+        }
+        #garantia .guarantee-title {
+          margin: 0;
+          font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
+          font-size: clamp(2.42rem, 11.2vw, 5.4rem);
+          font-weight: 900;
+          letter-spacing: 0;
+          line-height: 0.9;
+          text-transform: uppercase;
+        }
+        #garantia .guarantee-title-main {
+          display: block;
+          color: #D8A64A;
+        }
+        #garantia .guarantee-title-rest {
+          display: block;
+          color: #FFF4E6;
+        }
+        #garantia .guarantee-copy {
+          max-width: 560px;
+          margin: 24px auto 0;
+          color: rgba(255, 244, 230, 0.78);
+          font-size: clamp(1rem, 4vw, 1.14rem);
+          font-weight: 650;
+          line-height: 1.52;
+        }
+        #garantia .guarantee-copy p {
+          margin: 0;
+        }
+        #garantia .guarantee-copy p + p {
+          margin-top: 12px;
+        }
+        #garantia .guarantee-close {
+          margin: 28px 0 0;
+          color: #FFF4E6;
+          font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
+          font-size: clamp(1.52rem, 6.2vw, 2.65rem);
+          font-weight: 900;
+          letter-spacing: 0;
+          line-height: 0.98;
+          text-transform: uppercase;
+        }
+        #garantia .guarantee-close span {
+          display: block;
+          color: #D8A64A;
+        }
+        @media (min-width: 760px) {
+          #garantia {
+            padding: 86px 28px 92px;
+          }
+          #garantia .guarantee-badge {
+            width: clamp(190px, 18vw, 250px);
+            margin-bottom: 28px;
+          }
+          #garantia .guarantee-copy {
+            font-size: 1.12rem;
+          }
+        }
+      `}</style>
 
-        <div
-          className="inline-flex flex-col items-center justify-center p-6 rounded-2xl w-full max-w-[260px] mx-auto mb-8"
-          style={{
-            background: '#160D08',
-            border: '2px solid #5A321C',
-            boxShadow: '0 4px 24px rgba(242,138,26,0.08)',
-          }}
-        >
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
-            style={{ background: 'rgba(242,138,26,0.1)', border: '1px solid rgba(242,138,26,0.3)' }}
-          >
-            <ShieldCheck size={28} style={{ color: '#F28A1A' }} />
-          </div>
-          <span className="text-[10px] font-mono font-black text-[#D8A64A] uppercase tracking-widest">
-            Compromisso de Satisfação
-          </span>
-          <span className="font-display text-4xl text-[#FFF4E6] mt-1">7 DIAS</span>
-          <span className="text-[10px] font-bold text-[#D9C3A3] uppercase mt-1 tracking-wider">
-            DE GARANTIA
-          </span>
-        </div>
+      <div className="guarantee-shell">
+        <Image
+          className="guarantee-badge"
+          src="/images/garantia-7dias/garantia-7-dias.webp"
+          alt="Garantia de 7 dias"
+          width={1200}
+          height={1200}
+          loading="lazy"
+          decoding="async"
+          sizes="(max-width: 759px) 44vw, 250px"
+        />
 
-        <div className="divider-copper w-24 mx-auto mb-6" />
-
-        <h2 className="font-display text-[2.2rem] leading-none uppercase text-[#FFF4E6] mb-4">
-          Acesse o material por 7 dias sem compromisso
+        <h2 id="garantia-title" className="guarantee-title">
+          <span className="guarantee-title-main">VOCÊ TEM 7 DIAS</span>
+          <span className="guarantee-title-rest">PARA DECIDIR COM CALMA</span>
         </h2>
 
-        <p className="text-xs text-[#D9C3A3] leading-relaxed max-w-sm mx-auto">
-          Se dentro de 7 dias o material não fizer sentido para você, pode solicitar reembolso.
-        </p>
+        <div className="guarantee-copy">
+          <p>
+            Acesse o material, conheça o conteúdo e veja se ele faz sentido para o seu momento.
+          </p>
+          <p>
+            Caso decida que não é para você, solicite o reembolso dentro do prazo de 7 dias.
+          </p>
+        </div>
 
+        <p className="guarantee-close">
+          Seu acesso é imediato.
+          <span>O risco fica com a gente.</span>
+        </p>
       </div>
     </section>
   );

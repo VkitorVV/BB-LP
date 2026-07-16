@@ -19,6 +19,24 @@ const SECTION_ORDER = [
   { id: 'rodape',              title: '14 - Rodape',              order: 14 },
 ];
 
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(
+  buildQuery: () => any,
+): Promise<{ data: T[]; errorMessage: string | null }> {
+  const rows: T[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await buildQuery().range(from, to);
+    if (error) return { data: rows, errorMessage: error.message || 'Erro ao buscar dados paginados' };
+
+    const page = (data || []) as T[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return { data: rows, errorMessage: null };
+  }
+}
+
 function windowMs(win: string): number | null {
   const map: Record<string, number> = {
     'now': 25_000, '30m': 30*60_000, '1h': 60*60_000,
@@ -31,7 +49,7 @@ function calcStatus(lastSeen: string, pageStatus: string | null): 'online'|'rece
   if (pageStatus === 'left') return 'saiu';
   const sec = (Date.now() - new Date(lastSeen).getTime()) / 1000;
   if (sec <= 25) return 'online';
-  if (sec <= 1800) return 'recente';
+  if (sec <= 90) return 'recente';
   return 'inativo';
 }
 
@@ -60,12 +78,15 @@ type RawSession = {
 type ClickEvent = {
   session_id: string;
   checkout_type: string;
+  click_kind?: string | null;
+  cta_label?: string | null;
   checkout_label?: string | null;
   checkout_price?: number | null;
   button_location?: string | null;
   clicked_at?: string | null;
 };
-type PurchaseEvent = { session_id: string; amount?: number | null };
+type PurchaseEvent = { session_id: string | null; created_at?: string | null };
+type SectionEvent = { session_id: string; section_id: string; reach_method?: string | null };
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -82,39 +103,46 @@ export async function GET(request: NextRequest) {
   const now30m = new Date(Date.now() - 30*60_000).toISOString();
 
   // ── 1. All sessions today (only real columns) ───────────────────────────
-  const { data: rawSessions, error: sessionsError } = await supabaseAdmin
-    .from('funnel_sessions')
-    .select(`
-      session_id, date, first_seen, last_seen, left_at, page_status,
-      utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-      campaign_id, adset_id, ad_id, placement, site_source_name,
-      max_section_order, max_section_title
-    `)
-    .eq('date', date)
-    .order('last_seen', { ascending: false })
-    .limit(100);
-
-  const allSessionsToday: RawSession[] = (rawSessions || []) as RawSession[];
+  const { data: allSessionsToday, errorMessage: sessionsErrorMessage } = await fetchAllRows<RawSession>(() =>
+    supabaseAdmin
+      .from('funnel_sessions')
+      .select(`
+        session_id, date, first_seen, last_seen, left_at, page_status,
+        utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+        campaign_id, adset_id, ad_id, placement, site_source_name,
+        max_section_order, max_section_title
+      `)
+      .eq('date', date)
+      .order('last_seen', { ascending: false }),
+  );
 
   // ── 2. Clicks for this day ──────────────────────────────────────────────
-  const { data: clickEvents } = await supabaseAdmin
-    .from('funnel_click_events')
-    .select('session_id, checkout_type, checkout_label, checkout_price, button_location, clicked_at')
-    .eq('date', date);
+  const { data: clickEvents, errorMessage: clickEventsErrorMessage } = await fetchAllRows<ClickEvent>(() =>
+    supabaseAdmin
+      .from('funnel_click_events')
+      .select('session_id, checkout_type, click_kind, cta_label, checkout_label, checkout_price, button_location, clicked_at')
+      .eq('date', date),
+  );
 
   // ── 3. Purchases for this day ───────────────────────────────────────────
-  const { data: purchasesData } = await supabaseAdmin
-    .from('funnel_purchases')
-    .select('session_id, amount')
-    .eq('date', date);
+  const { data: purchasesData, errorMessage: purchasesErrorMessage } = await fetchAllRows<PurchaseEvent>(() =>
+    supabaseAdmin
+      .from('funnel_purchases')
+      .select('session_id, created_at')
+      .eq('date', date),
+  );
 
   // ── 4. Build per-session maps ───────────────────────────────────────────
   const clicksBySession: Record<string, number> = {};
   const lastClickBySession: Record<string, { checkoutType: string; checkoutLabel: string | null; checkoutPrice: number | null; buttonLocation: string | null; clickedAt: string | null }> = {};
 
-  (clickEvents || [] as ClickEvent[]).forEach((e: ClickEvent) => {
+  clickEvents.forEach((e: ClickEvent) => {
     clicksBySession[e.session_id] = (clicksBySession[e.session_id] || 0) + 1;
-    // Track last click per session (last in array = most recent since ordered by clicked_at desc)
+    const previousClick = lastClickBySession[e.session_id];
+    const isLatestClick = !previousClick?.clickedAt || (
+      e.clicked_at && new Date(e.clicked_at).getTime() > new Date(previousClick.clickedAt).getTime()
+    );
+    if (!isLatestClick) return;
     lastClickBySession[e.session_id] = {
       checkoutType:   e.checkout_type,
       checkoutLabel:  e.checkout_label  || null,
@@ -126,15 +154,17 @@ export async function GET(request: NextRequest) {
 
   const purchasedBySession: Record<string, boolean> = {};
   const revenueBySession:   Record<string, number>  = {};
-  (purchasesData || [] as PurchaseEvent[]).forEach((p: PurchaseEvent) => {
+  purchasesData.forEach((p: PurchaseEvent) => {
+    if (!p.session_id) return;
     purchasedBySession[p.session_id] = true;
-    revenueBySession[p.session_id]   = (revenueBySession[p.session_id] || 0) + (p.amount || 0);
+    revenueBySession[p.session_id]   = revenueBySession[p.session_id] || 0;
   });
 
   // ── 5. Filtered sessions (for period metrics only) ──────────────────────
   const filteredSessions = since
     ? allSessionsToday.filter(s => new Date(s.last_seen) >= new Date(since))
     : allSessionsToday;
+  const filteredIdSet = new Set(filteredSessions.map(s => s.session_id));
 
   // ── 6. Map sessions → camelCase with calculated fields ─────────────────
   const sessions = allSessionsToday.map((s, idx) => ({
@@ -175,19 +205,20 @@ export async function GET(request: NextRequest) {
 
   // ── 8. Funnel sections (with toggle: scroll only vs all) ────────────────
   const includeCta = searchParams.get('includeCta') === '1';
-  const filteredIds = filteredSessions.map(s => s.session_id);
-
-  let secQ = supabaseAdmin
-    .from('funnel_section_events')
-    .select('section_id, reach_method')
-    .eq('date', date);
-  if (filteredIds.length > 0) secQ = secQ.in('session_id', filteredIds);
-  const { data: secData } = filteredIds.length > 0 ? await secQ : { data: [] };
+  const { data: allSecData, errorMessage: sectionEventsErrorMessage } = await fetchAllRows<SectionEvent>(() =>
+    supabaseAdmin
+      .from('funnel_section_events')
+      .select('session_id, section_id, reach_method')
+      .eq('date', date),
+  );
+  const secData = filteredIdSet.size > 0
+    ? allSecData.filter(r => filteredIdSet.has(r.session_id))
+    : [];
 
   // Count scroll-only and all (scroll + cta_jump)
   const secCountsScroll: Record<string, number> = {};
   const secCountsAll:    Record<string, number> = {};
-  (secData || []).forEach((r: { section_id: string; reach_method?: string }) => {
+  secData.forEach((r: { section_id: string; reach_method?: string | null }) => {
     secCountsAll[r.section_id] = (secCountsAll[r.section_id] || 0) + 1;
     if (!r.reach_method || r.reach_method === 'scroll') {
       secCountsScroll[r.section_id] = (secCountsScroll[r.section_id] || 0) + 1;
@@ -208,7 +239,7 @@ export async function GET(request: NextRequest) {
 
   // CTA jump counts per section (for info card)
   const ctaJumpCounts: Record<string, number> = {};
-  (secData || []).forEach((r: { section_id: string; reach_method?: string }) => {
+  secData.forEach((r: { section_id: string; reach_method?: string | null }) => {
     if (r.reach_method === 'cta_jump') {
       ctaJumpCounts[r.section_id] = (ctaJumpCounts[r.section_id] || 0) + 1;
     }
@@ -219,31 +250,43 @@ export async function GET(request: NextRequest) {
     plano_basico_popup_open: 0, plano_basico: 0, kit_completo: 0, kit_desconto_popup: 0,
   };
   const internalCtaClicks: Record<string, number> = {};
+  const checkoutRedirectTypes = new Set(['plano_basico', 'kit_completo', 'kit_desconto_popup']);
+  const uniqueCheckoutSessionIds = new Set<string>();
+  let rawCheckoutEvents = 0;
+  let checkoutRedirects = 0;
 
-  if (filteredIds.length > 0) {
-    let cq = supabaseAdmin
-      .from('funnel_click_events')
-      .select('checkout_type, click_kind, cta_label')
-      .eq('date', date)
-      .in('session_id', filteredIds);
-    const { data: cData } = await cq;
-    (cData || []).forEach((r: { checkout_type: string; click_kind?: string; cta_label?: string }) => {
+  if (filteredIdSet.size > 0) {
+    clickEvents.filter(r => filteredIdSet.has(r.session_id)).forEach((r: ClickEvent) => {
       if (r.click_kind === 'internal_cta') {
         const label = r.cta_label || 'CTA desconhecido';
         internalCtaClicks[label] = (internalCtaClicks[label] || 0) + 1;
       } else {
+        rawCheckoutEvents++;
         if (r.checkout_type in checkoutClicks) checkoutClicks[r.checkout_type]++;
+        if (checkoutRedirectTypes.has(r.checkout_type)) {
+          checkoutRedirects++;
+          uniqueCheckoutSessionIds.add(r.session_id);
+        }
       }
     });
   }
+  const checkoutSummary = {
+    rawCheckoutEvents,
+    basicPopupOpens: checkoutClicks.plano_basico_popup_open,
+    checkoutRedirects,
+    uniqueCheckoutSessions: uniqueCheckoutSessionIds.size,
+    basicSelected: checkoutClicks.plano_basico,
+    completeSelected: checkoutClicks.kit_completo,
+    upgradeAccepted: checkoutClicks.kit_desconto_popup,
+  };
 
   // ── 10. Purchases summary ───────────────────────────────────────────────
   const periodPurchases = since
-    ? (purchasesData || []).filter((p: PurchaseEvent & { created_at?: string }) =>
+    ? purchasesData.filter((p: PurchaseEvent & { created_at?: string | null }) =>
         p.created_at && new Date(p.created_at) >= new Date(since))
-    : (purchasesData || []);
+    : purchasesData;
   const purchaseCount   = periodPurchases.length;
-  const purchaseRevenue = periodPurchases.reduce((sum: number, p: PurchaseEvent) => sum + (p.amount || 0), 0);
+  const purchaseRevenue = 0;
 
   // ── 11. Campaign / Adset / Creative tables ──────────────────────────────
   type MapEntry = { sessions: number; clicks: number; reachedOffer: number; purchases: number; revenue: number };
@@ -338,13 +381,13 @@ export async function GET(request: NextRequest) {
     active30m:          active30m  || 0,
     totalSessionsToday: allSessionsToday.length,
     sessionsPeriod:     filteredSessions.length,
-    sections, checkoutClicks,
+    sections, checkoutClicks, checkoutSummary,
     purchases: { count: purchaseCount, revenue: purchaseRevenue },
     campaigns: toArr(campaignMap, 'utmCampaign'),
     adsets:    toArr(adsetMap,    'adsetId'),
     creatives: toArr(contentMap,  'utmContent'),
     sessions,
-    showingMax: allSessionsToday.length >= 100,
+    showingMax: false,
     includeCta,
     ctaJumpCounts,
     internalCtaClicks: Object.entries(internalCtaClicks)
@@ -360,7 +403,12 @@ export async function GET(request: NextRequest) {
       allSessionsTodayCount: allSessionsToday.length,
       filteredSessionsCount: filteredSessions.length,
       returnedSessionsCount: sessions.length,
-      sessQueryError: sessionsError?.message || null,
+      sessQueryError: [
+        sessionsErrorMessage && `sessions: ${sessionsErrorMessage}`,
+        clickEventsErrorMessage && `clicks: ${clickEventsErrorMessage}`,
+        purchasesErrorMessage && `purchases: ${purchasesErrorMessage}`,
+        sectionEventsErrorMessage && `sections: ${sectionEventsErrorMessage}`,
+      ].filter(Boolean).join(' | ') || null,
     },
     updatedAt: new Date().toISOString(),
   });
