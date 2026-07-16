@@ -54,7 +54,13 @@ export default function SeMarcaNaoSai() {
   }
 
   return (
-    <section id="se-a-marca-nao-sai" aria-labelledby="se-a-marca-nao-sai-title">
+    <section
+      id="se-a-marca-nao-sai"
+      aria-labelledby="se-a-marca-nao-sai-title"
+      data-track-section="se-a-marca-nao-sai"
+      data-track-order="3"
+      data-track-title="03 - Se a marca não sai"
+    >
       <style>{`
         #se-a-marca-nao-sai {
           position: relative;

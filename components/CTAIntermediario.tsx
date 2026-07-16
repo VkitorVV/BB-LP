@@ -2,19 +2,8 @@
 
 import React from 'react';
 import { trackInternalCta } from '@/lib/trackInternalCta';
-
-const SESSION_ID_KEY = 'mapa_degrade_session_id';
-function getSessionId() {
-  if (typeof window === 'undefined') return '';
-  let id = sessionStorage.getItem(SESSION_ID_KEY);
-  if (!id) { id = typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`; sessionStorage.setItem(SESSION_ID_KEY, id); }
-  return id;
-}
-function getUtms() {
-  if (typeof window === 'undefined') return {};
-  const p = new URLSearchParams(window.location.search);
-  return { utmSource: p.get('utm_source')||undefined, utmCampaign: p.get('utm_campaign')||undefined, utmContent: p.get('utm_content')||undefined };
-}
+import { getSessionId, getUtmParams } from '@/lib/clientTracking';
+import { OFFER_ANCHOR_ID } from '@/lib/trackingConfig';
 
 export default function CTAIntermediario() {
   const handleScrollToOffer = () => {
@@ -25,14 +14,17 @@ export default function CTAIntermediario() {
       sourceSectionTitle: '05 - CTA intermediario',
       sourceSectionOrder: 5,
       sessionId: getSessionId(),
-      utms: getUtms(),
+      utms: getUtmParams(),
     });
-    document.getElementById('oferta')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById(OFFER_ANCHOR_ID)?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
     <section
       id="cta-intermediario"
+      data-track-section="cta-intermediario"
+      data-track-order="5"
+      data-track-title="05 - CTA intermediario"
       className="py-16 px-5 texture-brick relative"
       style={{ borderBottom: '1px solid #3A1D10' }}
     >
@@ -52,6 +44,8 @@ export default function CTAIntermediario() {
 
         <button
           onClick={handleScrollToOffer}
+          data-track-cta="CTA Intermediario"
+          data-button-location="cta-intermediario"
           className="w-full py-4 px-6 text-sm font-black uppercase rounded-lg tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer font-display"
           style={{ background: '#F28A1A', color: '#0B0704' }}
           onMouseEnter={e => (e.currentTarget.style.background = '#D87512')}

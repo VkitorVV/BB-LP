@@ -1,19 +1,37 @@
 'use client';
 
 import React from 'react';
+import { getSessionId, getUtmParams } from '@/lib/clientTracking';
+import { trackInternalCta } from '@/lib/trackInternalCta';
+import { OFFER_ANCHOR_ID } from '@/lib/trackingConfig';
 
 export default function CTAMaterialPorDentro() {
   const handleClick = React.useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
-    const target = document.getElementById('planos');
+    const target = document.getElementById(OFFER_ANCHOR_ID);
     if (!target) return;
 
     event.preventDefault();
+    trackInternalCta({
+      ctaLabel: 'CTA Material Por Dentro',
+      buttonLocation: 'cta-material-por-dentro',
+      sourceSectionId: 'cta-material-por-dentro',
+      sourceSectionTitle: '05 - CTA material por dentro',
+      sourceSectionOrder: 5,
+      sessionId: getSessionId(),
+      utms: getUtmParams(),
+    });
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.history.replaceState(null, '', '#planos');
+    window.history.replaceState(null, '', `#${OFFER_ANCHOR_ID}`);
   }, []);
 
   return (
-    <section id="cta-material-por-dentro" aria-labelledby="cta-material-por-dentro-title">
+    <section
+      id="cta-material-por-dentro"
+      aria-labelledby="cta-material-por-dentro-title"
+      data-track-section="cta-material-por-dentro"
+      data-track-order="5"
+      data-track-title="05 - CTA material por dentro"
+    >
       <style>{`
         #cta-material-por-dentro {
           position: relative;
@@ -134,7 +152,13 @@ export default function CTAMaterialPorDentro() {
         <p className="cta-copy">
           O Mapa do Degradê Sem Marca é digital. Após a confirmação da compra, você recebe o acesso e pode abrir pelo celular, computador ou tablet.
         </p>
-        <a className="cta-button" href="#planos" onClick={handleClick}>
+        <a
+          className="cta-button"
+          href="#planos"
+          onClick={handleClick}
+          data-track-cta="CTA Material Por Dentro"
+          data-button-location="cta-material-por-dentro"
+        >
           Quero acessar agora
         </a>
         <p className="cta-safe">

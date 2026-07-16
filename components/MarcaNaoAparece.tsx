@@ -30,7 +30,13 @@ export default function MarcaNaoAparece() {
   }, []);
 
   return (
-    <section id="marca-nao-aparece" aria-labelledby="marca-nao-aparece-title">
+    <section
+      id="marca-nao-aparece"
+      aria-labelledby="marca-nao-aparece-title"
+      data-track-section="marca-nao-aparece"
+      data-track-order="2"
+      data-track-title="02 - A marca não aparece do nada"
+    >
       <style>{`
         #marca-nao-aparece {
           position: relative;
@@ -323,7 +329,7 @@ export default function MarcaNaoAparece() {
           </p>
           <img
             className="marca-arrow"
-            src="/images/seta-animação/seta-verde-animação.svg"
+            src="/images/seta-anima%C3%A7%C3%A3o/seta-verde-anima%C3%A7%C3%A3o.svg"
             alt=""
             aria-hidden="true"
           />

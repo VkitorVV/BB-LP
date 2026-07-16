@@ -114,7 +114,14 @@ export default function CarrosselCortes() {
   );
 
   return (
-    <section ref={sectionRef} id="carrossel-cortes" aria-labelledby="carrossel-cortes-title">
+    <section
+      ref={sectionRef}
+      id="carrossel-cortes"
+      aria-labelledby="carrossel-cortes-title"
+      data-track-section="carrossel-cortes"
+      data-track-order="7"
+      data-track-title="07 - Carrossel de cortes"
+    >
       <style>{`
         #carrossel-cortes {
           position: relative;

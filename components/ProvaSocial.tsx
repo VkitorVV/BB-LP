@@ -42,7 +42,13 @@ export default function ProvaSocial() {
   }, []);
 
   return (
-    <section id="prova-social" aria-labelledby="prova-social-title">
+    <section
+      id="prova-social"
+      aria-labelledby="prova-social-title"
+      data-track-section="prova-social"
+      data-track-order="10"
+      data-track-title="10 - Prova social"
+    >
       <style>{`
         #prova-social {
           position: relative;

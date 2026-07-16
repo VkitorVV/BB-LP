@@ -1,24 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getBrazilDate } from '@/lib/brazilDate';
+import {
+  OFFER_SECTION_ID,
+  TRACKING_SECTIONS,
+  getCanonicalSectionId,
+  getTrackingSection,
+} from '@/lib/trackingConfig';
 
-const SECTION_ORDER = [
-  { id: 'hero',                title: '01 - Hero',               order: 1  },
-  { id: 'material-por-dentro', title: '02 - Material por dentro', order: 2  },
-  { id: 'beneficios',          title: '03 - Beneficios',          order: 3  },
-  { id: 'prova-social',        title: '04 - Prova social',        order: 4  },
-  { id: 'cta-intermediario',   title: '05 - CTA intermediario',   order: 5  },
-  { id: 'ideal-para',          title: '06 - Ideal para',          order: 6  },
-  { id: 'o-que-recebe',        title: '07 - O que recebe',        order: 7  },
-  { id: 'bonus',               title: '08 - Bonus',               order: 8  },
-  { id: 'comparativo',         title: '09 - Por que usar o mapa', order: 9  },
-  { id: 'countdown',           title: '10 - Cronometro',          order: 10 },
-  { id: 'oferta',              title: '11 - Oferta',              order: 11 },
-  { id: 'garantia',            title: '12 - Garantia',            order: 12 },
-  { id: 'faq',                 title: '13 - FAQ',                 order: 13 },
-  { id: 'rodape',              title: '14 - Rodape',              order: 14 },
-];
-
+const SECTION_ORDER = TRACKING_SECTIONS;
+const OFFER_SECTION_ORDER = getTrackingSection(OFFER_SECTION_ID)?.order || 9;
 const PAGE_SIZE = 1000;
 
 async function fetchAllRows<T>(
@@ -85,8 +76,31 @@ type ClickEvent = {
   button_location?: string | null;
   clicked_at?: string | null;
 };
-type PurchaseEvent = { session_id: string | null; created_at?: string | null };
+type PurchaseEvent = { session_id: string | null; amount?: number | string | null; created_at?: string | null };
 type SectionEvent = { session_id: string; section_id: string; reach_method?: string | null };
+
+async function fetchPurchases(date: string): Promise<{ data: PurchaseEvent[]; errorMessage: string | null; fallback: string | null }> {
+  const attempts = [
+    { select: 'session_id, amount, created_at', fallback: null },
+    { select: 'session_id, created_at', fallback: 'funnel_purchases.amount ausente no Supabase real' },
+    { select: 'session_id', fallback: 'funnel_purchases.amount/created_at ausentes no Supabase real' },
+  ];
+
+  let lastError: string | null = null;
+  for (const attempt of attempts) {
+    const result = await fetchAllRows<PurchaseEvent>(() =>
+      supabaseAdmin
+        .from('funnel_purchases')
+        .select(attempt.select)
+        .eq('date', date),
+    );
+
+    if (!result.errorMessage) return { data: result.data, errorMessage: null, fallback: attempt.fallback };
+    lastError = result.errorMessage;
+  }
+
+  return { data: [], errorMessage: lastError, fallback: null };
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -125,12 +139,11 @@ export async function GET(request: NextRequest) {
   );
 
   // ── 3. Purchases for this day ───────────────────────────────────────────
-  const { data: purchasesData, errorMessage: purchasesErrorMessage } = await fetchAllRows<PurchaseEvent>(() =>
-    supabaseAdmin
-      .from('funnel_purchases')
-      .select('session_id, created_at')
-      .eq('date', date),
-  );
+  const {
+    data: purchasesData,
+    errorMessage: purchasesErrorMessage,
+    fallback: purchasesFallbackMessage,
+  } = await fetchPurchases(date);
 
   // ── 4. Build per-session maps ───────────────────────────────────────────
   const clicksBySession: Record<string, number> = {};
@@ -156,8 +169,13 @@ export async function GET(request: NextRequest) {
   const revenueBySession:   Record<string, number>  = {};
   purchasesData.forEach((p: PurchaseEvent) => {
     if (!p.session_id) return;
+    const amount = typeof p.amount === 'number'
+      ? p.amount
+      : p.amount
+        ? Number(p.amount)
+        : 0;
     purchasedBySession[p.session_id] = true;
-    revenueBySession[p.session_id]   = revenueBySession[p.session_id] || 0;
+    revenueBySession[p.session_id]   = (revenueBySession[p.session_id] || 0) + (Number.isFinite(amount) ? amount : 0);
   });
 
   // ── 5. Filtered sessions (for period metrics only) ──────────────────────
@@ -219,9 +237,10 @@ export async function GET(request: NextRequest) {
   const secCountsScroll: Record<string, number> = {};
   const secCountsAll:    Record<string, number> = {};
   secData.forEach((r: { section_id: string; reach_method?: string | null }) => {
-    secCountsAll[r.section_id] = (secCountsAll[r.section_id] || 0) + 1;
+    const sectionId = getCanonicalSectionId(r.section_id);
+    secCountsAll[sectionId] = (secCountsAll[sectionId] || 0) + 1;
     if (!r.reach_method || r.reach_method === 'scroll') {
-      secCountsScroll[r.section_id] = (secCountsScroll[r.section_id] || 0) + 1;
+      secCountsScroll[sectionId] = (secCountsScroll[sectionId] || 0) + 1;
     }
   });
 
@@ -241,7 +260,8 @@ export async function GET(request: NextRequest) {
   const ctaJumpCounts: Record<string, number> = {};
   secData.forEach((r: { section_id: string; reach_method?: string | null }) => {
     if (r.reach_method === 'cta_jump') {
-      ctaJumpCounts[r.section_id] = (ctaJumpCounts[r.section_id] || 0) + 1;
+      const sectionId = getCanonicalSectionId(r.section_id);
+      ctaJumpCounts[sectionId] = (ctaJumpCounts[sectionId] || 0) + 1;
     }
   });
 
@@ -286,7 +306,14 @@ export async function GET(request: NextRequest) {
         p.created_at && new Date(p.created_at) >= new Date(since))
     : purchasesData;
   const purchaseCount   = periodPurchases.length;
-  const purchaseRevenue = 0;
+  const purchaseRevenue = periodPurchases.reduce((sum, purchase) => {
+    const amount = typeof purchase.amount === 'number'
+      ? purchase.amount
+      : purchase.amount
+        ? Number(purchase.amount)
+        : 0;
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
 
   // ── 11. Campaign / Adset / Creative tables ──────────────────────────────
   type MapEntry = { sessions: number; clicks: number; reachedOffer: number; purchases: number; revenue: number };
@@ -302,7 +329,7 @@ export async function GET(request: NextRequest) {
     const clks  = clicksBySession[sid]    || 0;
     const purch = purchasedBySession[sid] || false;
     const rev   = revenueBySession[sid]   || 0;
-    const reachedOffer = (s.max_section_order || 0) >= 11 ? 1 : 0;
+    const reachedOffer = (s.max_section_order || 0) >= OFFER_SECTION_ORDER ? 1 : 0;
     for (const [map, key] of [[campaignMap, camp], [adsetMap, adset], [contentMap, cont]] as [typeof campaignMap, string][]) {
       if (!map[key]) map[key] = { sessions: 0, clicks: 0, reachedOffer: 0, purchases: 0, revenue: 0 };
       map[key].sessions++;
@@ -409,6 +436,7 @@ export async function GET(request: NextRequest) {
         purchasesErrorMessage && `purchases: ${purchasesErrorMessage}`,
         sectionEventsErrorMessage && `sections: ${sectionEventsErrorMessage}`,
       ].filter(Boolean).join(' | ') || null,
+      purchaseQueryFallback: purchasesFallbackMessage,
     },
     updatedAt: new Date().toISOString(),
   });

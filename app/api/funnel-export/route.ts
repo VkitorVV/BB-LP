@@ -20,6 +20,35 @@ async function fetchAllRows(
   }
 }
 
+async function fetchPurchases(date: string): Promise<Record<string, unknown>[]> {
+  const attempts = [
+    { select: 'session_id,payment_id,status,checkout_title,amount,utm_campaign,utm_content,utm_term,approved_at,created_at', order: 'created_at' },
+    { select: 'session_id,payment_id,status,checkout_title,utm_campaign,utm_content,utm_term,approved_at,created_at', order: 'created_at' },
+    { select: 'session_id,payment_id,status,checkout_title,utm_campaign,utm_content,utm_term,approved_at', order: 'approved_at' },
+    { select: 'session_id,payment_id,status,checkout_title,utm_campaign,utm_content,utm_term', order: null },
+  ];
+
+  let lastError: unknown = null;
+  for (const attempt of attempts) {
+    try {
+      return await fetchAllRows(() => {
+        const query = supabaseAdmin
+          .from('funnel_purchases')
+          .select(attempt.select)
+          .eq('date', date);
+
+        return attempt.order
+          ? query.order(attempt.order, { ascending: false })
+          : query;
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Erro ao buscar compras');
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token  = searchParams.get('token');
@@ -50,11 +79,7 @@ export async function GET(request: NextRequest) {
       .eq('date', date)
       .order('clicked_at', { ascending: true })),
 
-    fetchAllRows(() => supabaseAdmin
-      .from('funnel_purchases')
-      .select('session_id,payment_id,status,checkout_title,utm_campaign,utm_content,utm_term,approved_at,created_at')
-      .eq('date', date)
-      .order('created_at', { ascending: false })),
+    fetchPurchases(date),
   ]);
 
   // Debug log
@@ -122,7 +147,7 @@ export async function GET(request: NextRequest) {
           lastCheckoutPrice:       lastCk?.checkout_price || null,
           lastCheckoutType:        lastCk?.checkout_type  || null,
           purchased:               Boolean(purch),
-          purchaseValue:           null,
+          purchaseValue:           purch?.amount ?? null,
           transactionId:           (purch?.payment_id as string | null) || null,
           purchasedAt:             (purch?.approved_at as string | null) || (purch?.created_at as string | null) || null,
         };
@@ -205,7 +230,7 @@ export async function GET(request: NextRequest) {
         escape(lastCk?.checkout_price),
         escape(lastCk?.checkout_type),
         escape(Boolean(purch)),
-        escape(null),
+        escape(purch?.amount),
         escape(purch?.payment_id),
         escape(purch?.approved_at || purch?.created_at),
       ].join(DELIM));

@@ -92,7 +92,13 @@ export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" aria-labelledby="faq-title">
+    <section
+      id="faq"
+      aria-labelledby="faq-title"
+      data-track-section="faq"
+      data-track-order="12"
+      data-track-title="12 - FAQ"
+    >
       <style>{`
         #faq {
           position: relative;

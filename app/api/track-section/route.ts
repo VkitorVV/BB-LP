@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getBrazilDate } from '@/lib/brazilDate';
+import { getCanonicalSectionId, getTrackingSection } from '@/lib/trackingConfig';
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
@@ -18,7 +19,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Missing fields' }, { status: 400 });
   }
 
-  const order = typeof sectionOrder === 'number' ? sectionOrder : parseInt(String(sectionOrder || 0), 10);
+  const canonicalSection = getTrackingSection(String(sectionId));
+  const normalizedSectionId = canonicalSection?.id || getCanonicalSectionId(String(sectionId));
+  const normalizedSectionTitle = canonicalSection?.title || String(sectionTitle);
+  const order = canonicalSection?.order
+    || (typeof sectionOrder === 'number' ? sectionOrder : parseInt(String(sectionOrder || 0), 10));
   const today = getBrazilDate();
   const now   = new Date().toISOString();
 
@@ -35,7 +40,7 @@ export async function POST(request: NextRequest) {
       const updates: Record<string, unknown> = { last_seen: now, page_status: 'active' };
       if (order > (existing.max_section_order || 0)) {
         updates.max_section_order = order;
-        updates.max_section_title = sectionTitle;
+        updates.max_section_title = normalizedSectionTitle;
       }
       // Fill UTMs if still empty
       if (!existing.utm_source && !existing.utm_campaign) {
@@ -61,7 +66,7 @@ export async function POST(request: NextRequest) {
           utm_campaign: utmCampaign, utm_content: utmContent, utm_term: utmTerm,
           campaign_id: campaignId, adset_id: adsetId, ad_id: adId,
           placement, site_source_name: siteSourceName,
-          max_section_order: order, max_section_title: sectionTitle,
+          max_section_order: order, max_section_title: normalizedSectionTitle,
         });
     }
 
@@ -71,8 +76,8 @@ export async function POST(request: NextRequest) {
       .upsert({
         session_id:           sessionId,
         date:                 today,
-        section_id:           sectionId as string,
-        section_title:        sectionTitle as string,
+        section_id:           normalizedSectionId,
+        section_title:        normalizedSectionTitle,
         section_order:        order,
         reach_method:         (reachMethod as string | undefined) || 'scroll',
         source_cta_label:     (sourceCtaLabel as string | undefined) || null,

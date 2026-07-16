@@ -2,29 +2,20 @@
 
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import {
+  buildCheckoutUrl,
+  getCheckoutMeta,
+  getOfferTrackingSection,
+  getSessionId,
+  getUtmParams,
+} from '@/lib/clientTracking';
+import type { CheckoutRedirectType, CheckoutType } from '@/lib/trackingConfig';
 
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
   }
 }
-
-const CHECKOUT_BASICO_URL = 'https://pay.wiapy.com/iUoMvXq0sJr-';
-const CHECKOUT_KIT_DESCONTO_URL = 'https://pay.wiapy.com/8To4z6HioR';
-const CHECKOUT_KIT_COMPLETO_URL = 'https://pay.wiapy.com/MaYsqe4pqwN';
-
-const utmKeys = [
-  'utm_source',
-  'utm_medium',
-  'utm_campaign',
-  'utm_content',
-  'utm_term',
-  'campaign_id',
-  'adset_id',
-  'ad_id',
-  'placement',
-  'site_source_name',
-] as const;
 
 const basicIncluded = [
   'Guia visual digital',
@@ -52,60 +43,15 @@ const completeIncluded = [
   { label: '7 dias de garantia', isBonus: false },
 ] as const;
 
-function getSessionId(): string {
-  if (typeof window === 'undefined') return '';
-  const KEY = 'mapa_degrade_session_id';
-  let id = sessionStorage.getItem(KEY);
-  if (!id) {
-    id = typeof crypto?.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    sessionStorage.setItem(KEY, id);
-  }
-  return id;
-}
-
-function getUtms() {
-  const params = new URLSearchParams(window.location.search);
-  return {
-    utmSource: params.get('utm_source') || undefined,
-    utmMedium: params.get('utm_medium') || undefined,
-    utmCampaign: params.get('utm_campaign') || undefined,
-    utmContent: params.get('utm_content') || undefined,
-    utmTerm: params.get('utm_term') || undefined,
-    campaignId: params.get('campaign_id') || undefined,
-    adsetId: params.get('adset_id') || undefined,
-    adId: params.get('ad_id') || undefined,
-    placement: params.get('placement') || undefined,
-    siteSourceName: params.get('site_source_name') || undefined,
-  };
-}
-
-function buildCheckoutUrl(baseUrl: string): string {
-  const url = new URL(baseUrl);
-  const params = new URLSearchParams(window.location.search);
-  const sessionId = getSessionId();
-
-  if (sessionId) {
-    url.searchParams.set('session_id', sessionId);
-    url.searchParams.set('sid', sessionId);
-  }
-
-  utmKeys.forEach((key) => {
-    const value = params.get(key);
-    if (value && !url.searchParams.has(key)) url.searchParams.set(key, value);
-  });
-
-  return url.toString();
-}
-
 function trackClick(
-  checkoutType: string,
+  checkoutType: CheckoutType,
   checkoutLabel: string,
   checkoutPrice: number,
   targetUrl: string,
-  buttonLocation = 'precos_acesso',
+  buttonLocation = 'oferta',
 ) {
+  const offerSection = getOfferTrackingSection();
+
   fetch('/api/track-click', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -117,8 +63,11 @@ function trackClick(
       checkoutPrice,
       buttonLocation,
       targetUrl,
+      currentSectionId: offerSection.id,
+      currentSectionTitle: offerSection.title,
+      currentSectionOrder: offerSection.order,
       timestamp: Date.now(),
-      ...getUtms(),
+      ...getUtmParams(),
     }),
   }).catch(() => { /* silently ignore */ });
 }
@@ -158,22 +107,21 @@ export default function PrecosAcesso() {
   }, []);
 
   const openCheckout = (
-    checkoutType: 'plano_basico' | 'kit_completo' | 'kit_desconto_popup',
-    checkoutLabel: string,
-    checkoutPrice: number,
-    baseUrl: string,
-    buttonLocation = 'precos_acesso',
+    checkoutType: CheckoutRedirectType,
+    buttonLocation = 'oferta',
   ) => {
-    const checkoutUrl = buildCheckoutUrl(baseUrl);
+    const checkoutUrl = buildCheckoutUrl(checkoutType);
+    const checkoutMeta = getCheckoutMeta(checkoutType);
+
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'checkout_click', {
         checkout_type: checkoutType,
-        checkout_price: checkoutPrice.toFixed(2),
+        checkout_price: checkoutMeta.price.toFixed(2),
         button_location: buttonLocation,
         transport_type: 'beacon',
       });
     }
-    trackClick(checkoutType, checkoutLabel, checkoutPrice, checkoutUrl, buttonLocation);
+    trackClick(checkoutType, checkoutMeta.label, checkoutMeta.price, checkoutUrl, buttonLocation);
     window.open(checkoutUrl, '_blank');
   };
 
@@ -191,40 +139,29 @@ export default function PrecosAcesso() {
       window.gtag('event', 'checkout_click', {
         checkout_type: 'plano_basico_popup_open',
         checkout_price: '19.90',
-        button_location: 'precos_acesso',
+        button_location: 'oferta',
         transport_type: 'beacon',
       });
     }
+    const popupMeta = getCheckoutMeta('plano_basico_popup_open');
     trackClick(
       'plano_basico_popup_open',
-      'Plano Básico - abriu popup',
-      19.90,
+      popupMeta.label,
+      popupMeta.price,
       'popup_upgrade',
-      'precos_acesso',
+      'oferta',
     );
     setIsUpgradeModalOpen(true);
   };
 
   const acceptUpgrade = () => {
     setIsUpgradeModalOpen(false);
-    openCheckout(
-      'kit_desconto_popup',
-      'Kit Completo com Desconto',
-      24.90,
-      CHECKOUT_KIT_DESCONTO_URL,
-      'popup_upgrade',
-    );
+    openCheckout('kit_desconto_popup', 'popup_upgrade');
   };
 
   const declineUpgrade = () => {
     setIsUpgradeModalOpen(false);
-    openCheckout(
-      'plano_basico',
-      'Plano Básico',
-      19.90,
-      CHECKOUT_BASICO_URL,
-      'popup_upgrade',
-    );
+    openCheckout('plano_basico', 'popup_upgrade');
   };
 
   React.useEffect(() => {
@@ -286,7 +223,13 @@ export default function PrecosAcesso() {
 
   return (
     <>
-    <section id="precos-acesso" aria-labelledby="precos-acesso-title">
+    <section
+      id="precos-acesso"
+      aria-labelledby="precos-acesso-title"
+      data-track-section="precos-acesso"
+      data-track-order="9"
+      data-track-title="09 - Preços / Planos"
+    >
       <style>{`
         #precos-acesso {
           position: relative;
@@ -922,6 +865,10 @@ export default function PrecosAcesso() {
               type="button"
               className="plan-button basic-button"
               onClick={openUpgradeModal}
+              data-checkout-type="plano_basico_popup_open"
+              data-checkout-label="Plano Básico - abriu popup"
+              data-checkout-price="19.90"
+              data-button-location="oferta"
             >
               QUERO APENAS O GUIA
             </button>
@@ -958,7 +905,11 @@ export default function PrecosAcesso() {
             <button
               type="button"
               className="plan-button complete-button"
-              onClick={() => openCheckout('kit_completo', 'Kit Completo', 29.90, CHECKOUT_KIT_COMPLETO_URL)}
+              onClick={() => openCheckout('kit_completo', 'oferta')}
+              data-checkout-type="kit_completo"
+              data-checkout-label="Kit Completo"
+              data-checkout-price="29.90"
+              data-button-location="oferta"
             >
               QUERO O KIT COMPLETO
             </button>
@@ -1046,10 +997,28 @@ export default function PrecosAcesso() {
               </div>
 
               <div className="upgrade-modal-actions">
-                <button type="button" className="upgrade-modal-primary" onClick={acceptUpgrade}>
+                <button
+                  type="button"
+                  className="upgrade-modal-primary"
+                  onClick={acceptUpgrade}
+                  data-checkout-type="kit_desconto_popup"
+                  data-checkout-label="Kit Completo com Desconto"
+                  data-checkout-price="24.90"
+                  data-button-location="popup_upgrade"
+                  data-popup-action="accept_upgrade"
+                >
                   Quero o Kit Completo por R$ 24,90
                 </button>
-                <button type="button" className="upgrade-modal-secondary" onClick={declineUpgrade}>
+                <button
+                  type="button"
+                  className="upgrade-modal-secondary"
+                  onClick={declineUpgrade}
+                  data-checkout-type="plano_basico"
+                  data-checkout-label="Plano Básico"
+                  data-checkout-price="19.90"
+                  data-button-location="popup_upgrade"
+                  data-popup-action="decline_upgrade"
+                >
                   Não, quero continuar com o Plano Básico
                 </button>
               </div>

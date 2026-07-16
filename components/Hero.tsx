@@ -3,30 +3,8 @@
 import React from 'react';
 import Image from 'next/image';
 import { trackInternalCta } from '@/lib/trackInternalCta';
-
-const SESSION_ID_KEY = 'mapa_degrade_session_id';
-function getSessionId() {
-  if (typeof window === 'undefined') return '';
-  let id = sessionStorage.getItem(SESSION_ID_KEY);
-  if (!id) {
-    id = typeof crypto?.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    sessionStorage.setItem(SESSION_ID_KEY, id);
-  }
-  return id;
-}
-function getUtms() {
-  if (typeof window === 'undefined') return {};
-  const p = new URLSearchParams(window.location.search);
-  return {
-    utmSource:   p.get('utm_source')   || undefined,
-    utmMedium:   p.get('utm_medium')   || undefined,
-    utmCampaign: p.get('utm_campaign') || undefined,
-    utmContent:  p.get('utm_content')  || undefined,
-    utmTerm:     p.get('utm_term')     || undefined,
-  };
-}
+import { getSessionId, getUtmParams } from '@/lib/clientTracking';
+import { OFFER_ANCHOR_ID } from '@/lib/trackingConfig';
 
 export default function Hero() {
   const handleScrollToOffer = () => {
@@ -37,13 +15,18 @@ export default function Hero() {
       sourceSectionTitle: '01 - Hero',
       sourceSectionOrder: 1,
       sessionId: getSessionId(),
-      utms: getUtms(),
+      utms: getUtmParams(),
     });
-    document.getElementById('oferta')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById(OFFER_ANCHOR_ID)?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <section id="hero">
+    <section
+      id="hero"
+      data-track-section="hero"
+      data-track-order="1"
+      data-track-title="01 - Hero"
+    >
       <style>{`
         #hero {
           position: relative;
@@ -413,7 +396,12 @@ export default function Hero() {
         </p>
 
         <div className="hero-cta-wrap">
-          <button onClick={handleScrollToOffer} className="hero-cta">
+          <button
+            onClick={handleScrollToOffer}
+            className="hero-cta"
+            data-track-cta="CTA Hero"
+            data-button-location="hero"
+          >
             QUERO ACESSAR O MAPA
           </button>
           <p className="hero-trust">GUIA VISUAL EM PDF • ACESSO IMEDIATO • 7 DIAS DE GARANTIA</p>

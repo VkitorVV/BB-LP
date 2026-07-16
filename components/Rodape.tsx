@@ -2,7 +2,13 @@ export default function Rodape() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer id="rodape" aria-labelledby="rodape-title">
+  <footer
+    id="rodape"
+    aria-labelledby="rodape-title"
+    data-track-section="rodape"
+    data-track-order="14"
+    data-track-title="14 - Rodapé"
+  >
       <style>{`
         #rodape {
           position: relative;

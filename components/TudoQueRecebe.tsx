@@ -67,7 +67,13 @@ export default function TudoQueRecebe() {
   }, []);
 
   return (
-    <section id="veja-tudo-que-recebe" aria-labelledby="veja-tudo-que-recebe-title">
+    <section
+      id="veja-tudo-que-recebe"
+      aria-labelledby="veja-tudo-que-recebe-title"
+      data-track-section="veja-tudo-que-recebe"
+      data-track-order="8"
+      data-track-title="08 - Veja tudo que recebe"
+    >
       <style>{`
         #veja-tudo-que-recebe {
           position: relative;

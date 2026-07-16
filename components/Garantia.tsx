@@ -2,7 +2,13 @@ import Image from 'next/image';
 
 export default function Garantia() {
   return (
-    <section id="garantia" aria-labelledby="garantia-title">
+  <section
+    id="garantia"
+    aria-labelledby="garantia-title"
+    data-track-section="garantia"
+    data-track-order="11"
+    data-track-title="11 - Garantia"
+  >
       <style>{`
         #garantia {
           position: relative;

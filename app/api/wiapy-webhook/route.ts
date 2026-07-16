@@ -276,6 +276,7 @@ export async function POST(request: NextRequest) {
       payment_id:     transactionId,
       status,
       checkout_title: checkoutTitle,
+      amount:         value,
       utm_campaign:   utmCampaign,
       utm_content:    utmContent,
       utm_term:       utmTerm,

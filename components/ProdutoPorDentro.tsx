@@ -241,7 +241,13 @@ export default function ProdutoPorDentro() {
   }, []);
 
   return (
-    <section id="material-por-dentro" aria-labelledby="material-por-dentro-title">
+    <section
+      id="material-por-dentro"
+      aria-labelledby="material-por-dentro-title"
+      data-track-section="material-por-dentro"
+      data-track-order="4"
+      data-track-title="04 - Material por dentro"
+    >
       <style>{`
         #material-por-dentro {
           position: relative;

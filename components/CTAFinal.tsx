@@ -1,19 +1,37 @@
 'use client';
 
 import React from 'react';
+import { getSessionId, getUtmParams } from '@/lib/clientTracking';
+import { trackInternalCta } from '@/lib/trackInternalCta';
+import { OFFER_ANCHOR_ID } from '@/lib/trackingConfig';
 
 export default function CTAFinal() {
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    const target = document.getElementById('planos');
+    const target = document.getElementById(OFFER_ANCHOR_ID);
     if (!target) return;
 
     event.preventDefault();
+    trackInternalCta({
+      ctaLabel: 'CTA Final',
+      buttonLocation: 'cta-final',
+      sourceSectionId: 'cta-final',
+      sourceSectionTitle: '13 - CTA final',
+      sourceSectionOrder: 13,
+      sessionId: getSessionId(),
+      utms: getUtmParams(),
+    });
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.history.replaceState(null, '', '#planos');
+    window.history.replaceState(null, '', `#${OFFER_ANCHOR_ID}`);
   };
 
   return (
-    <section id="cta-final" aria-labelledby="cta-final-title">
+    <section
+      id="cta-final"
+      aria-labelledby="cta-final-title"
+      data-track-section="cta-final"
+      data-track-order="13"
+      data-track-title="13 - CTA final"
+    >
       <style>{`
         #cta-final {
           position: relative;
@@ -132,7 +150,13 @@ export default function CTAFinal() {
         <p className="cta-final-text">
           Tenha o Mapa do Degradê Sem Marca por perto para consultar, entender o que revisar e treinar seu olhar nos próximos cortes.
         </p>
-        <a className="cta-final-button" href="#planos" onClick={handleClick}>
+        <a
+          className="cta-final-button"
+          href="#planos"
+          onClick={handleClick}
+          data-track-cta="CTA Final"
+          data-button-location="cta-final"
+        >
           QUERO ESCOLHER MEU ACESSO
         </a>
         <p className="cta-final-safe">

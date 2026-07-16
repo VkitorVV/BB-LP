@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { OFFER_SECTION_ID, getTrackingSection } from '@/lib/trackingConfig';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SessionStatus = 'online' | 'recente' | 'saiu' | 'inativo';
@@ -75,6 +76,8 @@ function secsAgo(sec:number){if(sec<5)return 'agora';if(sec<60)return `há ${sec
 const WINDOWS=[{v:'now',l:'Agora/25s'},{v:'30m',l:'30 min'},{v:'1h',l:'1 hora'},{v:'2h',l:'2 horas'},{v:'4h',l:'4 horas'},{v:'12h',l:'12 horas'},{v:'24h',l:'24 horas'},{v:'today',l:'Hoje'}];
 const TABS:[Tab,string][]=[['geral','Visão Geral'],['usuarios','Usuários'],['campanhas','Campanhas'],['exportacoes','Exportações']];
 type UserFilter='todos'|'online'|'recentes'|'saíram'|'compraram'|'clicaram'|'chegaram_oferta'|'nao_oferta';
+const OFFER_SECTION_ORDER = getTrackingSection(OFFER_SECTION_ID)?.order || 9;
+const isOfferSection = (sectionId: string) => sectionId === OFFER_SECTION_ID || sectionId === 'oferta';
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function FunilPage() {
@@ -113,7 +116,7 @@ export default function FunilPage() {
       if(!r.ok){const j=await r.json().catch(()=>({}))as{error?:string};setErr(`Erro ${r.status}${j.error?': '+j.error:''}`);return;}
       setData(await r.json() as DashData);setErr('');setLu(new Date().toLocaleTimeString('pt-BR'));
     }catch(e){setErr(`Conexão: ${e instanceof Error?e.message:e}`);}finally{setLoading(false);}
-  },[]);
+  },[includeCta]);
 
   useEffect(()=>{if(token)load(token,date,win);},[token]);     // eslint-disable-line
   useEffect(()=>{if(token)load(token,date,win);},[date,win,includeCta]);  // eslint-disable-line
@@ -163,8 +166,8 @@ export default function FunilPage() {
       userFilter==='saíram'          ? s.status==='saiu' :
       userFilter==='compraram'       ? s.purchased :
       userFilter==='clicaram'        ? s.clicksCount>0 :
-      userFilter==='chegaram_oferta' ? s.maxSectionOrder>=11 :
-      userFilter==='nao_oferta'      ? s.maxSectionOrder<11 : true;
+      userFilter==='chegaram_oferta' ? s.maxSectionOrder>=OFFER_SECTION_ORDER :
+      userFilter==='nao_oferta'      ? s.maxSectionOrder<OFFER_SECTION_ORDER : true;
     const search = !userSearch || [s.utmCampaign,s.utmContent,s.adsetId,s.shortId,s.label].some(v=>(v||'').toLowerCase().includes(userSearch.toLowerCase()));
     return base && filter && search;
   });
@@ -280,12 +283,13 @@ export default function FunilPage() {
             <div style={{overflowX:'auto'}}>
               {visibleFunnel.map((step,i)=>{
                 const barW = Math.max(step.percentOfTop, 2);
-                const isOferta = step.sectionId==='oferta';
+                const isOferta = isOfferSection(step.sectionId);
                 const isSel = selectedStep===step.sectionId;
                 return (
-                  <div key={step.sectionId}
+                  <button key={step.sectionId}
+                    type="button"
                     onClick={()=>{setSelectedStep(s=>s===step.sectionId?null:step.sectionId); setTab('usuarios'); setStopFilter(s=>s===step.sectionTitle?null:step.sectionTitle); setUserFilter('todos');}}
-                    style={{display:'flex',alignItems:'center',gap:10,marginBottom:4,padding:'4px 8px',borderRadius:8,cursor:'pointer',
+                    style={{display:'flex',alignItems:'center',gap:10,width:'100%',marginBottom:4,padding:'4px 8px',borderRadius:8,cursor:'pointer',textAlign:'left',
                       background:isSel?'rgba(249,115,22,.1)':isOferta?'rgba(249,115,22,.05)':'transparent',
                       border:isSel?'1px solid rgba(249,115,22,.3)':isOferta?'1px solid rgba(249,115,22,.15)':'1px solid transparent'}}
                   >
@@ -310,7 +314,7 @@ export default function FunilPage() {
                         ↗ {data.ctaJumpCounts[step.sectionId]}
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -324,7 +328,7 @@ export default function FunilPage() {
                 <div key={i} style={{background:'#111827',border:'1px solid #1f2937',borderRadius:10,padding:'12px 16px'}}>
                   <p style={{fontSize:11,color:'#6b7280',margin:'0 0 4px',textTransform:'uppercase',letterSpacing:.8}}>{c.label}</p>
                   <p style={{fontSize:22,fontWeight:800,color:'#f59e0b',margin:0}}>{fmt(c.clicks)}</p>
-                  <p style={{fontSize:10,color:'#374151',margin:'4px 0 0'}}>→ 11 - Oferta (salto)</p>
+                  <p style={{fontSize:10,color:'#374151',margin:'4px 0 0'}}>→ 09 - Preços / Planos (salto)</p>
                 </div>
               ))}
             </div>
@@ -361,7 +365,7 @@ export default function FunilPage() {
                 </button>
               ))}
             </div>
-            {stopFilter&&<p style={{fontSize:11,color:'#f59e0b',marginTop:8}}>Filtrando: "{stopFilter}" — <button onClick={()=>{setStopFilter(null);setSelectedStep(null);}} style={{background:'none',border:'none',color:'#6b7280',cursor:'pointer',fontSize:11}}>limpar</button></p>}
+            {stopFilter&&<p style={{fontSize:11,color:'#f59e0b',marginTop:8}}>Filtrando: {stopFilter} — <button onClick={()=>{setStopFilter(null);setSelectedStep(null);}} style={{background:'none',border:'none',color:'#6b7280',cursor:'pointer',fontSize:11}}>limpar</button></p>}
           </Block>}
 
           {/* ── Diagnóstico por seção ── */}
@@ -371,8 +375,8 @@ export default function FunilPage() {
                 <TH>Seção</TH><TH r>Chegaram</TH><TH r>% Topo</TH><TH r>Drop</TH><TH r>Drop Acum.</TH><TH>Top Campanha</TH><TH>Top Criativo</TH>
               </tr></thead><tbody>
               {data.sectionDiagnostics.map(d=>(
-                <tr key={d.sectionId} style={{...g.tr,background:d.sectionId==='oferta'?'rgba(249,115,22,.05)':undefined}}>
-                  <TD style={{fontSize:12,color:d.sectionId==='oferta'?'#fdba74':'#d1d5db'}}>{d.sectionId==='oferta'&&<span style={{marginRight:4}}>★</span>}{d.sectionTitle}</TD>
+                <tr key={d.sectionId} style={{...g.tr,background:isOfferSection(d.sectionId)?'rgba(249,115,22,.05)':undefined}}>
+                  <TD style={{fontSize:12,color:isOfferSection(d.sectionId)?'#fdba74':'#d1d5db'}}>{isOfferSection(d.sectionId)&&<span style={{marginRight:4}}>★</span>}{d.sectionTitle}</TD>
                   <TD r bold>{fmt(d.reached)}</TD>
                   <TD r style={{color:pctCol(d.percentOfTop)}}>{d.percentOfTop}%</TD>
                   <TD r style={{color:d.dropFromPrevious>0?dropCol(d.dropFromPrevious):'#374151'}}>{d.dropFromPrevious>0?`-${d.dropFromPrevious}%`:'—'}</TD>
@@ -483,10 +487,20 @@ export default function FunilPage() {
 
       {/* Session drawer */}
       {selSid&&(
-        <div style={g.overlay} onClick={closeDetail}>
-          <aside style={g.drawer} onClick={e=>e.stopPropagation()}>
+        <div
+          style={g.overlay}
+          role="button"
+          tabIndex={0}
+          aria-label="Fechar detalhe"
+          onClick={e=>{if(e.target===e.currentTarget)closeDetail();}}
+          onKeyDown={e=>{
+            if(e.key==='Escape'){e.preventDefault();closeDetail();}
+            if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();closeDetail();}
+          }}
+        >
+          <aside style={g.drawer} role="dialog" aria-modal="true" aria-labelledby="session-detail-title">
             <div style={g.drawerHdr}>
-              <h2 style={g.drawerTitle}>{detSess?.label||'Detalhe'}</h2>
+              <h2 id="session-detail-title" style={g.drawerTitle}>{detSess?.label||'Detalhe'}</h2>
               <button onClick={closeDetail} style={{background:'none',border:'none',color:'#6b7280',cursor:'pointer',fontSize:20}}>✕</button>
             </div>
             <div style={{flex:1,overflowY:'auto',padding:'20px 22px'}}>

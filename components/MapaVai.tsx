@@ -43,7 +43,13 @@ export default function MapaVai() {
   }, []);
 
   return (
-    <section id="com-o-mapa-voce-vai" aria-labelledby="com-o-mapa-voce-vai-title">
+    <section
+      id="com-o-mapa-voce-vai"
+      aria-labelledby="com-o-mapa-voce-vai-title"
+      data-track-section="com-o-mapa-voce-vai"
+      data-track-order="6"
+      data-track-title="06 - Com o Mapa você vai"
+    >
       <style>{`
         #com-o-mapa-voce-vai {
           position: relative;
