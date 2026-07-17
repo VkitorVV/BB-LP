@@ -41,17 +41,38 @@ function padIndex(index: number) {
 export default function SeMarcaNaoSai() {
   const [active, setActive] = React.useState(0);
   const [hasInteracted, setHasInteracted] = React.useState(false);
+  const swipeStartRef = React.useRef<{ x: number; y: number } | null>(null);
 
   const previousIndex = (active + steps.length - 1) % steps.length;
   const nextIndex = (active + 1) % steps.length;
-  const previous = steps[previousIndex];
   const current = steps[active];
-  const next = steps[nextIndex];
 
-  function show(index: number) {
+  const show = React.useCallback((index: number) => {
     setActive(index);
     setHasInteracted(true);
-  }
+  }, []);
+
+  const handlePointerDown = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    swipeStartRef.current = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }, []);
+
+  const handlePointerUp = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (!start) return;
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (Math.abs(deltaX) < 38 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
+
+    show(deltaX < 0 ? nextIndex : previousIndex);
+  }, [nextIndex, previousIndex, show]);
 
   return (
     <section
@@ -59,7 +80,7 @@ export default function SeMarcaNaoSai() {
       aria-labelledby="se-a-marca-nao-sai-title"
       data-track-section="se-a-marca-nao-sai"
       data-track-order="3"
-      data-track-title="03 - Se a marca não sai"
+      data-track-title="03 - SE A MARCA NÃO SAI"
     >
       <style>{`
         #se-a-marca-nao-sai {
@@ -179,7 +200,7 @@ export default function SeMarcaNaoSai() {
           border-bottom: 0.08em solid #D7A42C;
         }
         #se-a-marca-nao-sai .sai-slot {
-          width: min(100%, 450px);
+          width: min(100%, 540px);
           margin: 46px auto 0;
           touch-action: pan-y;
           -webkit-user-select: none;
@@ -188,7 +209,7 @@ export default function SeMarcaNaoSai() {
         #se-a-marca-nao-sai .sai-slot-head {
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: center;
           gap: 14px;
           margin-bottom: 14px;
           color: #5B4E3F;
@@ -197,10 +218,10 @@ export default function SeMarcaNaoSai() {
           letter-spacing: 0.08em;
         }
         #se-a-marca-nao-sai .sai-slot-hint {
-          max-width: 180px;
+          max-width: 220px;
           margin: 0;
           line-height: 1.18;
-          text-align: right;
+          text-align: center;
           opacity: 0.72;
           transition: opacity 240ms ease;
         }
@@ -213,15 +234,16 @@ export default function SeMarcaNaoSai() {
         }
         #se-a-marca-nao-sai .sai-stage {
           position: relative;
-          height: clamp(520px, 138vw, 690px);
+          height: clamp(500px, 128vw, 720px);
           overflow: hidden;
           isolation: isolate;
           border-top: 1px solid rgba(215, 164, 44, 0.45);
           border-bottom: 1px solid rgba(215, 164, 44, 0.45);
+          touch-action: pan-y;
         }
         #se-a-marca-nao-sai .sai-stage::before,
         #se-a-marca-nao-sai .sai-stage::after {
-          content: '';
+          content: none;
           position: absolute;
           left: 0;
           right: 0;
@@ -237,47 +259,49 @@ export default function SeMarcaNaoSai() {
           bottom: 0;
           background: linear-gradient(0deg, #F7F1E8 0%, rgba(247, 241, 232, 0) 100%);
         }
-        #se-a-marca-nao-sai .sai-preview,
         #se-a-marca-nao-sai .sai-main {
           position: absolute;
           left: 50%;
-          width: 92%;
-          transform: translateX(-50%);
+          width: min(86%, 450px);
           border: 0;
           padding: 0;
           background: transparent;
         }
-        #se-a-marca-nao-sai .sai-preview {
-          z-index: 2;
-          height: 72%;
-          cursor: pointer;
-          opacity: 0.34;
-          transition: opacity 420ms ease, transform 420ms ease;
-        }
-        #se-a-marca-nao-sai .sai-preview:hover,
-        #se-a-marca-nao-sai .sai-preview:focus-visible {
-          opacity: 0.48;
-        }
-        #se-a-marca-nao-sai .sai-preview:focus-visible {
-          outline: 3px solid #D7A42C;
-          outline-offset: 4px;
-        }
-        #se-a-marca-nao-sai .sai-preview-top {
-          top: -55%;
-          transform: translateX(-50%) scale(0.9);
-          transform-origin: bottom center;
-        }
-        #se-a-marca-nao-sai .sai-preview-bottom {
-          bottom: -55%;
-          transform: translateX(-50%) scale(0.9);
-          transform-origin: top center;
-        }
         #se-a-marca-nao-sai .sai-main {
           z-index: 4;
           top: 50%;
-          height: 78%;
+          height: 88%;
           transform: translate(-50%, -50%);
           animation: saiSlotIn 440ms ease both;
+        }
+        #se-a-marca-nao-sai .sai-arrow {
+          position: absolute;
+          top: 50%;
+          z-index: 8;
+          width: 40px;
+          height: 40px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(16, 15, 13, 0.16);
+          border-radius: 999px;
+          background: rgba(247, 241, 232, 0.9);
+          color: #100F0D;
+          font-size: 1.7rem;
+          font-weight: 900;
+          line-height: 1;
+          cursor: pointer;
+          transform: translateY(-50%);
+          box-shadow: 0 10px 22px rgba(31, 24, 16, 0.12);
+        }
+        #se-a-marca-nao-sai .sai-arrow:focus-visible {
+          outline: 3px solid #D7A42C;
+          outline-offset: 3px;
+        }
+        #se-a-marca-nao-sai .sai-arrow-left {
+          left: 2px;
+        }
+        #se-a-marca-nao-sai .sai-arrow-right {
+          right: 2px;
         }
         #se-a-marca-nao-sai .sai-image {
           display: block;
@@ -324,11 +348,14 @@ export default function SeMarcaNaoSai() {
             padding: 96px 28px 108px;
           }
           #se-a-marca-nao-sai .sai-slot {
-            width: min(100%, 520px);
+            width: min(100%, 600px);
             margin-top: 54px;
           }
           #se-a-marca-nao-sai .sai-stage {
             height: 740px;
+          }
+          #se-a-marca-nao-sai .sai-main {
+            width: min(82%, 500px);
           }
         }
         @media (max-width: 374px) {
@@ -418,27 +445,25 @@ export default function SeMarcaNaoSai() {
               {padIndex(active)} / 04
             </span>
             <p className={`sai-slot-hint${hasInteracted ? ' is-muted' : ''}`}>
-              TOQUE ACIMA OU ABAIXO
+              ARRASTE PARA O LADO
               <br />
               PARA VER CADA PARTE
             </p>
           </div>
 
-          <div className="sai-stage">
+          <div
+            className="sai-stage"
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={() => { swipeStartRef.current = null; }}
+          >
             <button
-              className="sai-preview sai-preview-top"
+              className="sai-arrow sai-arrow-left"
               type="button"
               onClick={() => show(previousIndex)}
-              aria-label={`Mostrar etapa anterior: ${previous.label}`}
+              aria-label="Mostrar etapa anterior"
             >
-              <Image
-                className="sai-image"
-                src={previous.src}
-                alt={previous.alt}
-                width={previous.width}
-                height={previous.height}
-                sizes="(max-width: 759px) 86vw, 478px"
-              />
+              ‹
             </button>
 
             <div className="sai-main" key={current.label} aria-current="true">
@@ -454,19 +479,12 @@ export default function SeMarcaNaoSai() {
             </div>
 
             <button
-              className="sai-preview sai-preview-bottom"
+              className="sai-arrow sai-arrow-right"
               type="button"
               onClick={() => show(nextIndex)}
-              aria-label={`Mostrar próxima etapa: ${next.label}`}
+              aria-label="Mostrar próxima etapa"
             >
-              <Image
-                className="sai-image"
-                src={next.src}
-                alt={next.alt}
-                width={next.width}
-                height={next.height}
-                sizes="(max-width: 759px) 86vw, 478px"
-              />
+              ›
             </button>
           </div>
         </div>

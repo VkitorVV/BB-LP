@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS funnel_sessions (
 );
 ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS left_at TIMESTAMPTZ;
 ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS page_status TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS visitor_id TEXT;
+ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS visitor_first_seen_at TIMESTAMPTZ;
+ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS visitor_last_seen_at TIMESTAMPTZ;
+ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS visit_number INT NOT NULL DEFAULT 1;
+ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS return_count INT NOT NULL DEFAULT 0;
+ALTER TABLE funnel_sessions ADD COLUMN IF NOT EXISTS is_returning BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- ── funnel_section_events ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS funnel_section_events (
@@ -104,6 +110,7 @@ ALTER TABLE funnel_purchases ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT
 CREATE INDEX IF NOT EXISTS idx_funnel_sessions_date        ON funnel_sessions(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_sessions_last_seen   ON funnel_sessions(last_seen);
 CREATE INDEX IF NOT EXISTS idx_funnel_sessions_page_status ON funnel_sessions(page_status);
+CREATE INDEX IF NOT EXISTS idx_funnel_sessions_visitor_id  ON funnel_sessions(visitor_id);
 CREATE INDEX IF NOT EXISTS idx_funnel_section_events_date  ON funnel_section_events(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_click_events_date    ON funnel_click_events(date);
 CREATE INDEX IF NOT EXISTS idx_funnel_purchases_date       ON funnel_purchases(date);

@@ -9,7 +9,7 @@ import {
 } from '@/lib/trackingConfig';
 
 const SECTION_ORDER = TRACKING_SECTIONS;
-const OFFER_SECTION_ORDER = getTrackingSection(OFFER_SECTION_ID)?.order || 9;
+const OFFER_SECTION_ORDER = getTrackingSection(OFFER_SECTION_ID)?.order || 10;
 const PAGE_SIZE = 1000;
 
 async function fetchAllRows<T>(
@@ -64,6 +64,12 @@ type RawSession = {
   site_source_name: string | null;
   max_section_order: number | null;
   max_section_title: string | null;
+  visitor_id?: string | null;
+  visitor_first_seen_at?: string | null;
+  visitor_last_seen_at?: string | null;
+  visit_number?: number | null;
+  return_count?: number | null;
+  is_returning?: boolean | null;
 };
 
 type ClickEvent = {
@@ -102,6 +108,44 @@ async function fetchPurchases(date: string): Promise<{ data: PurchaseEvent[]; er
   return { data: [], errorMessage: lastError, fallback: null };
 }
 
+async function fetchSessions(date: string): Promise<{ data: RawSession[]; errorMessage: string | null; fallback: string | null }> {
+  const baseSelect = `
+    session_id, date, first_seen, last_seen, left_at, page_status,
+    utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+    campaign_id, adset_id, ad_id, placement, site_source_name,
+    max_section_order, max_section_title
+  `;
+  const attempts = [
+    {
+      select: `${baseSelect},
+        visitor_id, visitor_first_seen_at, visitor_last_seen_at,
+        visit_number, return_count, is_returning
+      `,
+      fallback: null,
+    },
+    {
+      select: baseSelect,
+      fallback: 'funnel_sessions visitor columns ausentes no Supabase real',
+    },
+  ];
+
+  let lastError: string | null = null;
+  for (const attempt of attempts) {
+    const result = await fetchAllRows<RawSession>(() =>
+      supabaseAdmin
+        .from('funnel_sessions')
+        .select(attempt.select)
+        .eq('date', date)
+        .order('last_seen', { ascending: false }),
+    );
+
+    if (!result.errorMessage) return { data: result.data, errorMessage: null, fallback: attempt.fallback };
+    lastError = result.errorMessage;
+  }
+
+  return { data: [], errorMessage: lastError, fallback: null };
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get('token');
@@ -117,18 +161,11 @@ export async function GET(request: NextRequest) {
   const now30m = new Date(Date.now() - 30*60_000).toISOString();
 
   // ── 1. All sessions today (only real columns) ───────────────────────────
-  const { data: allSessionsToday, errorMessage: sessionsErrorMessage } = await fetchAllRows<RawSession>(() =>
-    supabaseAdmin
-      .from('funnel_sessions')
-      .select(`
-        session_id, date, first_seen, last_seen, left_at, page_status,
-        utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-        campaign_id, adset_id, ad_id, placement, site_source_name,
-        max_section_order, max_section_title
-      `)
-      .eq('date', date)
-      .order('last_seen', { ascending: false }),
-  );
+  const {
+    data: allSessionsToday,
+    errorMessage: sessionsErrorMessage,
+    fallback: sessionsFallbackMessage,
+  } = await fetchSessions(date);
 
   // ── 2. Clicks for this day ──────────────────────────────────────────────
   const { data: clickEvents, errorMessage: clickEventsErrorMessage } = await fetchAllRows<ClickEvent>(() =>
@@ -206,6 +243,13 @@ export async function GET(request: NextRequest) {
     siteSourceName:       s.site_source_name,
     maxSectionOrder:      s.max_section_order || 0,
     maxSectionTitle:      s.max_section_title || null,
+    visitorId:            s.visitor_id || null,
+    visitorShortId:       s.visitor_id ? s.visitor_id.slice(0, 8) : null,
+    visitorFirstSeenAt:   s.visitor_first_seen_at || null,
+    visitorLastSeenAt:    s.visitor_last_seen_at || null,
+    visitNumber:          s.visit_number || 1,
+    returnCount:          s.return_count || 0,
+    isReturning:          Boolean(s.is_returning),
     // Calculated from related tables
     clicksCount:        clicksBySession[s.session_id]    || 0,
     purchased:          purchasedBySession[s.session_id] || false,
@@ -315,6 +359,19 @@ export async function GET(request: NextRequest) {
     return sum + (Number.isFinite(amount) ? amount : 0);
   }, 0);
 
+  const visitorColumnsAvailable = allSessionsToday.some(s => typeof s.is_returning === 'boolean' || Boolean(s.visitor_id));
+  const visitorSummary = {
+    trackingEnabled: visitorColumnsAvailable,
+    newVisitors: visitorColumnsAvailable ? filteredSessions.filter(s => !s.is_returning).length : 0,
+    returningVisitors: visitorColumnsAvailable ? filteredSessions.filter(s => Boolean(s.is_returning)).length : 0,
+    totalReturns: visitorColumnsAvailable
+      ? filteredSessions.reduce((sum, session) => sum + Number(session.return_count || 0), 0)
+      : 0,
+    knownVisitors: visitorColumnsAvailable
+      ? new Set(filteredSessions.map(s => s.visitor_id).filter(Boolean)).size
+      : 0,
+  };
+
   // ── 11. Campaign / Adset / Creative tables ──────────────────────────────
   type MapEntry = { sessions: number; clicks: number; reachedOffer: number; purchases: number; revenue: number };
   const campaignMap: Record<string, MapEntry> = {};
@@ -408,6 +465,7 @@ export async function GET(request: NextRequest) {
     active30m:          active30m  || 0,
     totalSessionsToday: allSessionsToday.length,
     sessionsPeriod:     filteredSessions.length,
+    visitorSummary,
     sections, checkoutClicks, checkoutSummary,
     purchases: { count: purchaseCount, revenue: purchaseRevenue },
     campaigns: toArr(campaignMap, 'utmCampaign'),
@@ -437,6 +495,7 @@ export async function GET(request: NextRequest) {
         sectionEventsErrorMessage && `sections: ${sectionEventsErrorMessage}`,
       ].filter(Boolean).join(' | ') || null,
       purchaseQueryFallback: purchasesFallbackMessage,
+      sessionQueryFallback: sessionsFallbackMessage,
     },
     updatedAt: new Date().toISOString(),
   });

@@ -70,6 +70,7 @@ export default function ProdutoPorDentro() {
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [direction, setDirection] = React.useState<Direction>('next');
   const [hasInteracted, setHasInteracted] = React.useState(false);
+  const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
   const slideRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
   const activeIndexRef = React.useRef(0);
@@ -86,6 +87,7 @@ export default function ProdutoPorDentro() {
   );
 
   const currentPanel = panels[activeIndex];
+  const lightboxPanel = lightboxIndex === null ? null : panels[lightboxIndex];
 
   React.useEffect(() => {
     activeIndexRef.current = activeIndex;
@@ -216,6 +218,23 @@ export default function ProdutoPorDentro() {
   }, [cancelSwipe, finishSwipe, startSwipe]);
 
   React.useEffect(() => {
+    if (lightboxIndex === null) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightboxIndex(null);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [lightboxIndex]);
+
+  React.useEffect(() => {
     const elements = Array.from(document.querySelectorAll<HTMLElement>('#material-por-dentro [data-reveal]'));
     if (!elements.length) return;
 
@@ -241,12 +260,13 @@ export default function ProdutoPorDentro() {
   }, []);
 
   return (
+    <>
     <section
       id="material-por-dentro"
       aria-labelledby="material-por-dentro-title"
       data-track-section="material-por-dentro"
       data-track-order="4"
-      data-track-title="04 - Material por dentro"
+      data-track-title="04 - MATERIAL POR DENTRO"
     >
       <style>{`
         #material-por-dentro {
@@ -318,8 +338,8 @@ export default function ProdutoPorDentro() {
           font-weight: 800;
         }
         #material-por-dentro .inside-slot {
-          --inside-page-width: min(88vw, 390px);
-          --inside-page-half: min(44vw, 195px);
+          --inside-page-width: min(92vw, 430px);
+          --inside-page-half: min(46vw, 215px);
           --inside-slot-gap: 8px;
           margin: 64px auto 0;
           text-align: center;
@@ -347,6 +367,35 @@ export default function ProdutoPorDentro() {
           width: 100vw;
           margin-left: -50vw;
           overflow: hidden;
+        }
+        #material-por-dentro .inside-nav {
+          position: absolute;
+          top: 50%;
+          z-index: 6;
+          width: 40px;
+          height: 40px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(16, 15, 13, 0.16);
+          border-radius: 999px;
+          background: rgba(247, 241, 232, 0.92);
+          color: #100F0D;
+          font-size: 1.7rem;
+          font-weight: 900;
+          line-height: 1;
+          cursor: pointer;
+          transform: translateY(-50%);
+          box-shadow: 0 10px 22px rgba(31, 24, 16, 0.12);
+        }
+        #material-por-dentro .inside-nav:focus-visible {
+          outline: 3px solid #D7A42C;
+          outline-offset: 3px;
+        }
+        #material-por-dentro .inside-nav-prev {
+          left: calc(50vw - min(47vw, 228px));
+        }
+        #material-por-dentro .inside-nav-next {
+          right: calc(50vw - min(47vw, 228px));
         }
         #material-por-dentro .inside-scroller {
           display: flex;
@@ -379,7 +428,7 @@ export default function ProdutoPorDentro() {
         #material-por-dentro .inside-slide[aria-selected="true"] {
           opacity: 1;
           transform: scale(1);
-          cursor: default;
+          cursor: zoom-in;
         }
         #material-por-dentro .inside-slide:focus-visible {
           outline: 3px solid rgba(215, 164, 44, 0.88);
@@ -464,13 +513,59 @@ export default function ProdutoPorDentro() {
           line-height: 1.42;
           font-weight: 700;
         }
+        .inside-lightbox {
+          position: fixed;
+          inset: 0;
+          z-index: 140;
+          display: grid;
+          place-items: center;
+          padding: 14px;
+          background: rgba(7, 5, 3, 0.82);
+          backdrop-filter: blur(4px);
+        }
+        .inside-lightbox-card {
+          position: relative;
+          width: min(100%, 720px);
+          max-height: 92vh;
+          display: grid;
+          place-items: center;
+        }
+        .inside-lightbox-image {
+          display: block;
+          width: auto;
+          max-width: 100%;
+          max-height: 88vh;
+          height: auto;
+          object-fit: contain;
+          border: 1px solid rgba(247, 241, 232, 0.18);
+          background: #F7F1E8;
+          box-shadow: 0 24px 70px rgba(0, 0, 0, 0.44);
+        }
+        .inside-lightbox-close {
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          z-index: 2;
+          width: 40px;
+          height: 40px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(16, 15, 13, 0.16);
+          border-radius: 999px;
+          background: rgba(247, 241, 232, 0.96);
+          color: #100F0D;
+          font-size: 1.35rem;
+          line-height: 1;
+          cursor: pointer;
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+        }
         @media (min-width: 760px) {
           #material-por-dentro {
             padding: 96px 28px 112px;
           }
           #material-por-dentro .inside-slot {
-            --inside-page-width: min(58vw, 680px);
-            --inside-page-half: min(29vw, 340px);
+            --inside-page-width: min(58vw, 700px);
+            --inside-page-half: min(29vw, 350px);
             --inside-slot-gap: 38px;
             margin-top: 76px;
           }
@@ -487,8 +582,8 @@ export default function ProdutoPorDentro() {
         }
         @media (min-width: 1120px) {
           #material-por-dentro .inside-slot {
-            --inside-page-width: 680px;
-            --inside-page-half: 340px;
+            --inside-page-width: 700px;
+            --inside-page-half: 350px;
           }
         }
         @media (max-width: 374px) {
@@ -517,6 +612,9 @@ export default function ProdutoPorDentro() {
           #material-por-dentro .inside-title-previous,
           #material-por-dentro .inside-copy-previous {
             animation: insideFade 140ms ease both;
+          }
+          .inside-lightbox {
+            backdrop-filter: none;
           }
           @keyframes insideFade {
             from { opacity: 0; }
@@ -557,11 +655,19 @@ export default function ProdutoPorDentro() {
 
           {!hasInteracted && (
             <span className="inside-hint">
-              DESLIZE PARA VER AS PRÓXIMAS PÁGINAS
+              TOQUE PARA AMPLIAR
             </span>
           )}
 
           <div className="inside-slot-window">
+            <button
+              className="inside-nav inside-nav-prev"
+              type="button"
+              onClick={() => goToPanel(getWrappedIndex(activeIndex - 1), 'previous')}
+              aria-label="Ver página anterior"
+            >
+              ‹
+            </button>
             <div
               ref={scrollerRef}
               className="inside-scroller"
@@ -591,7 +697,15 @@ export default function ProdutoPorDentro() {
                     aria-label={`${panel.action}, página ${panelIndex + 1} de ${panels.length}`}
                     aria-selected={isActive}
                     aria-current={isActive ? 'true' : undefined}
-                    onClick={() => goToPanel(panelIndex, getClickDirection(panelIndex, slotIndex))}
+                    onClick={() => {
+                      if (isActive) {
+                        setHasInteracted(true);
+                        setLightboxIndex(panelIndex);
+                        return;
+                      }
+
+                      goToPanel(panelIndex, getClickDirection(panelIndex, slotIndex));
+                    }}
                   >
                     <Image
                       className="inside-page"
@@ -608,6 +722,14 @@ export default function ProdutoPorDentro() {
                 );
               })}
             </div>
+            <button
+              className="inside-nav inside-nav-next"
+              type="button"
+              onClick={() => goToPanel(getWrappedIndex(activeIndex + 1), 'next')}
+              aria-label="Ver próxima página"
+            >
+              ›
+            </button>
           </div>
 
           <p
@@ -653,5 +775,41 @@ export default function ProdutoPorDentro() {
         </div>
       </div>
     </section>
+    {lightboxPanel && (
+      <div
+        className="inside-lightbox"
+        role="presentation"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setLightboxIndex(null);
+        }}
+      >
+        <div
+          className="inside-lightbox-card"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Imagem ampliada: ${lightboxPanel.action}`}
+        >
+          <button
+            type="button"
+            className="inside-lightbox-close"
+            aria-label="Fechar imagem ampliada"
+            onClick={() => setLightboxIndex(null)}
+          >
+            ×
+          </button>
+          <Image
+            className="inside-lightbox-image"
+            src={lightboxPanel.src}
+            alt={lightboxPanel.alt}
+            width={7430}
+            height={10753}
+            sizes="96vw"
+            draggable={false}
+            unoptimized
+          />
+        </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -9,6 +9,7 @@ import {
 
 export const SESSION_ID_KEY = 'mapa_degrade_session_id';
 export const ATTRIBUTION_KEY = 'mapa_degrade_attribution';
+export const VISITOR_STATE_KEY = 'mapa_degrade_visitor_state';
 
 export type TrackingUtms = {
   utmSource?: string;
@@ -21,6 +22,19 @@ export type TrackingUtms = {
   adId?: string;
   placement?: string;
   siteSourceName?: string;
+};
+
+export type VisitorState = {
+  visitorId: string;
+  visitorFirstSeenAt: string;
+  visitorLastSeenAt: string;
+  visitNumber: number;
+  returnCount: number;
+  isReturning: boolean;
+};
+
+type StoredVisitorState = Partial<VisitorState> & {
+  lastSessionId?: string;
 };
 
 const UTM_TO_PAYLOAD_KEY: Record<(typeof UTM_KEYS)[number], keyof TrackingUtms> = {
@@ -47,17 +61,76 @@ function readStoredAttribution(): TrackingUtms {
   }
 }
 
+function createClientId(): string {
+  return typeof crypto?.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function getSessionId(): string {
   if (typeof window === 'undefined') return '';
 
   let id = sessionStorage.getItem(SESSION_ID_KEY);
   if (!id) {
-    id = typeof crypto?.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    id = createClientId();
     sessionStorage.setItem(SESSION_ID_KEY, id);
   }
   return id;
+}
+
+export function getVisitorState(): VisitorState {
+  const now = new Date().toISOString();
+  const fallback: VisitorState = {
+    visitorId: '',
+    visitorFirstSeenAt: now,
+    visitorLastSeenAt: now,
+    visitNumber: 1,
+    returnCount: 0,
+    isReturning: false,
+  };
+
+  if (typeof window === 'undefined') return fallback;
+
+  const sessionId = getSessionId();
+
+  try {
+    const raw = localStorage.getItem(VISITOR_STATE_KEY);
+    const stored = raw ? JSON.parse(raw) as StoredVisitorState : {};
+    const visitorId = stored.visitorId || createClientId();
+    const visitorFirstSeenAt = stored.visitorFirstSeenAt || now;
+    const previousVisitNumber = Number(stored.visitNumber || 0);
+    const isNewSession = stored.lastSessionId !== sessionId;
+    const visitNumber = isNewSession
+      ? Math.max(1, previousVisitNumber + 1)
+      : Math.max(1, previousVisitNumber || 1);
+    const returnCount = Math.max(0, visitNumber - 1);
+
+    const nextState: VisitorState & { lastSessionId: string } = {
+      visitorId,
+      visitorFirstSeenAt,
+      visitorLastSeenAt: now,
+      visitNumber,
+      returnCount,
+      isReturning: visitNumber > 1,
+      lastSessionId: sessionId,
+    };
+
+    localStorage.setItem(VISITOR_STATE_KEY, JSON.stringify(nextState));
+
+    return {
+      visitorId: nextState.visitorId,
+      visitorFirstSeenAt: nextState.visitorFirstSeenAt,
+      visitorLastSeenAt: nextState.visitorLastSeenAt,
+      visitNumber: nextState.visitNumber,
+      returnCount: nextState.returnCount,
+      isReturning: nextState.isReturning,
+    };
+  } catch {
+    return {
+      ...fallback,
+      visitorId: sessionId,
+    };
+  }
 }
 
 export function getUtmParams(): TrackingUtms {
@@ -110,8 +183,8 @@ export function buildCheckoutUrl(checkoutType: CheckoutRedirectType): string {
 export function getOfferTrackingSection() {
   return getTrackingSection(OFFER_SECTION_ID) || {
     id: OFFER_SECTION_ID,
-    title: '09 - Precos / Planos',
-    order: 9,
+    title: '10 - PREÇOS / PLANOS',
+    order: 10,
   };
 }
 
