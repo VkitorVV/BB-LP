@@ -20,6 +20,13 @@ interface CheckoutSummary {
   completeSelected:number;
   upgradeAccepted:number;
 }
+interface VisitorSummary {
+  trackingEnabled:boolean;
+  newVisitors:number;
+  returningVisitors:number;
+  totalReturns:number;
+  knownVisitors:number;
+}
 interface MapRow      { sessions:number; clicks:number; reachedOffer:number; purchases:number; revenue:number; conversionClick:number; conversionPurchase:number; }
 interface LastClick   { checkoutType:string; checkoutLabel:string|null; checkoutPrice:number|null; buttonLocation:string|null; clickedAt:string|null; }
 interface SessionRow  {
@@ -29,6 +36,9 @@ interface SessionRow  {
   utmSource?:string; utmCampaign?:string; utmTerm?:string; utmContent?:string;
   campaignId?:string; adsetId?:string; adId?:string;
   maxSectionOrder:number; maxSectionTitle?:string;
+  visitorId?:string|null; visitorShortId?:string|null;
+  visitorFirstSeenAt?:string|null; visitorLastSeenAt?:string|null;
+  visitNumber:number; returnCount:number; isReturning:boolean;
   clicksCount:number; purchased:boolean; revenue:number;
   lastCheckoutClick:LastClick|null;
 }
@@ -36,6 +46,7 @@ interface DashData {
   date:string; window:string;
   activeNow:number; active30m:number;
   totalSessionsToday:number; sessionsPeriod:number;
+  visitorSummary?:VisitorSummary;
   sections:SectionRow[]; checkoutClicks:CheckoutClicks; checkoutSummary?:CheckoutSummary;
   purchases:{count:number;revenue:number};
   campaigns:(MapRow&{utmCampaign:string})[]; adsets:(MapRow&{adsetId:string})[]; creatives:(MapRow&{utmContent:string})[];
@@ -47,7 +58,7 @@ interface DashData {
   includeCta:boolean;
   ctaJumpCounts:Record<string,number>;
   internalCtaClicks:{label:string;clicks:number}[];
-  debug?:{allSessionsTodayCount:number;filteredSessionsCount:number;returnedSessionsCount:number;sessQueryError?:string|null};
+  debug?:{allSessionsTodayCount:number;filteredSessionsCount:number;returnedSessionsCount:number;sessQueryError?:string|null;sessionQueryFallback?:string|null};
   updatedAt:string;
 }
 interface SessionDetail {
@@ -75,8 +86,8 @@ const CLICK_BADGE:Record<string,{label:string;color:string}>={
 function secsAgo(sec:number){if(sec<5)return 'agora';if(sec<60)return `há ${sec}s`;if(sec<3600)return `há ${Math.floor(sec/60)}min`;return `há ${Math.floor(sec/3600)}h`;}
 const WINDOWS=[{v:'now',l:'Agora/25s'},{v:'30m',l:'30 min'},{v:'1h',l:'1 hora'},{v:'2h',l:'2 horas'},{v:'4h',l:'4 horas'},{v:'12h',l:'12 horas'},{v:'24h',l:'24 horas'},{v:'today',l:'Hoje'}];
 const TABS:[Tab,string][]=[['geral','Visão Geral'],['usuarios','Usuários'],['campanhas','Campanhas'],['exportacoes','Exportações']];
-type UserFilter='todos'|'online'|'recentes'|'saíram'|'compraram'|'clicaram'|'chegaram_oferta'|'nao_oferta';
-const OFFER_SECTION_ORDER = getTrackingSection(OFFER_SECTION_ID)?.order || 9;
+type UserFilter='todos'|'novos'|'retornaram'|'online'|'recentes'|'saíram'|'compraram'|'clicaram'|'chegaram_oferta'|'nao_oferta';
+const OFFER_SECTION_ORDER = getTrackingSection(OFFER_SECTION_ID)?.order || 10;
 const isOfferSection = (sectionId: string) => sectionId === OFFER_SECTION_ID || sectionId === 'oferta';
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -161,6 +172,8 @@ export default function FunilPage() {
   const filteredUsers = (data?.sessions||[]).filter(s=>{
     const base = stopFilter ? s.maxSectionTitle === stopFilter : true;
     const filter =
+      userFilter==='novos'           ? !s.isReturning :
+      userFilter==='retornaram'      ? s.isReturning :
       userFilter==='online'          ? s.status==='online' :
       userFilter==='recentes'        ? s.status==='recente' :
       userFilter==='saíram'          ? s.status==='saiu' :
@@ -168,7 +181,7 @@ export default function FunilPage() {
       userFilter==='clicaram'        ? s.clicksCount>0 :
       userFilter==='chegaram_oferta' ? s.maxSectionOrder>=OFFER_SECTION_ORDER :
       userFilter==='nao_oferta'      ? s.maxSectionOrder<OFFER_SECTION_ORDER : true;
-    const search = !userSearch || [s.utmCampaign,s.utmContent,s.adsetId,s.shortId,s.label].some(v=>(v||'').toLowerCase().includes(userSearch.toLowerCase()));
+    const search = !userSearch || [s.utmCampaign,s.utmContent,s.adsetId,s.shortId,s.visitorShortId,s.label].some(v=>(v||'').toLowerCase().includes(userSearch.toLowerCase()));
     return base && filter && search;
   });
 
@@ -189,6 +202,7 @@ export default function FunilPage() {
   const periodBase=data.sessionsPeriod||data.totalSessionsToday||0;
   const periodLabel=WINDOWS.find(w=>w.v===data.window)?.l||data.window;
   const dataIssue=data.debug?.sessQueryError||'';
+  const visitorSummary=data.visitorSummary||{trackingEnabled:false,newVisitors:0,returningVisitors:0,totalReturns:0,knownVisitors:0};
   const detSess=selSid?data.sessions.find(s=>s.sessionId===selSid):null;
   void tick;
 
@@ -233,6 +247,7 @@ export default function FunilPage() {
           <div style={{color:'#9ca3af'}}>Checkout único: <b style={{color:'#22c55e'}}>{fmtPct(checkoutSummary.uniqueCheckoutSessions,periodBase)}</b> · Compra: <b style={{color:'#f97316'}}>{fmtPct(data.purchases.count,periodBase)}</b></div>
         </div>
         {dataIssue&&<div style={g.warnBar}>Alguma consulta retornou aviso: {dataIssue}</div>}
+        {!visitorSummary.trackingEnabled&&<div style={g.warnBar}>Métricas de novo/retorno ainda aguardam o SQL novo do Supabase.</div>}
 
         {/* ════ TAB GERAL ════ */}
         {tab==='geral'&&<>
@@ -242,6 +257,9 @@ export default function FunilPage() {
             <Card label="◑ Ativos 30min"  value={fmt(data.active30m)}            color="#3b82f6"/>
             <Card label="Sessões hoje"    value={fmt(data.totalSessionsToday)}   color="#06b6d4"/>
             <Card label="Sessões período" value={fmt(data.sessionsPeriod)}        color="#38bdf8" hint="Sessões consideradas na janela selecionada"/>
+            <Card label="Novos"           value={fmt(visitorSummary.newVisitors)} color="#14b8a6" hint="Primeira sessão conhecida neste navegador"/>
+            <Card label="Retornaram"      value={fmt(visitorSummary.returningVisitors)} color="#a3e635" hint="Visitantes que já tinham acessado a PV neste navegador"/>
+            <Card label="Retornos"        value={fmt(visitorSummary.totalReturns)} color="#facc15" hint="Soma de retornos detectados por localStorage"/>
             <Card label="Checkout único"  value={fmt(checkoutSummary.uniqueCheckoutSessions)} color="#22c55e" hint="Sessões com redirecionamento real"/>
             <Card label="Taxa checkout"   value={fmtPct(checkoutSummary.uniqueCheckoutSessions,periodBase)} color="#84cc16" hint="Checkout único / sessões do período"/>
             <Card label="Redirect Wiapy"  value={fmt(checkoutSummary.checkoutRedirects)} color="#f59e0b" hint="Cliques que abrem checkout"/>
@@ -328,7 +346,7 @@ export default function FunilPage() {
                 <div key={i} style={{background:'#111827',border:'1px solid #1f2937',borderRadius:10,padding:'12px 16px'}}>
                   <p style={{fontSize:11,color:'#6b7280',margin:'0 0 4px',textTransform:'uppercase',letterSpacing:.8}}>{c.label}</p>
                   <p style={{fontSize:22,fontWeight:800,color:'#f59e0b',margin:0}}>{fmt(c.clicks)}</p>
-                  <p style={{fontSize:10,color:'#374151',margin:'4px 0 0'}}>→ 09 - Preços / Planos (salto)</p>
+                  <p style={{fontSize:10,color:'#374151',margin:'4px 0 0'}}>→ 10 - PREÇOS / PLANOS (salto)</p>
                 </div>
               ))}
             </div>
@@ -411,6 +429,7 @@ export default function FunilPage() {
             <span>returned: <b>{data.debug?.returnedSessionsCount??data.sessions.length}</b></span>
             <span>date: <b>{data.date}</b></span><span>window: <b>{data.window}</b></span>
             {data.debug?.sessQueryError&&<span style={{color:'#ef4444'}}>err: {data.debug.sessQueryError}</span>}
+            {data.debug?.sessionQueryFallback&&<span style={{color:'#f59e0b'}}>visitor: {data.debug.sessionQueryFallback}</span>}
           </div>
         </>}
 
@@ -419,7 +438,7 @@ export default function FunilPage() {
           <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12,alignItems:'center'}}>
             <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Buscar..." style={{...g.inp,flex:1,minWidth:180}}/>
             <select value={userFilter} onChange={e=>setUserFilter(e.target.value as UserFilter)} style={g.inp}>
-              {(['todos','online','recentes','saíram','compraram','clicaram','chegaram_oferta','nao_oferta'] as UserFilter[]).map(f=><option key={f} value={f}>{f}</option>)}
+              {(['todos','novos','retornaram','online','recentes','saíram','compraram','clicaram','chegaram_oferta','nao_oferta'] as UserFilter[]).map(f=><option key={f} value={f}>{f}</option>)}
             </select>
             {stopFilter&&<span style={{background:'rgba(249,115,22,.1)',border:'1px solid rgba(249,115,22,.3)',borderRadius:16,padding:'4px 12px',fontSize:11,color:'#f59e0b'}}>
               Parou em: {stopFilter} <button onClick={()=>setStopFilter(null)} style={{background:'none',border:'none',color:'#6b7280',cursor:'pointer',marginLeft:4}}>✕</button>
@@ -430,12 +449,18 @@ export default function FunilPage() {
             {filteredUsers.length===0?<p style={{color:'#6b7280',fontSize:13,padding:'12px 0'}}>Nenhuma sessão encontrada.</p>:(
               <div style={{overflowX:'auto'}}>
                 <table style={g.tbl}><thead><tr>
-                  <TH>Usuário</TH><TH>Status</TH><TH>Visto há</TH><TH>Campanha</TH><TH>Criativo</TH>
+                  <TH>Usuário</TH><TH>Visitas</TH><TH>Status</TH><TH>Visto há</TH><TH>Campanha</TH><TH>Criativo</TH>
                   <TH>Parou em</TH><TH>Última oferta clicada</TH><TH r>Cliques</TH><TH r>Comprou</TH>
                 </tr></thead><tbody>
                 {filteredUsers.map(sess=>(
                   <tr key={sess.sessionId} style={{...g.tr,cursor:'pointer'}} onClick={()=>openDetail(sess.sessionId)}>
                     <TD><span style={{color:'#60a5fa',fontFamily:'monospace',fontSize:11}}>{sess.label}</span><span style={{color:'#374151',fontSize:10,marginLeft:5}}>#{sess.shortId}</span></TD>
+                    <TD>
+                      <span style={{...g.clickBadge,background:sess.isReturning?'rgba(163,230,53,.14)':'rgba(20,184,166,.14)',color:sess.isReturning?'#a3e635':'#2dd4bf'}}>
+                        {sess.isReturning?`retorno ${sess.returnCount}x`:'novo'}
+                      </span>
+                      <span style={{fontSize:10,color:'#475569',marginLeft:6}}>v{sess.visitNumber}</span>
+                    </TD>
                     <TD><span style={{color:STATUS_COLOR[sess.status],fontSize:12}}>● {sess.status}</span></TD>
                     <TD style={{fontSize:11,color:'#6b7280'}}>{secsAgo(sess.secondsSinceLastSeen)}</TD>
                     <TD style={{fontSize:12}}>{sess.utmCampaign||'—'}</TD>
@@ -509,6 +534,9 @@ export default function FunilPage() {
                   {detSess&&<DBlock title="Identificação">
                     <DR k="Usuário" v={detSess.label}/><DR k="Status" v={<span style={{color:STATUS_COLOR[detSess.status]}}>● {detSess.status}</span>}/>
                     <DR k="Session" v={<code style={{fontSize:10}}>{selSid.slice(0,20)}…</code>}/>
+                    {detSess.visitorShortId&&<DR k="Visitante" v={<code style={{fontSize:10}}>{detSess.visitorShortId}</code>}/>}
+                    <DR k="Tipo" v={detSess.isReturning?`Retornou ${detSess.returnCount}x`:'Novo'}/>
+                    <DR k="Visita nº" v={detSess.visitNumber}/>
                     <DR k="1ª visita" v={fmtTime(detSess.firstSeen)}/><DR k="Última ativ." v={fmtTime(detSess.lastSeen)}/>
                     {detSess.leftAt&&<DR k="Saiu em" v={fmtTime(detSess.leftAt)}/>}
                   </DBlock>}

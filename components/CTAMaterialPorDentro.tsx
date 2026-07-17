@@ -15,7 +15,7 @@ export default function CTAMaterialPorDentro() {
       ctaLabel: 'CTA Material Por Dentro',
       buttonLocation: 'cta-material-por-dentro',
       sourceSectionId: 'cta-material-por-dentro',
-      sourceSectionTitle: '05 - CTA material por dentro',
+      sourceSectionTitle: '05 - CTA MATERIAL POR DENTRO',
       sourceSectionOrder: 5,
       sessionId: getSessionId(),
       utms: getUtmParams(),
@@ -30,7 +30,7 @@ export default function CTAMaterialPorDentro() {
       aria-labelledby="cta-material-por-dentro-title"
       data-track-section="cta-material-por-dentro"
       data-track-order="5"
-      data-track-title="05 - CTA material por dentro"
+      data-track-title="05 - CTA MATERIAL POR DENTRO"
     >
       <style>{`
         #cta-material-por-dentro {

@@ -48,7 +48,7 @@ export default function MapaVai() {
       aria-labelledby="com-o-mapa-voce-vai-title"
       data-track-section="com-o-mapa-voce-vai"
       data-track-order="6"
-      data-track-title="06 - Com o Mapa você vai"
+      data-track-title="06 - COM O MAPA VOCÊ VAI"
     >
       <style>{`
         #com-o-mapa-voce-vai {

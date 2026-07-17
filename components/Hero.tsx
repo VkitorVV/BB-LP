@@ -12,7 +12,7 @@ export default function Hero() {
       ctaLabel: 'CTA Hero',
       buttonLocation: 'hero',
       sourceSectionId: 'hero',
-      sourceSectionTitle: '01 - Hero',
+      sourceSectionTitle: '01 - HERO',
       sourceSectionOrder: 1,
       sessionId: getSessionId(),
       utms: getUtmParams(),
@@ -25,7 +25,7 @@ export default function Hero() {
       id="hero"
       data-track-section="hero"
       data-track-order="1"
-      data-track-title="01 - Hero"
+      data-track-title="01 - HERO"
     >
       <style>{`
         #hero {

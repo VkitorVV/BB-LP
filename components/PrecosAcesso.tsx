@@ -227,8 +227,8 @@ export default function PrecosAcesso() {
       id="precos-acesso"
       aria-labelledby="precos-acesso-title"
       data-track-section="precos-acesso"
-      data-track-order="9"
-      data-track-title="09 - Preços / Planos"
+      data-track-order="10"
+      data-track-title="10 - PREÇOS / PLANOS"
     >
       <style>{`
         #precos-acesso {
@@ -448,12 +448,12 @@ export default function PrecosAcesso() {
         }
         #precos-acesso .upgrade-arrow {
           position: relative;
-          width: 52px;
-          height: 58px;
+          width: 58px;
+          height: 66px;
           display: grid;
           place-items: center;
           pointer-events: none;
-          animation: priceArrowBounce 1050ms ease-in-out infinite;
+          animation: priceArrowBounce 920ms ease-in-out infinite;
         }
         #precos-acesso .upgrade-arrow::before,
         #precos-acesso .upgrade-arrow::after {
@@ -464,7 +464,7 @@ export default function PrecosAcesso() {
           border-right: 5px solid #D8A64A;
           border-bottom: 5px solid #D8A64A;
           transform: rotate(45deg);
-          filter: drop-shadow(0 7px 12px rgba(216, 166, 74, 0.22));
+          filter: drop-shadow(0 9px 14px rgba(216, 166, 74, 0.34));
         }
         #precos-acesso .upgrade-arrow::before {
           top: 2px;
@@ -475,10 +475,12 @@ export default function PrecosAcesso() {
         }
         @keyframes priceArrowBounce {
           0%, 100% {
-            transform: translateY(0);
+            opacity: 0.78;
+            transform: translateY(-2px) scale(0.98);
           }
           50% {
-            transform: translateY(9px);
+            opacity: 1;
+            transform: translateY(13px) scale(1.04);
           }
         }
         #precos-acesso [data-price-reveal] {
@@ -707,6 +709,14 @@ export default function PrecosAcesso() {
           font-weight: 850;
           line-height: 1.35;
         }
+        .upgrade-modal-payment-note {
+          margin: -2px 0 2px;
+          color: #7B5616;
+          font-size: 0.72rem;
+          font-weight: 950;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
         .upgrade-modal-actions {
           display: grid;
           gap: 10px;
@@ -840,7 +850,7 @@ export default function PrecosAcesso() {
             <p className="plan-support">Para quem quer começar apenas pelo guia principal.</p>
 
             <p className="price-display plan-price">R$ 19,90</p>
-            <p className="payment-note">Pagamento único</p>
+            <p className="payment-note">no pix ou cartão</p>
 
             <ul className="plan-list" aria-label="Itens inclusos no Mapa do Degradê Sem Marca">
               {basicIncluded.map((item) => (
@@ -887,7 +897,7 @@ export default function PrecosAcesso() {
             </p>
 
             <p className="price-display plan-price">R$ 29,90</p>
-            <p className="payment-note">Pagamento único</p>
+            <p className="payment-note">no pix ou cartão</p>
 
             <ul className="plan-list" aria-label="Itens inclusos no Kit Completo">
               {completeIncluded.map((item, index) => (
@@ -991,6 +1001,7 @@ export default function PrecosAcesso() {
                   <span className="upgrade-modal-price-prefix">Por</span>
                   <strong className="upgrade-modal-price">R$ 24,90</strong>
                 </div>
+                <p className="upgrade-modal-payment-note">no pix ou cartão</p>
                 <p className="upgrade-modal-anchor">
                   Por apenas R$5,00 a mais que o Plano Básico, você leva o Kit Completo.
                 </p>

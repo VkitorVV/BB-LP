@@ -35,7 +35,7 @@ export default function MarcaNaoAparece() {
       aria-labelledby="marca-nao-aparece-title"
       data-track-section="marca-nao-aparece"
       data-track-order="2"
-      data-track-title="02 - A marca não aparece do nada"
+      data-track-title="02 - NÃO APARECE DO NADA"
     >
       <style>{`
         #marca-nao-aparece {

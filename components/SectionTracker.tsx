@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { TRACKING_SECTIONS } from '@/lib/trackingConfig';
-import { getSessionId, getUtmParams } from '@/lib/clientTracking';
+import { getSessionId, getUtmParams, getVisitorState } from '@/lib/clientTracking';
 
 declare global {
   interface Window {
@@ -21,21 +21,37 @@ declare global {
 }
 
 const GA4_PREFIX = 'ga4_section_reached_';
+const GA4_PAGE_VIEW_PREFIX = 'ga4_section_page_view_';
 const panelFiredThisLoad = new Set<string>();
 
 function fireGA4(id: string, title: string, order: number) {
   if (!title || !id) return;
-  if (sessionStorage.getItem(GA4_PREFIX + id)) return;
   if (typeof window.gtag !== 'function') return;
 
   try {
-    sessionStorage.setItem(GA4_PREFIX + id, '1');
-    window.gtag('event', 'section_reached', {
-      section_title: title,
-      section_id: id,
-      section_order: order,
-      transport_type: 'beacon',
-    });
+    if (!sessionStorage.getItem(GA4_PREFIX + id)) {
+      sessionStorage.setItem(GA4_PREFIX + id, '1');
+      window.gtag('event', 'section_reached', {
+        section_title: title,
+        section_id: id,
+        section_order: order,
+        transport_type: 'beacon',
+      });
+    }
+
+    if (!sessionStorage.getItem(GA4_PAGE_VIEW_PREFIX + id)) {
+      const pagePath = `${window.location.pathname}#${id}`;
+      sessionStorage.setItem(GA4_PAGE_VIEW_PREFIX + id, '1');
+      window.gtag('event', 'page_view', {
+        page_title: title,
+        page_location: `${window.location.origin}${pagePath}`,
+        page_path: pagePath,
+        section_title: title,
+        section_id: id,
+        section_order: order,
+        transport_type: 'beacon',
+      });
+    }
   } catch {
     // GA4 can be blocked by the browser/ad blockers.
   }
@@ -69,6 +85,7 @@ function firePanel(
         sourceSectionTitle: ctaInfo?.sourceSectionTitle || undefined,
         sourceSectionOrder: ctaInfo?.sourceSectionOrder || undefined,
         timestamp: new Date().toISOString(),
+        ...getVisitorState(),
         ...getUtmParams(),
       }),
     }).catch(() => {});

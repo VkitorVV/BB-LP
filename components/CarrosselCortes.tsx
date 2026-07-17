@@ -26,75 +26,134 @@ const cuts = [
   },
 ] as const;
 
+const AUTOPLAY_DURATION_MS = 46_000;
+
 export default function CarrosselCortes() {
   const sectionRef = React.useRef<HTMLElement | null>(null);
-  const pointerDownRef = React.useRef(false);
+  const trackRef = React.useRef<HTMLDivElement | null>(null);
+  const sequenceRef = React.useRef<HTMLDivElement | null>(null);
+  const offsetRef = React.useRef(0);
+  const sequenceWidthRef = React.useRef(1);
+  const rafRef = React.useRef<number | null>(null);
+  const lastFrameRef = React.useRef<number | null>(null);
   const inViewRef = React.useRef(false);
+  const draggingRef = React.useRef(false);
+  const dragRef = React.useRef({ x: 0, y: 0, offset: 0, moved: false });
+  const [manualPaused, setManualPaused] = React.useState(false);
+  const [reducedMotion, setReducedMotion] = React.useState(false);
 
-  const setPaused = React.useCallback((paused: boolean) => {
-    sectionRef.current?.classList.toggle('is-paused', paused);
+  const normalizeOffset = React.useCallback((value: number) => {
+    const width = sequenceWidthRef.current || 1;
+    return ((value % width) + width) % width;
   }, []);
+
+  const applyOffset = React.useCallback((value: number) => {
+    offsetRef.current = normalizeOffset(value);
+    if (trackRef.current) {
+      trackRef.current.style.transform = `translate3d(${-offsetRef.current}px, 0, 0)`;
+    }
+  }, [normalizeOffset]);
+
+  const measure = React.useCallback(() => {
+    const width = sequenceRef.current?.getBoundingClientRect().width || 1;
+    sequenceWidthRef.current = Math.max(1, width);
+    applyOffset(offsetRef.current);
+  }, [applyOffset]);
+
+  React.useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncMotion = () => setReducedMotion(media.matches);
+    syncMotion();
+    media.addEventListener('change', syncMotion);
+    window.addEventListener('resize', measure);
+    measure();
+
+    return () => {
+      media.removeEventListener('change', syncMotion);
+      window.removeEventListener('resize', measure);
+    };
+  }, [measure]);
 
   React.useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
 
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion) {
-      section.classList.add('reduced-motion');
-      setPaused(true);
-      return;
-    }
-
-    const syncPauseState = () => {
-      setPaused(!inViewRef.current || pointerDownRef.current || document.hidden);
-    };
-
     const observer = new IntersectionObserver(
       ([entry]) => {
         inViewRef.current = Boolean(entry?.isIntersecting);
-        syncPauseState();
       },
       { threshold: 0.12, rootMargin: '160px 0px 160px 0px' }
     );
 
     observer.observe(section);
-    document.addEventListener('visibilitychange', syncPauseState);
+    return () => observer.disconnect();
+  }, []);
 
-    return () => {
-      observer.disconnect();
-      document.removeEventListener('visibilitychange', syncPauseState);
+  React.useEffect(() => {
+    const step = (time: number) => {
+      const previous = lastFrameRef.current ?? time;
+      const delta = time - previous;
+      lastFrameRef.current = time;
+
+      if (!reducedMotion && inViewRef.current && !manualPaused && !draggingRef.current && !document.hidden) {
+        const speed = sequenceWidthRef.current / AUTOPLAY_DURATION_MS;
+        applyOffset(offsetRef.current + delta * speed);
+      }
+
+      rafRef.current = requestAnimationFrame(step);
     };
-  }, [setPaused]);
 
-  const pauseForPress = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [applyOffset, manualPaused, reducedMotion]);
+
+  const handlePointerDown = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    pointerDownRef.current = true;
-    setPaused(true);
+    draggingRef.current = true;
+    dragRef.current = { x: event.clientX, y: event.clientY, offset: offsetRef.current, moved: false };
+    sectionRef.current?.classList.add('is-dragging');
     event.currentTarget.setPointerCapture?.(event.pointerId);
-  }, [setPaused]);
+  }, []);
 
-  const resumeAfterPress = React.useCallback((event?: React.PointerEvent<HTMLDivElement>) => {
-    pointerDownRef.current = false;
-    if (event?.currentTarget.hasPointerCapture?.(event.pointerId)) {
+  const handlePointerMove = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    const deltaX = event.clientX - dragRef.current.x;
+    const deltaY = event.clientY - dragRef.current.y;
+
+    if (Math.abs(deltaX) > 5 && Math.abs(deltaX) > Math.abs(deltaY) * 1.05) {
+      dragRef.current.moved = true;
+      applyOffset(dragRef.current.offset - deltaX);
+    }
+  }, [applyOffset]);
+
+  const finishPointer = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    sectionRef.current?.classList.remove('is-dragging');
+
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    setPaused(!inViewRef.current || document.hidden);
-  }, [setPaused]);
 
-  const handlePointerLeave = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerDownRef.current && event.buttons !== 0) return;
-    resumeAfterPress(event);
-  }, [resumeAfterPress]);
+    if (!dragRef.current.moved) {
+      setManualPaused((paused) => !paused);
+    }
+  }, []);
 
   const preventImageAction = React.useCallback((event: React.SyntheticEvent) => {
     event.preventDefault();
   }, []);
 
-  const renderSequence = (hidden: boolean) => (
-    <div className="cuts-sequence" aria-hidden={hidden ? 'true' : undefined}>
+  const renderSequence = (hidden: boolean, cloneIndex: number) => (
+    <div
+      ref={cloneIndex === 0 ? sequenceRef : undefined}
+      className="cuts-sequence"
+      aria-hidden={hidden ? 'true' : undefined}
+    >
       {cuts.map((cut) => (
-        <div className="cut-frame" key={`${hidden ? 'loop' : 'main'}-${cut.src}`}>
+        <div className="cut-frame" key={`${cloneIndex}-${cut.src}`}>
           <Image
             className="cut-image"
             src={cut.src}
@@ -120,7 +179,8 @@ export default function CarrosselCortes() {
       aria-labelledby="carrossel-cortes-title"
       data-track-section="carrossel-cortes"
       data-track-order="7"
-      data-track-title="07 - Carrossel de cortes"
+      data-track-title="07 - CARROSSEL DE CORTES"
+      className={manualPaused ? 'is-manually-paused' : undefined}
     >
       <style>{`
         #carrossel-cortes {
@@ -179,16 +239,16 @@ export default function CarrosselCortes() {
           user-select: none;
           -webkit-user-select: none;
           -webkit-touch-callout: none;
+          cursor: grab;
+        }
+        #carrossel-cortes.is-dragging .cuts-marquee {
+          cursor: grabbing;
         }
         #carrossel-cortes .cuts-track {
           display: flex;
           width: max-content;
-          animation: cutsMarquee 46s linear infinite;
           will-change: transform;
-        }
-        #carrossel-cortes.is-paused .cuts-track,
-        #carrossel-cortes.reduced-motion .cuts-track {
-          animation-play-state: paused;
+          transform: translate3d(0, 0, 0);
         }
         #carrossel-cortes .cuts-sequence {
           display: flex;
@@ -216,14 +276,6 @@ export default function CarrosselCortes() {
           -webkit-user-drag: none;
           -webkit-touch-callout: none;
         }
-        @keyframes cutsMarquee {
-          from {
-            transform: translate3d(0, 0, 0);
-          }
-          to {
-            transform: translate3d(-50%, 0, 0);
-          }
-        }
         @media (min-width: 760px) {
           #carrossel-cortes {
             padding: 96px 0 106px;
@@ -248,12 +300,6 @@ export default function CarrosselCortes() {
             overflow-x: auto;
             scrollbar-width: thin;
           }
-          #carrossel-cortes .cuts-track {
-            animation: none;
-          }
-          #carrossel-cortes .cuts-sequence[aria-hidden="true"] {
-            display: none;
-          }
         }
       `}</style>
 
@@ -272,17 +318,18 @@ export default function CarrosselCortes() {
 
       <div
         className="cuts-marquee"
-        onPointerDown={pauseForPress}
-        onPointerUp={resumeAfterPress}
-        onPointerCancel={resumeAfterPress}
-        onLostPointerCapture={resumeAfterPress}
-        onPointerLeave={handlePointerLeave}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishPointer}
+        onPointerCancel={finishPointer}
+        onLostPointerCapture={finishPointer}
         onContextMenu={preventImageAction}
         onDragStart={preventImageAction}
       >
-        <div className="cuts-track">
-          {renderSequence(false)}
-          {renderSequence(true)}
+        <div ref={trackRef} className="cuts-track">
+          {renderSequence(false, 0)}
+          {renderSequence(true, 1)}
+          {renderSequence(true, 2)}
         </div>
       </div>
     </section>

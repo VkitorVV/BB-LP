@@ -12,20 +12,21 @@ export const UTM_KEYS = [
 ] as const;
 
 export const TRACKING_SECTIONS = [
-  { id: 'hero', title: '01 - Hero', order: 1 },
-  { id: 'marca-nao-aparece', title: '02 - A marca não aparece do nada', order: 2 },
-  { id: 'se-a-marca-nao-sai', title: '03 - Se a marca não sai', order: 3 },
-  { id: 'material-por-dentro', title: '04 - Material por dentro', order: 4 },
-  { id: 'cta-material-por-dentro', title: '05 - CTA material por dentro', order: 5 },
-  { id: 'com-o-mapa-voce-vai', title: '06 - Com o Mapa você vai', order: 6 },
-  { id: 'carrossel-cortes', title: '07 - Carrossel de cortes', order: 7 },
-  { id: 'veja-tudo-que-recebe', title: '08 - Veja tudo que recebe', order: 8 },
-  { id: 'precos-acesso', title: '09 - Preços / Planos', order: 9 },
-  { id: 'prova-social', title: '10 - Prova social', order: 10 },
-  { id: 'garantia', title: '11 - Garantia', order: 11 },
-  { id: 'faq', title: '12 - FAQ', order: 12 },
-  { id: 'cta-final', title: '13 - CTA final', order: 13 },
-  { id: 'rodape', title: '14 - Rodapé', order: 14 },
+  { id: 'hero', title: '01 - HERO', order: 1 },
+  { id: 'marca-nao-aparece', title: '02 - NÃO APARECE DO NADA', order: 2 },
+  { id: 'se-a-marca-nao-sai', title: '03 - SE A MARCA NÃO SAI', order: 3 },
+  { id: 'material-por-dentro', title: '04 - MATERIAL POR DENTRO', order: 4 },
+  { id: 'cta-material-por-dentro', title: '05 - CTA MATERIAL POR DENTRO', order: 5 },
+  { id: 'com-o-mapa-voce-vai', title: '06 - COM O MAPA VOCÊ VAI', order: 6 },
+  { id: 'carrossel-cortes', title: '07 - CARROSSEL DE CORTES', order: 7 },
+  { id: 'veja-tudo-produto-principal', title: '08 - PRODUTO PRINCIPAL', order: 8 },
+  { id: 'veja-tudo-bonus', title: '09 - BÔNUS', order: 9 },
+  { id: 'precos-acesso', title: '10 - PREÇOS / PLANOS', order: 10 },
+  { id: 'prova-social', title: '11 - PROVA SOCIAL', order: 11 },
+  { id: 'garantia', title: '12 - GARANTIA', order: 12 },
+  { id: 'faq', title: '13 - FAQ', order: 13 },
+  { id: 'cta-final', title: '14 - CTA FINAL', order: 14 },
+  { id: 'rodape', title: '15 - RODAPÉ', order: 15 },
 ] as const;
 
 export type TrackingSection = typeof TRACKING_SECTIONS[number];
@@ -34,6 +35,7 @@ export type TrackingSectionId = TrackingSection['id'];
 export const SECTION_ALIASES: Record<string, TrackingSectionId> = {
   oferta: 'precos-acesso',
   planos: 'precos-acesso',
+  'veja-tudo-que-recebe': 'veja-tudo-produto-principal',
 };
 
 export const OFFER_SECTION_ID = 'precos-acesso' as const;

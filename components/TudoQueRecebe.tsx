@@ -70,9 +70,6 @@ export default function TudoQueRecebe() {
     <section
       id="veja-tudo-que-recebe"
       aria-labelledby="veja-tudo-que-recebe-title"
-      data-track-section="veja-tudo-que-recebe"
-      data-track-order="8"
-      data-track-title="08 - Veja tudo que recebe"
     >
       <style>{`
         #veja-tudo-que-recebe {
@@ -332,7 +329,14 @@ export default function TudoQueRecebe() {
           VEJA TUDO QUE VOCÊ VAI RECEBER:
         </h2>
 
-        <div className="main-product" data-recebe-reveal>
+        <div
+          id="veja-tudo-produto-principal"
+          className="main-product"
+          data-recebe-reveal
+          data-track-section="veja-tudo-produto-principal"
+          data-track-order="8"
+          data-track-title="08 - PRODUTO PRINCIPAL"
+        >
           <div className="value-mark">GUIA PRINCIPAL - R$ 19,90</div>
 
           <div className="main-mockup image-frame">
@@ -358,7 +362,14 @@ export default function TudoQueRecebe() {
           </p>
         </div>
 
-        <div className="bonus-transition" data-recebe-reveal>
+        <div
+          id="veja-tudo-bonus"
+          className="bonus-transition"
+          data-recebe-reveal
+          data-track-section="veja-tudo-bonus"
+          data-track-order="9"
+          data-track-title="09 - BÔNUS"
+        >
           <p className="recebe-display transition-kicker">E ISSO É SÓ O COMEÇO...</p>
           <p className="recebe-display transition-title">
             VOCÊ TAMBÉM LEVA
