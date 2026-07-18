@@ -40,6 +40,14 @@ export default function ProvaSocial() {
   const [current, setCurrent] = React.useState(0);
   const swipeStartRef = React.useRef<{ x: number; y: number } | null>(null);
 
+  React.useEffect(() => {
+    testimonials.forEach((testimonial) => {
+      const image = new window.Image();
+      image.decoding = 'async';
+      image.src = testimonial.src;
+    });
+  }, []);
+
   const show = React.useCallback((index: number) => {
     setCurrent((index + testimonials.length) % testimonials.length);
   }, []);
@@ -74,15 +82,13 @@ export default function ProvaSocial() {
     event.preventDefault();
   }, []);
 
-  const currentTestimonial = testimonials[current];
-
   return (
     <section
       id="prova-social"
       aria-labelledby="prova-social-title"
       data-track-section="prova-social"
-      data-track-order="11"
-      data-track-title="11 - PROVA SOCIAL"
+      data-track-order="12"
+      data-track-title="12 - PROVA SOCIAL"
     >
       <style>{`
         #prova-social {
@@ -94,8 +100,8 @@ export default function ProvaSocial() {
           overflow: hidden;
           box-sizing: border-box;
           padding: 76px 0 82px;
-          background: #F7F1E8;
-          color: #100F0D;
+          background: var(--color-paper);
+          color: var(--color-ink);
           border-top: 1px solid rgba(31, 24, 16, 0.12);
           border-bottom: 1px solid rgba(31, 24, 16, 0.12);
         }
@@ -112,7 +118,7 @@ export default function ProvaSocial() {
         }
         #prova-social .social-title {
           margin: 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: clamp(2.45rem, 11vw, 5.9rem);
           font-weight: 900;
@@ -130,9 +136,9 @@ export default function ProvaSocial() {
         }
         #prova-social .social-carousel {
           position: relative;
-          width: min(calc(100vw - 36px), 448px);
+          width: 100vw;
           margin: 0 auto;
-          padding: 0 40px 14px;
+          padding: 0 18px 14px;
           touch-action: pan-y;
           user-select: none;
           -webkit-user-select: none;
@@ -140,23 +146,31 @@ export default function ProvaSocial() {
         }
         #prova-social .social-frame {
           position: relative;
-          width: 100%;
+          width: min(92vw, 470px);
           margin: 0 auto;
-          animation: socialPrintIn 220ms ease both;
+          display: grid;
         }
         #prova-social .social-print {
+          grid-area: 1 / 1;
           display: block;
           width: 100%;
           height: auto;
-          border-radius: 8px;
-          border: 1px solid rgba(31, 24, 16, 0.14);
-          background: #FFF9EF;
-          box-shadow: 0 18px 34px rgba(31, 24, 16, 0.16);
+          border-radius: 0;
+          border: 0;
+          background: transparent;
+          box-shadow: none;
           object-fit: contain;
           user-select: none;
           -webkit-user-select: none;
           -webkit-user-drag: none;
           -webkit-touch-callout: none;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 120ms ease;
+        }
+        #prova-social .social-print.is-active {
+          opacity: 1;
+          visibility: visible;
         }
         #prova-social .social-arrow {
           position: absolute;
@@ -169,23 +183,23 @@ export default function ProvaSocial() {
           border: 1px solid rgba(31, 24, 16, 0.16);
           border-radius: 999px;
           background: rgba(255, 249, 239, 0.92);
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: 1.45rem;
           font-weight: 900;
           line-height: 1;
           cursor: pointer;
           transform: translateY(-50%);
-          box-shadow: 0 10px 22px rgba(31, 24, 16, 0.12);
+          box-shadow: none;
         }
         #prova-social .social-arrow:focus-visible {
-          outline: 3px solid #D7A42C;
+          outline: 3px solid var(--color-gold);
           outline-offset: 3px;
         }
         #prova-social .social-arrow.prev {
-          left: 0;
+          left: 10px;
         }
         #prova-social .social-arrow.next {
-          right: 0;
+          right: 10px;
         }
         #prova-social .social-controls {
           display: flex;
@@ -205,7 +219,7 @@ export default function ProvaSocial() {
         }
         #prova-social .social-dot.is-active {
           width: 20px;
-          background: #D7A42C;
+          background: var(--color-gold);
         }
         #prova-social .social-count,
         #prova-social .social-hint {
@@ -217,16 +231,6 @@ export default function ProvaSocial() {
           text-align: center;
           text-transform: uppercase;
         }
-        @keyframes socialPrintIn {
-          from {
-            opacity: 0;
-            transform: translateX(14px) scale(0.99);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-          }
-        }
         @media (min-width: 760px) {
           #prova-social {
             padding: 92px 0 98px;
@@ -236,9 +240,12 @@ export default function ProvaSocial() {
             padding: 0 28px;
           }
           #prova-social .social-carousel {
-            width: min(100%, 500px);
-            padding-left: 52px;
-            padding-right: 52px;
+            width: min(100%, 620px);
+            padding-left: 24px;
+            padding-right: 24px;
+          }
+          #prova-social .social-frame {
+            width: min(88vw, 540px);
           }
           #prova-social .social-arrow {
             width: 42px;
@@ -273,21 +280,26 @@ export default function ProvaSocial() {
         onDragStart={preventImageAction}
       >
         <button className="social-arrow prev" type="button" onClick={goPrevious} aria-label="Ver depoimento anterior">‹</button>
-        <div className="social-frame" key={currentTestimonial.src}>
-          <Image
-            className="social-print"
-            src={currentTestimonial.src}
-            alt={currentTestimonial.alt}
-            width={currentTestimonial.width}
-            height={currentTestimonial.height}
-            priority={current === 0}
-            loading={current === 0 ? 'eager' : 'lazy'}
-            decoding="async"
-            sizes="(max-width: 759px) calc(100vw - 116px), 396px"
-            draggable={false}
-            onContextMenu={preventImageAction}
-            onDragStart={preventImageAction}
-          />
+        <div className="social-frame">
+          {testimonials.map((testimonial, index) => (
+            <Image
+              className={`social-print${index === current ? ' is-active' : ''}`}
+              key={testimonial.src}
+              src={testimonial.src}
+              alt={index === current ? testimonial.alt : ''}
+              width={testimonial.width}
+              height={testimonial.height}
+              priority={index === 0}
+              loading="eager"
+              decoding="async"
+              sizes="(max-width: 759px) 92vw, 540px"
+              draggable={false}
+              unoptimized
+              aria-hidden={index === current ? undefined : true}
+              onContextMenu={preventImageAction}
+              onDragStart={preventImageAction}
+            />
+          ))}
         </div>
         <button className="social-arrow next" type="button" onClick={goNext} aria-label="Ver próximo depoimento">›</button>
       </div>

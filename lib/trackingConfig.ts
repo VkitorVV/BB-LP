@@ -13,20 +13,21 @@ export const UTM_KEYS = [
 
 export const TRACKING_SECTIONS = [
   { id: 'hero', title: '01 - HERO', order: 1 },
-  { id: 'marca-nao-aparece', title: '02 - NÃO APARECE DO NADA', order: 2 },
-  { id: 'se-a-marca-nao-sai', title: '03 - SE A MARCA NÃO SAI', order: 3 },
-  { id: 'material-por-dentro', title: '04 - MATERIAL POR DENTRO', order: 4 },
-  { id: 'cta-material-por-dentro', title: '05 - CTA MATERIAL POR DENTRO', order: 5 },
-  { id: 'com-o-mapa-voce-vai', title: '06 - COM O MAPA VOCÊ VAI', order: 6 },
-  { id: 'carrossel-cortes', title: '07 - CARROSSEL DE CORTES', order: 7 },
-  { id: 'veja-tudo-produto-principal', title: '08 - PRODUTO PRINCIPAL', order: 8 },
-  { id: 'veja-tudo-bonus', title: '09 - BÔNUS', order: 9 },
-  { id: 'precos-acesso', title: '10 - PREÇOS / PLANOS', order: 10 },
-  { id: 'prova-social', title: '11 - PROVA SOCIAL', order: 11 },
-  { id: 'garantia', title: '12 - GARANTIA', order: 12 },
-  { id: 'faq', title: '13 - FAQ', order: 13 },
-  { id: 'cta-final', title: '14 - CTA FINAL', order: 14 },
-  { id: 'rodape', title: '15 - RODAPÉ', order: 15 },
+  { id: 'marca-nao-aparece', title: '02 - ELA COMECA ANTES', order: 2 },
+  { id: 'material-por-dentro', title: '03 - MATERIAL POR DENTRO', order: 3 },
+  { id: 'material-carrossel-3d', title: '04 - CARROSSEL 3D DO MATERIAL', order: 4 },
+  { id: 'cta-material-por-dentro', title: '05 - CTA MATERIAL', order: 5 },
+  { id: 'com-o-mapa-voce-vai', title: '06 - COM O MAPA VOCE VAI', order: 6 },
+  { id: 'carrossel-cortes', title: '07 - TA DUVIDANDO', order: 7 },
+  { id: 'veja-tudo-que-recebe', title: '08 - VEJA TUDO QUE VOCE VAI RECEBER', order: 8 },
+  { id: 'veja-tudo-produto-principal', title: '09 - PRODUTO PRINCIPAL', order: 9 },
+  { id: 'veja-tudo-bonus', title: '10 - BONUS', order: 10 },
+  { id: 'precos-acesso', title: '11 - PRECOS / PLANOS', order: 11 },
+  { id: 'prova-social', title: '12 - PROVA SOCIAL', order: 12 },
+  { id: 'garantia', title: '13 - GARANTIA', order: 13 },
+  { id: 'faq', title: '14 - FAQ', order: 14 },
+  { id: 'cta-final', title: '15 - CTA FINAL', order: 15 },
+  { id: 'rodape', title: '16 - RODAPE', order: 16 },
 ] as const;
 
 export type TrackingSection = typeof TRACKING_SECTIONS[number];
@@ -35,7 +36,6 @@ export type TrackingSectionId = TrackingSection['id'];
 export const SECTION_ALIASES: Record<string, TrackingSectionId> = {
   oferta: 'precos-acesso',
   planos: 'precos-acesso',
-  'veja-tudo-que-recebe': 'veja-tudo-produto-principal',
 };
 
 export const OFFER_SECTION_ID = 'precos-acesso' as const;
@@ -49,12 +49,12 @@ export const CHECKOUT_URLS = {
 
 export const CHECKOUT_META = {
   plano_basico_popup_open: {
-    label: 'Plano Básico - abriu popup',
+    label: 'Plano Basico - abriu popup',
     price: 19.90,
     isRedirect: false,
   },
   plano_basico: {
-    label: 'Plano Básico',
+    label: 'Plano Basico',
     price: 19.90,
     isRedirect: true,
   },

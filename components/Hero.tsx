@@ -37,9 +37,9 @@ export default function Hero() {
           box-sizing: border-box;
           overflow: hidden;
           padding: 32px 20px 40px;
-          background: #F8F3EA;
+          background: var(--color-paper);
           border-bottom: 1px solid rgba(20, 16, 12, 0.12);
-          color: #11100E;
+          color: var(--color-ink);
         }
         #hero *,
         #hero *::before,
@@ -50,7 +50,7 @@ export default function Hero() {
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,243,234,0.96) 56%, rgba(242,232,216,0.72) 100%);
+          background: var(--color-paper);
         }
         #hero .hero-shell {
           position: relative;
@@ -67,15 +67,16 @@ export default function Hero() {
         #hero .hero-intro {
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
+          align-items: center;
           width: 100%;
           min-width: 0;
+          text-align: center;
         }
         #hero .hero-tag {
           display: inline-block;
-          border: 1px solid rgba(216, 166, 74, 0.48);
+          border: 1px solid var(--color-border);
           border-radius: 999px;
-          background: #FFF8EC;
+          background: var(--color-paper-alt);
           color: #6B4B16;
           padding: 6px 12px;
           max-width: 100%;
@@ -88,12 +89,13 @@ export default function Hero() {
         }
         #hero .hero-title {
           margin: 20px 0 0;
-          color: #11100E;
+          color: var(--color-ink);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: clamp(2.55rem, 11.5vw, 3.45rem);
           line-height: 0.9;
           font-weight: 900;
           letter-spacing: 0;
+          text-align: center;
           text-transform: uppercase;
         }
         #hero .hero-title-line {
@@ -121,7 +123,7 @@ export default function Hero() {
           right: -0.05em;
           bottom: 0.02em;
           height: 0.16em;
-          border-radius: 999px;
+          border-radius: 4px;
           transform: rotate(-1deg);
           background: rgba(216, 166, 74, 0.72);
         }
@@ -136,12 +138,13 @@ export default function Hero() {
           font-size: 1rem;
           line-height: 1.65;
           font-weight: 700;
+          text-align: center;
           overflow-wrap: break-word;
         }
         #hero .hero-visual {
           position: relative;
           width: 100%;
-          max-width: 460px;
+          max-width: 552px;
           margin: 8px auto 0;
           padding: 12px 0 8px;
           overflow: visible;
@@ -155,40 +158,6 @@ export default function Hero() {
           margin: 0 auto;
           object-fit: contain;
         }
-        #hero .hero-callout {
-          position: absolute;
-          z-index: 20;
-          width: max-content;
-          color: #11100E;
-          font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
-          font-weight: 900;
-          text-transform: uppercase;
-          letter-spacing: 0;
-          pointer-events: none;
-        }
-        #hero .hero-callout span {
-          color: #11100E;
-          display: inline-block;
-          font-size: clamp(1.05rem, 3.85vw, 1.32rem);
-          line-height: 1.05;
-          font-weight: 900;
-          text-shadow:
-            0 1px 0 rgba(248,243,234,0.95),
-            1px 0 0 rgba(248,243,234,0.75),
-            -1px 0 0 rgba(248,243,234,0.75);
-        }
-        #hero .callout-peso {
-          left: 30%;
-          top: 9.5%;
-        }
-        #hero .callout-transicao {
-          left: 4%;
-          top: 37.5%;
-        }
-        #hero .callout-base {
-          left: 14%;
-          top: 65%;
-        }
         #hero .hero-reveal {
           max-width: 672px;
           margin: 28px auto 0;
@@ -196,7 +165,7 @@ export default function Hero() {
         }
         #hero .hero-reveal-strong {
           margin: 0;
-          color: #11100E;
+          color: var(--color-ink);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: clamp(1.75rem, 8vw, 2.55rem);
           line-height: 0.95;
@@ -213,6 +182,7 @@ export default function Hero() {
           max-width: 560px;
           margin: 12px auto 0;
           font-weight: 700;
+          text-align: center;
         }
         #hero .hero-product-copy {
           max-width: 580px;
@@ -229,12 +199,12 @@ export default function Hero() {
           min-height: 54px;
           border: 0;
           border-radius: 8px;
-          background: #F28A1A;
+          background: var(--color-gold);
           color: #0B0704;
           padding: 16px 24px;
           cursor: pointer;
-          font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
-          font-size: 0.95rem;
+          font-family: var(--font-sans), var(--font-sans-family);
+          font-size: 0.86rem;
           line-height: 1;
           font-weight: 900;
           letter-spacing: 0.08em;
@@ -242,7 +212,7 @@ export default function Hero() {
           transition: background 150ms ease, transform 150ms ease;
         }
         #hero .hero-cta:hover {
-          background: #D87512;
+          background: #E2B45B;
         }
         #hero .hero-cta:active {
           transform: scale(0.98);
@@ -279,7 +249,7 @@ export default function Hero() {
             font-size: 1.08rem;
           }
           #hero .hero-visual {
-            max-width: 520px;
+            max-width: 624px;
           }
           #hero .hero-main-image {
             width: 96%;
@@ -302,7 +272,7 @@ export default function Hero() {
             font-size: clamp(4rem, 5vw, 4.9rem);
           }
           #hero .hero-visual {
-            max-width: 610px;
+            max-width: 732px;
             margin-top: 0;
           }
           #hero .hero-main-image {
@@ -332,23 +302,18 @@ export default function Hero() {
             <span className="hero-tag">PARA BARBEIROS INICIANTES E INTERMEDIÁRIOS</span>
 
             <h1 className="hero-title">
-              <span className="hero-title-line">VOCÊ CAPRICHA.</span>
-              <span className="hero-title-line">REVISA...</span>
-              <span className="hero-title-heavy">
-                <span className="hero-title-line">E A MARCA</span>
-                <span className="hero-underline-wrap hero-continua">
-                  <span className="hero-underline" />
-                  <span className="hero-underline-text">CONTINUA ALI?</span>
-                </span>
+              <span className="hero-title-line">VOCÊ TROCA O PENTE,</span>
+              <span className="hero-title-line">PASSA DE NOVO…</span>
+              <span className="hero-title-heavy hero-underline-wrap hero-continua">
+                <span className="hero-underline" />
+                <span className="hero-underline-text">E A MARCA CONTINUA?</span>
               </span>
             </h1>
 
             <p className="hero-tension">
-              Antes de passar a máquina de novo,
-              <br />
-              descubra onde a transição
-              <br />
-              começou a pesar.
+              O Mapa do Degradê sem Marca reúne marcação, alturas, ponto de transição e
+              acabamento numa sequência visual para você comparar com a lateral e corrigir
+              apenas o necessário para tirar a marca.
             </p>
           </div>
 
@@ -367,21 +332,6 @@ export default function Hero() {
               className="hero-main-image"
             />
 
-            <div className="hero-callout callout-peso">
-              <span>PESO</span>
-            </div>
-
-            <div className="hero-callout callout-transicao">
-              <span>
-                TRANSIÇÃO
-                <br />
-                PESADA
-              </span>
-            </div>
-
-            <div className="hero-callout callout-base">
-              <span>BASE</span>
-            </div>
           </div>
         </div>
 
@@ -389,11 +339,6 @@ export default function Hero() {
           <p className="hero-reveal-strong">O corte já mostra onde o problema começou.</p>
           <p className="hero-reveal-copy">Você só precisa aprender a ler os sinais.</p>
         </div>
-
-        <p className="hero-product-copy">
-          O Mapa do Degradê Sem Marca organiza essa leitura de forma visual, para você
-          entender onde revisar antes de continuar corrigindo no improviso.
-        </p>
 
         <div className="hero-cta-wrap">
           <button
@@ -404,7 +349,11 @@ export default function Hero() {
           >
             QUERO ACESSAR O MAPA
           </button>
-          <p className="hero-trust">GUIA VISUAL EM PDF • ACESSO IMEDIATO • 7 DIAS DE GARANTIA</p>
+          <p className="hero-trust">
+            <span className="hero-trust-item">GUIA VISUAL</span>
+            <span className="hero-trust-item">ACESSO IMEDIATO</span>
+            <span className="hero-trust-item">7 DIAS DE GARANTIA</span>
+          </p>
         </div>
       </div>
     </section>

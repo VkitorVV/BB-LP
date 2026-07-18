@@ -96,8 +96,8 @@ export default function FAQ() {
       id="faq"
       aria-labelledby="faq-title"
       data-track-section="faq"
-      data-track-order="13"
-      data-track-title="13 - FAQ"
+      data-track-order="14"
+      data-track-title="14 - FAQ"
     >
       <style>{`
         #faq {
@@ -109,8 +109,8 @@ export default function FAQ() {
           overflow-x: clip;
           box-sizing: border-box;
           padding: 76px 18px 84px;
-          background: #F7F1E8;
-          color: #100F0D;
+          background: var(--color-paper);
+          color: var(--color-ink);
           border-bottom: 1px solid rgba(16, 15, 13, 0.1);
         }
         #faq *,
@@ -133,7 +133,7 @@ export default function FAQ() {
           height: 3px;
           margin: 0 auto 18px;
           border-radius: 999px;
-          background: #D8A64A;
+          background: var(--color-gold);
         }
         #faq .faq-title {
           margin: 0;
@@ -143,7 +143,7 @@ export default function FAQ() {
           line-height: 0.92;
           letter-spacing: 0;
           text-transform: uppercase;
-          color: #100F0D;
+          color: var(--color-ink);
         }
         #faq .faq-subtitle {
           max-width: 560px;
@@ -169,7 +169,7 @@ export default function FAQ() {
           padding: 20px 0;
           border: 0;
           background: transparent;
-          color: #100F0D;
+          color: var(--color-ink);
           text-align: left;
           cursor: pointer;
         }

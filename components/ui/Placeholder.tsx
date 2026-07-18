@@ -38,12 +38,12 @@ export default function Placeholder({ type, className = '', featured = false }: 
     : 'aspect-[4/3]';
 
   const borderColor = featured
-    ? 'border-[#F28A1A]'
-    : 'border-[#5A321C]';
+    ? 'border-[var(--color-gold)]'
+    : 'border-[var(--color-border)]';
 
   const shadowStyle = featured
-    ? '0 4px 32px rgba(242,138,26,0.14)'
-    : '0 4px 20px rgba(11,7,4,0.8)';
+    ? 'var(--shadow-card)'
+    : 'none';
 
   return (
     <div

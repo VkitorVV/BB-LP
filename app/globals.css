@@ -5,18 +5,39 @@
    ============================================================ */
 
 :root {
-  --bg-primary:       #0B0704;
-  --bg-secondary:     #160D08;
-  --brown-brick:      #2A130B;
-  --wood-brown:       #3A1D10;
-  --copper:           #F28A1A;
-  --burnt-orange:     #C96716;
-  --aged-gold:        #D8A64A;
-  --beige:            #D9C3A3;
-  --text-primary:     #FFF4E6;
-  --text-secondary:   #BFA98A;
-  --border:           #5A321C;
-  --alert-red:        #B33A2E;
+  --color-paper:      #F7F1E8;
+  --color-paper-alt:  #EFE6D8;
+  --color-espresso:   #0B0704;
+  --color-ink:        #11100E;
+  --color-gold:       #D8A64A;
+  --color-alert:      #B33A2E;
+  --color-muted:      #6E6257;
+  --color-border:     #D8C9B6;
+  --color-clarity:    #315B46;
+  --color-clarity-soft: #E5ECE4;
+  --color-cta:        #246B45;
+  --color-cta-hover:  #2E8054;
+  --color-cta-text:   #F7F1E8;
+
+  --bg-primary:       var(--color-espresso);
+  --bg-secondary:     #140D08;
+  --brown-brick:      #26150C;
+  --wood-brown:       #332015;
+  --copper:           var(--color-gold);
+  --burnt-orange:     var(--color-alert);
+  --aged-gold:        var(--color-gold);
+  --beige:            var(--color-paper-alt);
+  --text-primary:     var(--color-paper);
+  --text-secondary:   #C9B89A;
+  --border:           rgba(216, 201, 182, 0.34);
+  --alert-red:        var(--color-alert);
+
+  --container-max:    1120px;
+  --page-pad-x:       clamp(20px, 4vw, 32px);
+  --section-space:    clamp(56px, 8vw, 104px);
+  --copy-max:         640px;
+  --radius-card:      10px;
+  --shadow-card:      0 14px 40px rgba(11, 7, 4, 0.08);
 
   --font-display-family: 'Bebas Neue', system-ui, sans-serif;
   --font-sans-family:    'Inter', system-ui, sans-serif;
@@ -27,12 +48,34 @@
    ============================================================ */
 
 @layer base {
+  html {
+    background: var(--color-espresso);
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font-sans), var(--font-sans-family);
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font-family: var(--font-sans), var(--font-sans-family);
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: rgba(216, 166, 74, 0.26);
+    color: var(--color-ink);
   }
 }
 
@@ -56,14 +99,14 @@
 .animate-barber-pole {
   background: repeating-linear-gradient(
     -45deg,
-    #2A130B,
-    #2A130B 10px,
-    #F28A1A 10px,
-    #F28A1A 12px,
-    #2A130B 12px,
-    #2A130B 22px,
-    #C96716 22px,
-    #C96716 24px
+    var(--brown-brick),
+    var(--brown-brick) 10px,
+    var(--color-gold) 10px,
+    var(--color-gold) 12px,
+    var(--brown-brick) 12px,
+    var(--brown-brick) 22px,
+    var(--color-alert) 22px,
+    var(--color-alert) 24px
   );
   background-size: 34px 34px;
   animation: barberPole 18s linear infinite;
@@ -80,7 +123,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--copper); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-gold); }
 
 .scrollbar-hide {
   scrollbar-width: none;
@@ -110,9 +153,6 @@
 
 .texture-brick {
   background-color: var(--bg-secondary);
-  background-image:
-    radial-gradient(ellipse at top left,  rgba(242,138,26,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse at bottom right, rgba(216,166,74,0.03) 0%, transparent 60%);
   position: relative;
 }
 
@@ -137,16 +177,16 @@
   display: block;
   width: 100%;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border);
-  box-shadow: 0 4px 24px rgba(242, 138, 26, 0.08);
-  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-card);
   overflow: hidden;
   position: relative;
 }
 
 .image-frame[data-featured="true"] {
-  border-color: var(--copper);
-  box-shadow: 0 4px 32px rgba(242, 138, 26, 0.14);
+  border-color: var(--color-gold);
+  box-shadow: var(--shadow-card);
 }
 
 /* ============================================================
@@ -155,17 +195,9 @@
 
 .divider-copper {
   height: 1px;
-  background: linear-gradient(to right, transparent, var(--border), transparent);
+  background: var(--color-border);
   border: none;
 }
-
-/* ============================================================
-   WARM CARD GLOW HELPERS
-   ============================================================ */
-
-.glow-copper { box-shadow: 0 0 20px rgba(242,138,26,0.08); }
-.glow-gold   { box-shadow: 0 0 20px rgba(216,166,74,0.08); }
-.glow-card   { box-shadow: 0 8px 28px -8px rgba(0,0,0,0.9); }
 
 /* ============================================================
    MARQUEE CAROUSELS

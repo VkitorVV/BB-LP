@@ -183,8 +183,8 @@ export function buildCheckoutUrl(checkoutType: CheckoutRedirectType): string {
 export function getOfferTrackingSection() {
   return getTrackingSection(OFFER_SECTION_ID) || {
     id: OFFER_SECTION_ID,
-    title: '10 - PREÇOS / PLANOS',
-    order: 10,
+    title: '11 - PRECOS / PLANOS',
+    order: 11,
   };
 }
 

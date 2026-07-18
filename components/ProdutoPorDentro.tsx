@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import React from 'react';
+import { CircularGallery, type GalleryItem } from '@/components/ui/circular-gallery';
 
 const panels = [
   {
@@ -10,9 +11,7 @@ const panels = [
     alt: 'Página do Mapa comparando transição limpa e transição pesada',
     copy: (
       <>
-        Veja a diferença entre
-        <br />
-        uma transição limpa
+        Veja a diferença entre uma transição limpa
         <br />
         e uma faixa com peso.
       </>
@@ -24,9 +23,7 @@ const panels = [
     alt: 'Página de diagnóstico visual mostrando onde a marca aparece no degradê',
     copy: (
       <>
-        Identifique onde a marca
-        <br />
-        aparece antes de começar
+        Identifique onde a marca aparece antes de começar
         <br />
         a corrigir.
       </>
@@ -38,11 +35,9 @@ const panels = [
     alt: 'Tabela visual com pentes e progressão de alturas do degradê',
     copy: (
       <>
-        Confira a função dos pentes
+        Confira a função dos pentes e a progressão
         <br />
-        e a progressão entre
-        <br />
-        as alturas.
+        entre as alturas.
       </>
     ),
   },
@@ -52,9 +47,7 @@ const panels = [
     alt: 'Checklist visual para revisar a troca de pentes durante o corte',
     copy: (
       <>
-        Passe pelo checklist
-        <br />
-        antes de continuar
+        Passe pelo checklist antes de continuar
         <br />
         mexendo no corte.
       </>
@@ -66,11 +59,21 @@ type Direction = 'next' | 'previous';
 
 const getWrappedIndex = (index: number) => (index + panels.length) % panels.length;
 
+const circularGalleryItems: GalleryItem[] = Array.from({ length: 8 }, (_, index) => {
+  const number = index + 1;
+  return {
+    title: `Página ${String(number).padStart(2, '0')}`,
+    image: `/images/material-por-dentro2/imagem${number}.webp`,
+    alt: `Página complementar ${number} do Mapa do Degradê Sem Marca`,
+  };
+});
+
 export default function ProdutoPorDentro() {
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [direction, setDirection] = React.useState<Direction>('next');
   const [hasInteracted, setHasInteracted] = React.useState(false);
   const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
+  const [circularLightboxIndex, setCircularLightboxIndex] = React.useState<number | null>(null);
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
   const slideRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
   const activeIndexRef = React.useRef(0);
@@ -88,6 +91,7 @@ export default function ProdutoPorDentro() {
 
   const currentPanel = panels[activeIndex];
   const lightboxPanel = lightboxIndex === null ? null : panels[lightboxIndex];
+  const circularLightboxItem = circularLightboxIndex === null ? null : circularGalleryItems[circularLightboxIndex];
 
   React.useEffect(() => {
     activeIndexRef.current = activeIndex;
@@ -218,13 +222,14 @@ export default function ProdutoPorDentro() {
   }, [cancelSwipe, finishSwipe, startSwipe]);
 
   React.useEffect(() => {
-    if (lightboxIndex === null) return;
+    if (lightboxIndex === null && circularLightboxIndex === null) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setLightboxIndex(null);
+      if (event.key === 'Escape') setCircularLightboxIndex(null);
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -232,7 +237,7 @@ export default function ProdutoPorDentro() {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [lightboxIndex]);
+  }, [lightboxIndex, circularLightboxIndex]);
 
   React.useEffect(() => {
     const elements = Array.from(document.querySelectorAll<HTMLElement>('#material-por-dentro [data-reveal]'));
@@ -265,8 +270,8 @@ export default function ProdutoPorDentro() {
       id="material-por-dentro"
       aria-labelledby="material-por-dentro-title"
       data-track-section="material-por-dentro"
-      data-track-order="4"
-      data-track-title="04 - MATERIAL POR DENTRO"
+      data-track-order="3"
+      data-track-title="03 - MATERIAL POR DENTRO"
     >
       <style>{`
         #material-por-dentro {
@@ -278,8 +283,8 @@ export default function ProdutoPorDentro() {
           box-sizing: border-box;
           overflow: hidden;
           padding: 78px 20px 92px;
-          background: #F7F1E8;
-          color: #100F0D;
+          background: var(--color-paper);
+          color: var(--color-ink);
           border-bottom: 1px solid rgba(31, 24, 16, 0.12);
         }
         #material-por-dentro *,
@@ -298,7 +303,7 @@ export default function ProdutoPorDentro() {
         }
         #material-por-dentro .inside-shell {
           width: 100%;
-          max-width: 1020px;
+          max-width: 1120px;
           margin: 0 auto;
         }
         #material-por-dentro .inside-display {
@@ -320,20 +325,20 @@ export default function ProdutoPorDentro() {
           margin: 0 auto;
           max-width: 760px;
           text-align: center;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2.8rem, 11.5vw, 6rem);
         }
         #material-por-dentro .inside-underline {
           display: inline-block;
           padding-bottom: 0.04em;
-          border-bottom: 0.08em solid #D7A42C;
+          border-bottom: 0.08em solid var(--color-gold);
         }
         #material-por-dentro .inside-subtitle {
           max-width: 620px;
           margin: 28px auto 0;
           text-align: center;
           color: #3A3027;
-          font-size: clamp(1rem, 4.2vw, 1.28rem);
+          font-size: clamp(0.9rem, 3.78vw, 1.15rem);
           line-height: 1.42;
           font-weight: 800;
         }
@@ -341,19 +346,19 @@ export default function ProdutoPorDentro() {
           --inside-page-width: min(92vw, 430px);
           --inside-page-half: min(46vw, 215px);
           --inside-slot-gap: 8px;
-          margin: 64px auto 0;
+          margin: 42px auto 0;
           text-align: center;
         }
         #material-por-dentro .inside-active-title {
-          min-height: 0.86em;
-          margin: 0 auto 10px;
-          color: #100F0D;
-          font-size: clamp(2.7rem, 13vw, 5.6rem);
+          min-height: 0.78em;
+          margin: 0 auto 6px;
+          color: var(--color-ink);
+          font-size: clamp(2.34rem, 10.8vw, 4.8rem);
           will-change: transform, opacity;
         }
         #material-por-dentro .inside-hint {
           display: block;
-          margin: 0 auto 14px;
+          margin: 0 auto 10px;
           color: #6F614D;
           font-size: 0.74rem;
           font-weight: 900;
@@ -372,23 +377,23 @@ export default function ProdutoPorDentro() {
           position: absolute;
           top: 50%;
           z-index: 6;
-          width: 40px;
-          height: 40px;
+          width: 44px;
+          height: 44px;
           display: grid;
           place-items: center;
           border: 1px solid rgba(16, 15, 13, 0.16);
-          border-radius: 999px;
+          border-radius: 8px;
           background: rgba(247, 241, 232, 0.92);
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: 1.7rem;
           font-weight: 900;
           line-height: 1;
           cursor: pointer;
           transform: translateY(-50%);
-          box-shadow: 0 10px 22px rgba(31, 24, 16, 0.12);
+          box-shadow: none;
         }
         #material-por-dentro .inside-nav:focus-visible {
-          outline: 3px solid #D7A42C;
+          outline: 3px solid var(--color-gold);
           outline-offset: 3px;
         }
         #material-por-dentro .inside-nav-prev {
@@ -402,7 +407,7 @@ export default function ProdutoPorDentro() {
           gap: var(--inside-slot-gap);
           width: max-content;
           overflow-x: hidden;
-          padding: 8px 0 16px;
+          padding: 6px 0 12px;
           transform: translateX(calc(50vw - var(--inside-page-width) - var(--inside-page-half) - var(--inside-slot-gap)));
           transition: transform 220ms cubic-bezier(0.22, 0.8, 0.2, 1);
           scrollbar-width: none;
@@ -419,8 +424,8 @@ export default function ProdutoPorDentro() {
           padding: 0;
           border: 0;
           background: transparent;
-          opacity: 0.42;
-          transform: scale(0.98);
+          opacity: 0.3;
+          transform: scale(0.9);
           transition: opacity 160ms ease, transform 160ms ease;
           cursor: pointer;
           -webkit-tap-highlight-color: transparent;
@@ -439,16 +444,17 @@ export default function ProdutoPorDentro() {
           width: 100%;
           height: auto;
           object-fit: contain;
-          border: 1px solid rgba(16, 15, 13, 0.14);
-          box-shadow: 0 14px 34px rgba(31, 24, 16, 0.16);
-          background: #F7F1E8;
+          border: 1px solid rgba(16, 15, 13, 0.08);
+          box-shadow: none;
+          background: var(--color-paper);
         }
         #material-por-dentro .inside-copy {
-          max-width: 330px;
-          min-height: 3.1em;
-          margin: 22px auto 0;
+          max-width: 680px;
+          min-height: 2.35em;
+          margin: 14px auto 0;
           color: #2D261F;
-          font-size: clamp(1.22rem, 5.4vw, 2rem);
+          font-size: clamp(1rem, 4.2vw, 1.38rem);
+          line-height: 1.12;
           will-change: transform, opacity;
         }
         #material-por-dentro .inside-title-next {
@@ -484,19 +490,27 @@ export default function ProdutoPorDentro() {
           margin: 76px auto 0;
           text-align: center;
         }
+        #material-por-dentro .inside-final-divider {
+          display: block;
+          width: min(100%, 540px);
+          height: 1px;
+          margin: 0 auto 26px;
+          border: 0;
+          background: linear-gradient(90deg, rgba(216, 166, 74, 0), rgba(216, 166, 74, 0.88), rgba(216, 166, 74, 0));
+        }
         #material-por-dentro .inside-close-small {
           margin: 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2rem, 8.4vw, 3.6rem);
         }
         #material-por-dentro .inside-close-logic {
           margin: 34px 0 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2.35rem, 9.5vw, 4.6rem);
         }
         #material-por-dentro .inside-close-next {
           margin: 42px 0 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(1.62rem, 6.6vw, 3rem);
         }
         #material-por-dentro .inside-moderate {
@@ -505,13 +519,63 @@ export default function ProdutoPorDentro() {
           border-bottom: 0.07em solid rgba(215, 164, 44, 0.78);
         }
         #material-por-dentro .inside-final-text {
-          max-width: 430px;
-          margin: 28px auto 0;
+          max-width: 720px;
+          margin: 0 auto;
           text-align: center;
           color: #3A3027;
-          font-size: clamp(0.94rem, 3.8vw, 1.12rem);
-          line-height: 1.42;
+          font-size: clamp(0.95rem, 3.87vw, 1.19rem);
+          line-height: 1.52;
           font-weight: 700;
+        }
+        #material-por-dentro .inside-circular-wrap {
+          width: 100%;
+          height: clamp(380px, 106vw, 598px);
+          margin: 34px auto 0;
+          overflow: hidden;
+          touch-action: pan-y;
+        }
+        #material-por-dentro .circular-gallery {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          perspective: 1500px;
+          cursor: grab;
+          user-select: none;
+        }
+        #material-por-dentro .circular-gallery:active {
+          cursor: grabbing;
+        }
+        #material-por-dentro .circular-gallery-track {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          transform-style: preserve-3d;
+        }
+        #material-por-dentro .circular-gallery-item {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: clamp(205px, 58vw, 335px);
+          height: clamp(253px, 71.3vw, 414px);
+          margin: 0;
+          overflow: hidden;
+          border: 1px solid rgba(216, 201, 182, 0.78);
+          border-radius: 10px;
+          background: var(--color-paper);
+          box-shadow: 0 14px 34px rgba(11, 7, 4, 0.14);
+          transition: opacity 180ms ease;
+          backface-visibility: hidden;
+          cursor: zoom-in;
+        }
+        #material-por-dentro .circular-gallery-item img {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          pointer-events: none;
         }
         .inside-lightbox {
           position: fixed;
@@ -538,8 +602,8 @@ export default function ProdutoPorDentro() {
           height: auto;
           object-fit: contain;
           border: 1px solid rgba(247, 241, 232, 0.18);
-          background: #F7F1E8;
-          box-shadow: 0 24px 70px rgba(0, 0, 0, 0.44);
+          background: var(--color-paper);
+          box-shadow: 0 14px 40px rgba(11, 7, 4, 0.18);
         }
         .inside-lightbox-close {
           position: absolute;
@@ -551,13 +615,13 @@ export default function ProdutoPorDentro() {
           display: grid;
           place-items: center;
           border: 1px solid rgba(16, 15, 13, 0.16);
-          border-radius: 999px;
+          border-radius: 8px;
           background: rgba(247, 241, 232, 0.96);
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: 1.35rem;
           line-height: 1;
           cursor: pointer;
-          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+          box-shadow: none;
         }
         @media (min-width: 760px) {
           #material-por-dentro {
@@ -567,17 +631,20 @@ export default function ProdutoPorDentro() {
             --inside-page-width: min(58vw, 700px);
             --inside-page-half: min(29vw, 350px);
             --inside-slot-gap: 38px;
-            margin-top: 76px;
+            margin-top: 54px;
           }
           #material-por-dentro .inside-active-title {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
           }
           #material-por-dentro .inside-hint {
-            margin-bottom: 18px;
+            margin-bottom: 12px;
           }
           #material-por-dentro .inside-copy {
-            max-width: 390px;
-            margin-top: 22px;
+            max-width: 680px;
+            margin-top: 16px;
+          }
+          #material-por-dentro .inside-circular-wrap {
+            height: 644px;
           }
         }
         @media (min-width: 1120px) {
@@ -629,20 +696,12 @@ export default function ProdutoPorDentro() {
         </p>
 
         <h2 id="material-por-dentro-title" className="inside-display inside-title" data-reveal>
-          NA HORA DE REVISAR,
-          <br />
-          <br />
-          VOCÊ NÃO PRECISA
-          <br />
-          IR NA <span className="inside-underline">TENTATIVA E ERRO.</span>
+          Você não precisa ir na tentativa e erro
         </h2>
 
         <p className="inside-subtitle" data-reveal>
-          Abra a página, compare com a lateral
-          <br />
-          e confira o que precisa ser revisado
-          <br />
-          antes de passar a máquina de novo.
+          Abra a página, compare com a lateral e confira o que precisa ser revisado antes
+          de passar a máquina de novo.
         </p>
 
         <div className="inside-slot" data-reveal>
@@ -742,36 +801,27 @@ export default function ProdutoPorDentro() {
         </div>
 
         <div className="inside-close">
-          <p className="inside-display inside-close-small" data-reveal>
-            NÃO QUERO QUE VOCÊ
-            <br />
-            DECORE TUDO.
-          </p>
-
-          <p className="inside-display inside-close-logic" data-reveal>
-            QUERO QUE VOCÊ
-            <br />
-            <span className="inside-underline">ENTENDA A LÓGICA.</span>
-          </p>
-
-          <p className="inside-display inside-close-next" data-reveal>
-            PARA OLHAR OS PRÓXIMOS
-            <br />
-            DEGRADÊS COM MAIS CLAREZA
-            <br />
-            <br />
-            E <span className="inside-moderate">SABER O QUE REVISAR</span>
-            <br />
-            QUANDO UMA MARCA APARECER.
-          </p>
-
+          <span className="inside-final-divider" aria-hidden="true" />
           <p className="inside-final-text" data-reveal>
-            Use o Mapa como referência visual
-            <br />
-            enquanto treina essa leitura
-            <br />
-            nos seus próximos cortes.
+            O mapa do Degradê Sem Marca foi pensado para que você entenda a lógica dos
+            fades, e consiga aplicar já nos próximos cortes, degradês com mais clareza e
+            saber o que revisar quando uma marca aparecer.
           </p>
+          <div
+            id="material-carrossel-3d"
+            className="inside-circular-wrap"
+            data-reveal
+            data-track-section="material-carrossel-3d"
+            data-track-order="4"
+            data-track-title="04 - CARROSSEL 3D DO MATERIAL"
+          >
+            <CircularGallery
+              items={circularGalleryItems}
+              radius={345}
+              autoRotateSpeed={0.22}
+              onItemClick={(_, index) => setCircularLightboxIndex(index)}
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -803,6 +853,41 @@ export default function ProdutoPorDentro() {
             alt={lightboxPanel.alt}
             width={7430}
             height={10753}
+            sizes="96vw"
+            draggable={false}
+            unoptimized
+          />
+        </div>
+      </div>
+    )}
+    {circularLightboxItem && (
+      <div
+        className="inside-lightbox"
+        role="presentation"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setCircularLightboxIndex(null);
+        }}
+      >
+        <div
+          className="inside-lightbox-card"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Imagem ampliada: ${circularLightboxItem.alt}`}
+        >
+          <button
+            type="button"
+            className="inside-lightbox-close"
+            aria-label="Fechar imagem ampliada"
+            onClick={() => setCircularLightboxIndex(null)}
+          >
+            ×
+          </button>
+          <Image
+            className="inside-lightbox-image"
+            src={circularLightboxItem.image}
+            alt={circularLightboxItem.alt}
+            width={1055}
+            height={1491}
             sizes="96vw"
             draggable={false}
             unoptimized

@@ -26,161 +26,74 @@ const cuts = [
   },
 ] as const;
 
-const AUTOPLAY_DURATION_MS = 46_000;
+const wrapIndex = (index: number) => (index + cuts.length) % cuts.length;
 
 export default function CarrosselCortes() {
-  const sectionRef = React.useRef<HTMLElement | null>(null);
-  const trackRef = React.useRef<HTMLDivElement | null>(null);
-  const sequenceRef = React.useRef<HTMLDivElement | null>(null);
-  const offsetRef = React.useRef(0);
-  const sequenceWidthRef = React.useRef(1);
-  const rafRef = React.useRef<number | null>(null);
-  const lastFrameRef = React.useRef<number | null>(null);
-  const inViewRef = React.useRef(false);
-  const draggingRef = React.useRef(false);
-  const dragRef = React.useRef({ x: 0, y: 0, offset: 0, moved: false });
-  const [manualPaused, setManualPaused] = React.useState(false);
-  const [reducedMotion, setReducedMotion] = React.useState(false);
+  const [current, setCurrent] = React.useState(0);
+  const [dragOffset, setDragOffset] = React.useState(0);
+  const dragRef = React.useRef<{ x: number; y: number; active: boolean } | null>(null);
 
-  const normalizeOffset = React.useCallback((value: number) => {
-    const width = sequenceWidthRef.current || 1;
-    return ((value % width) + width) % width;
+  const goTo = React.useCallback((index: number) => {
+    setCurrent(wrapIndex(index));
+    setDragOffset(0);
   }, []);
 
-  const applyOffset = React.useCallback((value: number) => {
-    offsetRef.current = normalizeOffset(value);
-    if (trackRef.current) {
-      trackRef.current.style.transform = `translate3d(${-offsetRef.current}px, 0, 0)`;
-    }
-  }, [normalizeOffset]);
-
-  const measure = React.useCallback(() => {
-    const width = sequenceRef.current?.getBoundingClientRect().width || 1;
-    sequenceWidthRef.current = Math.max(1, width);
-    applyOffset(offsetRef.current);
-  }, [applyOffset]);
-
-  React.useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const syncMotion = () => setReducedMotion(media.matches);
-    syncMotion();
-    media.addEventListener('change', syncMotion);
-    window.addEventListener('resize', measure);
-    measure();
-
-    return () => {
-      media.removeEventListener('change', syncMotion);
-      window.removeEventListener('resize', measure);
-    };
-  }, [measure]);
-
-  React.useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        inViewRef.current = Boolean(entry?.isIntersecting);
-      },
-      { threshold: 0.12, rootMargin: '160px 0px 160px 0px' }
-    );
-
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, []);
-
-  React.useEffect(() => {
-    const step = (time: number) => {
-      const previous = lastFrameRef.current ?? time;
-      const delta = time - previous;
-      lastFrameRef.current = time;
-
-      if (!reducedMotion && inViewRef.current && !manualPaused && !draggingRef.current && !document.hidden) {
-        const speed = sequenceWidthRef.current / AUTOPLAY_DURATION_MS;
-        applyOffset(offsetRef.current + delta * speed);
-      }
-
-      rafRef.current = requestAnimationFrame(step);
-    };
-
-    rafRef.current = requestAnimationFrame(step);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [applyOffset, manualPaused, reducedMotion]);
+  const goNext = React.useCallback(() => goTo(current + 1), [current, goTo]);
+  const goPrevious = React.useCallback(() => goTo(current - 1), [current, goTo]);
 
   const handlePointerDown = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    draggingRef.current = true;
-    dragRef.current = { x: event.clientX, y: event.clientY, offset: offsetRef.current, moved: false };
-    sectionRef.current?.classList.add('is-dragging');
+    dragRef.current = { x: event.clientX, y: event.clientY, active: true };
     event.currentTarget.setPointerCapture?.(event.pointerId);
   }, []);
 
   const handlePointerMove = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
-    const deltaX = event.clientX - dragRef.current.x;
-    const deltaY = event.clientY - dragRef.current.y;
+    const drag = dragRef.current;
+    if (!drag?.active) return;
 
-    if (Math.abs(deltaX) > 5 && Math.abs(deltaX) > Math.abs(deltaY) * 1.05) {
-      dragRef.current.moved = true;
-      applyOffset(dragRef.current.offset - deltaX);
-    }
-  }, [applyOffset]);
+    const deltaX = event.clientX - drag.x;
+    const deltaY = event.clientY - drag.y;
+    if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.05) return;
+
+    event.preventDefault();
+    setDragOffset(Math.max(-82, Math.min(82, deltaX)));
+  }, []);
 
   const finishPointer = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    sectionRef.current?.classList.remove('is-dragging');
+    const drag = dragRef.current;
+    dragRef.current = null;
 
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
 
-    if (!dragRef.current.moved) {
-      setManualPaused((paused) => !paused);
-    }
-  }, []);
+    if (!drag) return;
+    const deltaX = event.clientX - drag.x;
+    const deltaY = event.clientY - drag.y;
+    setDragOffset(0);
+
+    if (Math.abs(deltaX) < 42 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
+    if (deltaX < 0) goNext();
+    else goPrevious();
+  }, [goNext, goPrevious]);
 
   const preventImageAction = React.useCallback((event: React.SyntheticEvent) => {
     event.preventDefault();
   }, []);
 
-  const renderSequence = (hidden: boolean, cloneIndex: number) => (
-    <div
-      ref={cloneIndex === 0 ? sequenceRef : undefined}
-      className="cuts-sequence"
-      aria-hidden={hidden ? 'true' : undefined}
-    >
-      {cuts.map((cut) => (
-        <div className="cut-frame" key={`${cloneIndex}-${cut.src}`}>
-          <Image
-            className="cut-image"
-            src={cut.src}
-            alt={hidden ? '' : cut.alt}
-            width={1448}
-            height={1086}
-            loading="lazy"
-            decoding="async"
-            sizes="(max-width: 759px) 88vw, (max-width: 1199px) 62vw, 620px"
-            draggable={false}
-            onContextMenu={preventImageAction}
-            onDragStart={preventImageAction}
-          />
-        </div>
-      ))}
-    </div>
-  );
+  const visibleCuts = [
+    cuts[wrapIndex(current - 1)],
+    cuts[current],
+    cuts[wrapIndex(current + 1)],
+  ];
 
   return (
     <section
-      ref={sectionRef}
       id="carrossel-cortes"
       aria-labelledby="carrossel-cortes-title"
       data-track-section="carrossel-cortes"
       data-track-order="7"
-      data-track-title="07 - CARROSSEL DE CORTES"
-      className={manualPaused ? 'is-manually-paused' : undefined}
+      data-track-title="07 - TA DUVIDANDO"
     >
       <style>{`
         #carrossel-cortes {
@@ -192,8 +105,8 @@ export default function CarrosselCortes() {
           overflow: hidden;
           box-sizing: border-box;
           padding: 78px 0 84px;
-          background: #F7F1E8;
-          color: #100F0D;
+          background: var(--color-paper);
+          color: var(--color-ink);
           border-bottom: 1px solid rgba(31, 24, 16, 0.12);
         }
         #carrossel-cortes *,
@@ -210,7 +123,7 @@ export default function CarrosselCortes() {
         }
         #carrossel-cortes .cuts-title {
           margin: 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: clamp(2.38rem, 11.8vw, 6.6rem);
           font-weight: 900;
@@ -222,48 +135,76 @@ export default function CarrosselCortes() {
         #carrossel-cortes .cuts-red {
           color: #C32721;
         }
+        #carrossel-cortes .cuts-one-line {
+          display: block;
+          white-space: nowrap;
+        }
         #carrossel-cortes .cuts-subtitle {
           max-width: 610px;
           margin: 22px auto 0;
           color: #3E352B;
-          font-size: clamp(0.98rem, 4vw, 1.14rem);
+          font-size: clamp(1.08rem, 4.4vw, 1.25rem);
           line-height: 1.42;
           font-weight: 700;
         }
-        #carrossel-cortes .cuts-marquee {
+        #carrossel-cortes .cuts-carousel {
+          --cuts-slide-width: min(78vw, 590px);
+          --cuts-gap: 14px;
           position: relative;
+          left: 50%;
           width: 100vw;
           max-width: 100vw;
           overflow: hidden;
+          transform: translateX(-50%);
           touch-action: pan-y;
           user-select: none;
           -webkit-user-select: none;
           -webkit-touch-callout: none;
           cursor: grab;
         }
-        #carrossel-cortes.is-dragging .cuts-marquee {
+        #carrossel-cortes .cuts-carousel:active {
           cursor: grabbing;
         }
         #carrossel-cortes .cuts-track {
-          display: flex;
-          width: max-content;
-          will-change: transform;
-          transform: translate3d(0, 0, 0);
-        }
-        #carrossel-cortes .cuts-sequence {
-          display: flex;
-          flex: 0 0 auto;
-          gap: 16px;
-          padding-right: 16px;
+          position: relative;
+          width: 100vw;
+          height: min(58.5vw, 442px);
+          padding: 6px 0 14px;
         }
         #carrossel-cortes .cut-frame {
-          flex: 0 0 min(88vw, 620px);
+          position: absolute;
+          top: 6px;
+          left: 50%;
+          width: var(--cuts-slide-width);
           overflow: hidden;
-          border-radius: 8px;
-          border: 1px solid rgba(31, 24, 16, 0.14);
+          border-radius: 0;
+          border: 0;
           background: transparent;
-          box-shadow: 0 16px 34px rgba(31, 24, 16, 0.14);
+          box-shadow: none;
+          opacity: 0.38;
+          transform: translateX(-50%) scale(0.94);
+          transition: opacity 180ms ease, transform 180ms ease;
           -webkit-user-drag: none;
+        }
+        #carrossel-cortes .cut-frame.is-prev {
+          transform: translateX(calc(-50% - var(--cuts-slide-width) - var(--cuts-gap) + var(--drag-offset, 0px))) scale(0.94);
+        }
+        #carrossel-cortes .cut-frame:nth-child(1) {
+          transform: translateX(calc(-50% - var(--cuts-slide-width) - var(--cuts-gap) + var(--drag-offset, 0px))) scale(0.94);
+        }
+        #carrossel-cortes .cut-frame.is-next {
+          transform: translateX(calc(-50% + var(--cuts-slide-width) + var(--cuts-gap) + var(--drag-offset, 0px))) scale(0.94);
+        }
+        #carrossel-cortes .cut-frame:nth-child(3) {
+          transform: translateX(calc(-50% + var(--cuts-slide-width) + var(--cuts-gap) + var(--drag-offset, 0px))) scale(0.94);
+        }
+        #carrossel-cortes .cut-frame.is-active {
+          opacity: 1;
+          transform: translateX(calc(-50% + var(--drag-offset, 0px))) scale(1);
+        }
+        #carrossel-cortes .cut-frame:nth-child(2) {
+          opacity: 1;
+          transform: translateX(calc(-50% + var(--drag-offset, 0px))) scale(1);
         }
         #carrossel-cortes .cut-image {
           display: block;
@@ -276,6 +217,37 @@ export default function CarrosselCortes() {
           -webkit-user-drag: none;
           -webkit-touch-callout: none;
         }
+        #carrossel-cortes .cuts-arrow {
+          width: 44px;
+          height: 44px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(31, 24, 16, 0.16);
+          border-radius: 999px;
+          background: rgba(255, 249, 239, 0.94);
+          color: var(--color-ink);
+          font-size: 1.5rem;
+          font-weight: 900;
+          line-height: 1;
+          cursor: pointer;
+        }
+        #carrossel-cortes .cuts-bottom-controls {
+          width: var(--cuts-slide-width);
+          max-width: calc(100vw - 40px);
+          margin: 14px auto 0;
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) 44px;
+          align-items: center;
+          gap: 18px;
+        }
+        #carrossel-cortes .cuts-swipe-label {
+          color: rgba(62, 53, 43, 0.66);
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.13em;
+          text-align: center;
+          text-transform: uppercase;
+        }
         @media (min-width: 760px) {
           #carrossel-cortes {
             padding: 96px 0 106px;
@@ -287,18 +259,17 @@ export default function CarrosselCortes() {
           #carrossel-cortes .cuts-subtitle {
             font-size: 1.12rem;
           }
-          #carrossel-cortes .cuts-sequence {
-            gap: 24px;
-            padding-right: 24px;
+          #carrossel-cortes .cuts-carousel {
+            --cuts-slide-width: min(58vw, 650px);
           }
-          #carrossel-cortes .cut-frame {
-            flex-basis: clamp(520px, 48vw, 650px);
+          #carrossel-cortes .cuts-track {
+            height: min(43.5vw, 488px);
           }
         }
         @media (prefers-reduced-motion: reduce) {
-          #carrossel-cortes .cuts-marquee {
-            overflow-x: auto;
-            scrollbar-width: thin;
+          #carrossel-cortes .cuts-track,
+          #carrossel-cortes .cut-frame {
+            transition: none;
           }
         }
       `}</style>
@@ -306,10 +277,7 @@ export default function CarrosselCortes() {
       <div className="cuts-copy">
         <h2 id="carrossel-cortes-title" className="cuts-title">
           <span className="cuts-red">Tá duvidando?</span>
-          <br />
-          Dá uma olhada
-          <br />
-          aqui...
+          <span className="cuts-one-line">Dá uma olhada aqui...</span>
         </h2>
         <p className="cuts-subtitle">
           É isso que começa a aparecer no resultado quando você entende onde marcar, quanto subir e o que revisar antes de finalizar.
@@ -317,19 +285,41 @@ export default function CarrosselCortes() {
       </div>
 
       <div
-        className="cuts-marquee"
+        className="cuts-carousel"
+        style={{ '--drag-offset': `${dragOffset}px` } as React.CSSProperties}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={finishPointer}
         onPointerCancel={finishPointer}
-        onLostPointerCapture={finishPointer}
         onContextMenu={preventImageAction}
         onDragStart={preventImageAction}
       >
-        <div ref={trackRef} className="cuts-track">
-          {renderSequence(false, 0)}
-          {renderSequence(true, 1)}
-          {renderSequence(true, 2)}
+        <div className="cuts-track">
+          {visibleCuts.map((cut, index) => (
+            <div
+              className={`cut-frame${index === 0 ? ' is-prev' : index === 1 ? ' is-active' : ' is-next'}`}
+              key={`${current}-${index}-${cut.src}`}
+            >
+              <Image
+                className="cut-image"
+                src={cut.src}
+                alt={index === 1 ? cut.alt : ''}
+                width={1448}
+                height={1086}
+                loading={index === 1 ? 'eager' : 'lazy'}
+                decoding="async"
+                sizes="(max-width: 759px) 86vw, (max-width: 1199px) 62vw, 650px"
+                draggable={false}
+                onContextMenu={preventImageAction}
+                onDragStart={preventImageAction}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="cuts-bottom-controls">
+          <button className="cuts-arrow prev" type="button" onClick={goPrevious} aria-label="Ver corte anterior">‹</button>
+          <span className="cuts-swipe-label">DESLIZE</span>
+          <button className="cuts-arrow next" type="button" onClick={goNext} aria-label="Ver próximo corte">›</button>
         </div>
       </div>
     </section>

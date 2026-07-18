@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Gift } from 'lucide-react';
 import {
   buildCheckoutUrl,
   getCheckoutMeta,
@@ -18,7 +18,7 @@ declare global {
 }
 
 const basicIncluded = [
-  'Guia visual digital',
+  'Mapa do Degradê Sem Marca',
   'Acesso imediato ao material',
   '7 dias de garantia',
 ] as const;
@@ -38,7 +38,8 @@ const completeIncluded = [
   { label: 'Guia dos 7 Erros que Estragam o Degradê', isBonus: true },
   { label: 'Pack de Referências Essenciais de Fade', isBonus: true },
   { label: 'Mini Guia de Acabamento Profissional', isBonus: true },
-  { label: 'Acesso vitalício e imediato aos materiais', isBonus: false },
+  { label: 'Acesso vitalício', isBonus: false },
+  { label: 'Acesso imediato', isBonus: false },
   { label: 'Atualizações futuras', isBonus: false },
   { label: '7 dias de garantia', isBonus: false },
 ] as const;
@@ -227,8 +228,8 @@ export default function PrecosAcesso() {
       id="precos-acesso"
       aria-labelledby="precos-acesso-title"
       data-track-section="precos-acesso"
-      data-track-order="10"
-      data-track-title="10 - PREÇOS / PLANOS"
+      data-track-order="11"
+      data-track-title="11 - PRECOS / PLANOS"
     >
       <style>{`
         #precos-acesso {
@@ -240,8 +241,8 @@ export default function PrecosAcesso() {
           overflow: hidden;
           box-sizing: border-box;
           padding: 78px 16px 90px;
-          background: #0F0A06;
-          color: #FFF4E6;
+          background: var(--color-espresso);
+          color: var(--color-paper);
           border-bottom: 1px solid #2A130B;
         }
         #precos-acesso *,
@@ -275,13 +276,13 @@ export default function PrecosAcesso() {
           margin: 0 auto;
           text-align: center;
           font-size: clamp(2.5rem, 11vw, 5.8rem);
-          color: #FFF4E6;
+          color: var(--color-paper);
         }
         #precos-acesso .price-subtitle {
           max-width: 660px;
           margin: 18px auto 42px;
           text-align: center;
-          color: #D9C3A3;
+          color: var(--color-paper-alt);
           font-size: 0.98rem;
           line-height: 1.45;
           font-weight: 650;
@@ -296,15 +297,16 @@ export default function PrecosAcesso() {
           width: 100%;
           border-radius: 8px;
           padding: 24px 18px 20px;
-          background: #F7F1E8;
-          color: #100F0D;
-          border: 1px solid rgba(196, 154, 74, 0.22);
-          box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+          background: var(--color-paper);
+          color: var(--color-ink);
+          border: 1px solid var(--color-border);
+          box-shadow: var(--shadow-card);
+          text-align: center;
         }
         #precos-acesso .plan-card.complete {
           background: #FFF7E9;
-          border: 2px solid #D8A64A;
-          box-shadow: 0 22px 58px rgba(216, 166, 74, 0.2);
+          border: 2px solid var(--color-gold);
+          box-shadow: 0 14px 40px rgba(11, 7, 4, 0.08);
         }
         #precos-acesso .best-label {
           display: inline-flex;
@@ -312,9 +314,9 @@ export default function PrecosAcesso() {
           justify-content: center;
           margin: 0 0 14px;
           padding: 8px 10px 7px;
-          border-radius: 999px;
-          background: #D8A64A;
-          color: #100F0D;
+          border-radius: 8px;
+          background: var(--color-gold);
+          color: var(--color-ink);
           font-size: 0.7rem;
           font-weight: 950;
           letter-spacing: 0.08em;
@@ -323,7 +325,7 @@ export default function PrecosAcesso() {
         }
         #precos-acesso .plan-name {
           margin: 0 0 10px;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2.05rem, 8.6vw, 3.6rem);
         }
         #precos-acesso .plan-support {
@@ -335,8 +337,21 @@ export default function PrecosAcesso() {
         }
         #precos-acesso .plan-price {
           margin: 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(3rem, 13vw, 5rem);
+        }
+        #precos-acesso .old-price-anchor {
+          margin: 6px 0 2px;
+          color: #7C6A58;
+          font-size: 0.78rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        #precos-acesso .old-price-anchor span {
+          color: var(--color-alert);
+          text-decoration: line-through;
+          text-decoration-thickness: 2px;
         }
         #precos-acesso .payment-note {
           margin: 4px 0 20px;
@@ -359,20 +374,26 @@ export default function PrecosAcesso() {
         #precos-acesso .plan-list li {
           display: flex;
           align-items: flex-start;
+          justify-content: flex-start !important;
           gap: 9px;
           margin: 0 0 10px;
           color: #211A14;
           font-size: 0.92rem;
           line-height: 1.25;
           font-weight: 750;
+          text-align: left !important;
         }
         #precos-acesso .plan-list li.muted {
           color: rgba(61, 55, 48, 0.5);
           font-weight: 650;
           margin-bottom: 8px;
         }
+        #precos-acesso .plan-list li.muted span:last-child {
+          text-decoration: line-through;
+          text-decoration-thickness: 1.5px;
+        }
         #precos-acesso .plan-list li.emphasis {
-          color: #100F0D;
+          color: var(--color-ink);
           font-weight: 900;
         }
         #precos-acesso .item-icon {
@@ -391,17 +412,44 @@ export default function PrecosAcesso() {
           stroke-width: 2.8;
         }
         #precos-acesso .muted .item-icon {
-          color: rgba(61, 55, 48, 0.5);
+          color: var(--color-alert);
+        }
+        #precos-acesso .bonus-divider {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          gap: 10px;
+          margin: 18px 0 12px;
+          color: #8B6725;
+          font-size: 0.72rem;
+          font-weight: 950;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+        #precos-acesso .bonus-divider::before,
+        #precos-acesso .bonus-divider::after {
+          content: "";
+          height: 1px;
+          background: rgba(139, 103, 37, 0.32);
+        }
+        #precos-acesso .plan-list.bonus-list,
+        #precos-acesso .plan-list.advantage-list {
+          padding-top: 0;
+          border-top: 0;
+        }
+        #precos-acesso .bonus-list li {
+          color: var(--color-ink);
+          font-weight: 900;
         }
         #precos-acesso .plan-button {
           width: 100%;
           min-height: 54px;
           margin-top: 20px;
           border-radius: 7px;
-          font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
-          font-size: 1.05rem;
+          font-family: var(--font-sans), var(--font-sans-family);
+          font-size: 0.9rem;
           font-weight: 900;
-          letter-spacing: 0;
+          letter-spacing: 0.04em;
           line-height: 1;
           text-transform: uppercase;
           cursor: pointer;
@@ -411,27 +459,27 @@ export default function PrecosAcesso() {
           transform: scale(0.985);
         }
         #precos-acesso .plan-button:focus-visible {
-          outline: 3px solid #FFF4E6;
+          outline: 3px solid var(--color-paper);
           outline-offset: 3px;
         }
         #precos-acesso .plan-button.basic-button {
           background: transparent;
-          border: 2px solid #100F0D;
-          color: #100F0D;
+          border: 2px solid var(--color-ink);
+          color: var(--color-ink);
         }
         #precos-acesso .plan-button.basic-button:hover {
-          background: #100F0D;
-          color: #FFF4E6;
+          background: var(--color-ink);
+          color: var(--color-paper);
         }
         #precos-acesso .plan-button.complete-button {
-          background: #F28A1A;
-          border: 2px solid #F28A1A;
+          background: var(--color-gold);
+          border: 2px solid var(--color-gold);
           color: #0B0704;
-          box-shadow: 0 10px 24px rgba(242, 138, 26, 0.22);
+          box-shadow: none;
         }
         #precos-acesso .plan-button.complete-button:hover {
-          background: #D8A64A;
-          border-color: #D8A64A;
+          background: #E2B45B;
+          border-color: #E2B45B;
         }
         #precos-acesso .upgrade-bridge {
           display: grid;
@@ -443,35 +491,19 @@ export default function PrecosAcesso() {
         }
         #precos-acesso .upgrade-text {
           margin: 0;
-          color: #D8A64A;
+          color: var(--color-gold);
           font-size: clamp(1.28rem, 5.8vw, 2.1rem);
         }
         #precos-acesso .upgrade-arrow {
           position: relative;
-          width: 58px;
-          height: 66px;
-          display: grid;
-          place-items: center;
+          width: 72px;
+          height: 86px;
+          display: block;
+          background: var(--color-gold);
+          -webkit-mask: url('/images/seta-animação/seta-verde-animação.svg') center / contain no-repeat;
+          mask: url('/images/seta-animação/seta-verde-animação.svg') center / contain no-repeat;
           pointer-events: none;
           animation: priceArrowBounce 920ms ease-in-out infinite;
-        }
-        #precos-acesso .upgrade-arrow::before,
-        #precos-acesso .upgrade-arrow::after {
-          content: "";
-          position: absolute;
-          width: 28px;
-          height: 28px;
-          border-right: 5px solid #D8A64A;
-          border-bottom: 5px solid #D8A64A;
-          transform: rotate(45deg);
-          filter: drop-shadow(0 9px 14px rgba(216, 166, 74, 0.34));
-        }
-        #precos-acesso .upgrade-arrow::before {
-          top: 2px;
-          opacity: 0.52;
-        }
-        #precos-acesso .upgrade-arrow::after {
-          top: 22px;
         }
         @keyframes priceArrowBounce {
           0%, 100% {
@@ -527,15 +559,8 @@ export default function PrecosAcesso() {
             padding-top: 108px;
           }
           #precos-acesso .upgrade-arrow {
-            width: 68px;
-            height: 70px;
-          }
-          #precos-acesso .upgrade-arrow::before,
-          #precos-acesso .upgrade-arrow::after {
-            width: 34px;
-            height: 34px;
-            border-right-width: 6px;
-            border-bottom-width: 6px;
+            width: 82px;
+            height: 96px;
           }
           #precos-acesso .plan-card {
             padding: 30px 24px 24px;
@@ -564,10 +589,10 @@ export default function PrecosAcesso() {
           max-height: min(92vh, 900px);
           overflow-y: auto;
           border-radius: 10px;
-          background: #F7F1E8;
-          color: #100F0D;
-          border: 1px solid rgba(216, 166, 74, 0.42);
-          box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+          background: var(--color-paper);
+          color: var(--color-ink);
+          border: 1px solid var(--color-border);
+          box-shadow: 0 14px 40px rgba(11, 7, 4, 0.18);
           animation: upgradeModalIn 220ms ease both;
         }
         .upgrade-modal * {
@@ -584,13 +609,13 @@ export default function PrecosAcesso() {
           display: grid;
           place-items: center;
           border: 1px solid rgba(16, 15, 13, 0.14);
-          border-radius: 999px;
+          border-radius: 8px;
           background: rgba(247, 241, 232, 0.92);
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: 1.35rem;
           line-height: 1;
           cursor: pointer;
-          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+          box-shadow: none;
         }
         .upgrade-modal-content {
           display: grid;
@@ -601,7 +626,7 @@ export default function PrecosAcesso() {
           display: inline-flex;
           width: fit-content;
           padding: 7px 10px 6px;
-          border-radius: 999px;
+          border-radius: 8px;
           background: rgba(216, 166, 74, 0.18);
           color: #7B5616;
           font-size: 0.68rem;
@@ -612,7 +637,7 @@ export default function PrecosAcesso() {
         }
         .upgrade-modal-title {
           margin: 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: clamp(1.9rem, 9.7vw, 4.8rem);
           font-weight: 900;
@@ -633,7 +658,7 @@ export default function PrecosAcesso() {
           margin: 2px auto 0;
           border-radius: 8px;
           background: #FFF7E9;
-          box-shadow: 0 18px 42px rgba(16, 15, 13, 0.14);
+          box-shadow: var(--shadow-card);
         }
         .upgrade-modal-visual img {
           display: block;
@@ -643,7 +668,7 @@ export default function PrecosAcesso() {
         }
         .upgrade-modal-included {
           margin: 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: 0.86rem;
           font-weight: 950;
           letter-spacing: 0.04em;
@@ -695,7 +720,7 @@ export default function PrecosAcesso() {
           text-transform: uppercase;
         }
         .upgrade-modal-price {
-          color: #F28A1A;
+          color: var(--color-gold);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: clamp(3rem, 14vw, 5rem);
           font-weight: 900;
@@ -727,8 +752,8 @@ export default function PrecosAcesso() {
           width: 100%;
           min-height: 52px;
           border-radius: 7px;
-          font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
-          font-size: 1rem;
+          font-family: var(--font-sans), var(--font-sans-family);
+          font-size: 0.88rem;
           font-weight: 900;
           letter-spacing: 0;
           line-height: 1;
@@ -743,19 +768,23 @@ export default function PrecosAcesso() {
         .upgrade-modal-primary:focus-visible,
         .upgrade-modal-secondary:focus-visible,
         .upgrade-modal-close:focus-visible {
-          outline: 3px solid #D8A64A;
+          outline: 3px solid var(--color-gold);
           outline-offset: 3px;
         }
         .upgrade-modal-primary {
-          border: 2px solid #F28A1A;
-          background: #F28A1A;
+          border: 2px solid var(--color-gold);
+          background: var(--color-gold);
           color: #0B0704;
-          box-shadow: 0 12px 24px rgba(242, 138, 26, 0.2);
+          box-shadow: none;
+        }
+        .upgrade-modal-primary:hover {
+          border-color: #E2B45B;
+          background: #E2B45B;
         }
         .upgrade-modal-secondary {
           border: 2px solid rgba(16, 15, 13, 0.24);
           background: transparent;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: 0.9rem;
         }
         @keyframes upgradeOverlayIn {
@@ -849,6 +878,7 @@ export default function PrecosAcesso() {
             <h3 className="price-display plan-name">MAPA DO DEGRADÊ SEM MARCA</h3>
             <p className="plan-support">Para quem quer começar apenas pelo guia principal.</p>
 
+            <p className="old-price-anchor">De <span>R$ 59,90</span> por:</p>
             <p className="price-display plan-price">R$ 19,90</p>
             <p className="payment-note">no pix ou cartão</p>
 
@@ -896,17 +926,34 @@ export default function PrecosAcesso() {
               Leve o guia principal e todos os 5 bônus para consultar, revisar e treinar seu olhar durante os próximos cortes.
             </p>
 
+            <p className="old-price-anchor">De <span>R$ 119,90</span> por:</p>
             <p className="price-display plan-price">R$ 29,90</p>
             <p className="payment-note">no pix ou cartão</p>
 
-            <ul className="plan-list" aria-label="Itens inclusos no Kit Completo">
-              {completeIncluded.map((item, index) => (
-                <li className={index >= 6 ? 'emphasis' : undefined} key={item.label}>
-                  {item.isBonus ? (
-                    <Sparkles className="bonus-item-icon" aria-hidden="true" />
-                  ) : (
-                    <span className="item-icon" aria-hidden="true">✓</span>
-                  )}
+            <ul className="plan-list" aria-label="Item principal incluso no Kit Completo">
+              {completeIncluded.filter((item) => !item.isBonus).slice(0, 1).map((item) => (
+                <li key={item.label}>
+                  <span className="item-icon" aria-hidden="true">✓</span>
+                  <span>{item.label}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="bonus-divider">INCLUSO TAMBÉM</div>
+            <ul className="plan-list bonus-list" aria-label="Bônus inclusos no Kit Completo">
+              {completeIncluded.filter((item) => item.isBonus).map((item) => (
+                <li key={item.label}>
+                  <Gift className="bonus-item-icon" aria-hidden="true" />
+                  <span>{item.label}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="bonus-divider">VANTAGENS DO ACESSO</div>
+            <ul className="plan-list advantage-list" aria-label="Vantagens do acesso ao Kit Completo">
+              {completeIncluded.filter((item) => !item.isBonus).slice(1).map((item) => (
+                <li className="emphasis" key={item.label}>
+                  <span className="item-icon" aria-hidden="true">✓</span>
                   <span>{item.label}</span>
                 </li>
               ))}

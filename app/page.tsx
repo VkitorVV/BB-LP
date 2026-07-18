@@ -2,7 +2,6 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
 import MarcaNaoAparece from '@/components/MarcaNaoAparece';
-import SeMarcaNaoSai from '@/components/SeMarcaNaoSai';
 import ClientTrackers from '@/components/ClientTrackers';
 
 // Below-the-fold: code-split, SSR mantido para SEO
@@ -17,20 +16,20 @@ const Garantia = dynamic(() => import('@/components/Garantia'), { ssr: true });
 const FAQ = dynamic(() => import('@/components/FAQ'), { ssr: true });
 const CTAFinal = dynamic(() => import('@/components/CTAFinal'), { ssr: true });
 const Rodape = dynamic(() => import('@/components/Rodape'), { ssr: true });
+const VisualRedesignStyles = dynamic(() => import('@/components/VisualRedesignStyles'), { ssr: true });
 
 export default function Home() {
   return (
     <main
       className="min-h-screen font-sans overflow-x-hidden"
-      style={{ background: '#0B0704', color: '#FFF4E6' }}
+      style={{ background: 'var(--color-espresso)', color: 'var(--color-paper)' }}
     >
       <div
         className="w-full max-w-lg mx-auto md:max-w-xl lg:max-w-2xl relative"
         style={{
           background: '#0B0704',
-          borderLeft: '1px solid #2A130B',
-          borderRight: '1px solid #2A130B',
-          boxShadow: '0 0 80px rgba(11,7,4,0.9)',
+          borderLeft: '1px solid rgba(216, 201, 182, 0.14)',
+          borderRight: '1px solid rgba(216, 201, 182, 0.14)',
         }}
       >
         {/* Trackers client-only: não entram no SSR nem bloqueiam LCP */}
@@ -39,7 +38,6 @@ export default function Home() {
         {/* 1. Hero: import estático, renderiza sem esperar JS */}
         <Hero />
         <MarcaNaoAparece />
-        <SeMarcaNaoSai />
 
         {/* 2-12. Below the fold: code-split */}
         <ProdutoPorDentro />
@@ -53,6 +51,7 @@ export default function Home() {
         <FAQ />
         <CTAFinal />
         <Rodape />
+        <VisualRedesignStyles />
       </div>
     </main>
   );

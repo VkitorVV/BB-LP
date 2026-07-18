@@ -48,7 +48,7 @@ export default function MapaVai() {
       aria-labelledby="com-o-mapa-voce-vai-title"
       data-track-section="com-o-mapa-voce-vai"
       data-track-order="6"
-      data-track-title="06 - COM O MAPA VOCÊ VAI"
+      data-track-title="06 - COM O MAPA VOCE VAI"
     >
       <style>{`
         #com-o-mapa-voce-vai {
@@ -60,8 +60,8 @@ export default function MapaVai() {
           overflow: hidden;
           box-sizing: border-box;
           padding: 78px 8px 86px;
-          background: #F7F1E8;
-          color: #100F0D;
+          background: var(--color-paper);
+          color: var(--color-ink);
           border-bottom: 1px solid rgba(31, 24, 16, 0.12);
         }
         #com-o-mapa-voce-vai *,
@@ -71,7 +71,7 @@ export default function MapaVai() {
         }
         #com-o-mapa-voce-vai .map-shell {
           width: 100%;
-          max-width: 980px;
+          max-width: 430px;
           margin: 0 auto;
         }
         #com-o-mapa-voce-vai .map-display {
@@ -82,16 +82,27 @@ export default function MapaVai() {
           text-transform: uppercase;
         }
         #com-o-mapa-voce-vai .map-title {
-          max-width: 760px;
+          max-width: min(100%, 760px);
           margin: 0 auto;
           text-align: center;
-          color: #100F0D;
-          font-size: clamp(2.65rem, 11.4vw, 5.8rem);
+          color: var(--color-ink);
+          font-size: clamp(1.95rem, 7.35vw, 4.72rem);
+        }
+        #com-o-mapa-voce-vai .map-title-line {
+          display: block;
+          white-space: normal;
+          text-wrap: balance;
+        }
+        #com-o-mapa-voce-vai .map-title-line:first-child {
+          font-size: 0.88em;
+        }
+        #com-o-mapa-voce-vai .map-title-line + .map-title-line {
+          font-size: 1.16em;
         }
         #com-o-mapa-voce-vai .map-path {
           position: relative;
           width: 100%;
-          margin: 58px auto 0;
+          margin: 50px auto 0;
           padding: 10px 0 4px;
         }
         #com-o-mapa-voce-vai .map-path::before {
@@ -102,27 +113,27 @@ export default function MapaVai() {
           left: 50%;
           width: 2px;
           transform: translateX(-50%);
-          background: linear-gradient(to bottom, rgba(196, 154, 74, 0), #C49A4A 7%, #C49A4A 93%, rgba(196, 154, 74, 0));
+          background: var(--color-gold);
           transform-origin: top;
         }
         #com-o-mapa-voce-vai .map-row {
           position: relative;
           display: grid;
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-          column-gap: 28px;
+          column-gap: 10px;
           width: 100%;
-          min-height: 116px;
-          align-items: center;
-          margin: 0 auto 22px;
+          min-height: 0;
+          align-items: stretch;
+          margin: 0 auto 10px;
         }
         #com-o-mapa-voce-vai .map-row::before {
           content: "";
           position: absolute;
           top: 50%;
-          left: calc(50% - 14px);
-          width: 28px;
+          left: calc(50% - 5px);
+          width: 10px;
           height: 2px;
-          background: #C49A4A;
+          background: var(--color-gold);
           transform: translateY(-50%);
         }
         #com-o-mapa-voce-vai .map-row::after {
@@ -133,30 +144,32 @@ export default function MapaVai() {
           width: 9px;
           height: 9px;
           border-radius: 999px;
-          background: #C49A4A;
-          box-shadow: 0 0 0 4px rgba(196, 154, 74, 0.16);
+          background: var(--color-gold);
+          box-shadow: none;
           transform: translate(-50%, -50%);
         }
         #com-o-mapa-voce-vai .map-step {
           position: relative;
           min-width: 0;
+          display: flex;
         }
         #com-o-mapa-voce-vai .map-card {
           position: relative;
           width: 100%;
-          min-height: 104px;
+          min-height: 132px;
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           border-radius: 7px;
           background: #101010;
           color: #FFFFFF;
-          padding: 14px 10px 13px;
+          padding: 46px 12px 16px;
           border: 1px solid rgba(255, 255, 255, 0.08);
         }
         #com-o-mapa-voce-vai .map-number {
           position: absolute;
-          top: 10px;
-          color: #C49A4A;
+          top: 16px;
+          left: 12px;
+          color: var(--color-gold);
           font-size: 0.68rem;
           font-weight: 900;
           letter-spacing: 0.08em;
@@ -166,8 +179,8 @@ export default function MapaVai() {
           display: block;
           width: 100%;
           color: #FFFFFF;
-          font-size: clamp(1rem, 4.3vw, 1.34rem);
-          line-height: 1;
+          font-size: clamp(0.88rem, 3.55vw, 1.08rem);
+          line-height: 1.04;
         }
         #com-o-mapa-voce-vai .map-step-left .map-card {
           justify-self: start;
@@ -176,12 +189,6 @@ export default function MapaVai() {
         #com-o-mapa-voce-vai .map-step-right .map-card {
           justify-self: end;
           text-align: left;
-        }
-        #com-o-mapa-voce-vai .map-step-left .map-number {
-          right: 12px;
-        }
-        #com-o-mapa-voce-vai .map-step-right .map-number {
-          right: 12px;
         }
         #com-o-mapa-voce-vai [data-map-reveal] {
           opacity: 0;
@@ -203,11 +210,11 @@ export default function MapaVai() {
             padding-right: 8px;
           }
           #com-o-mapa-voce-vai .map-row {
-            column-gap: 24px;
+            column-gap: 8px;
           }
           #com-o-mapa-voce-vai .map-row::before {
-            left: calc(50% - 12px);
-            width: 24px;
+            left: calc(50% - 4px);
+            width: 8px;
           }
           #com-o-mapa-voce-vai .map-card {
             padding-left: 8px;
@@ -221,17 +228,19 @@ export default function MapaVai() {
           #com-o-mapa-voce-vai {
             padding: 96px 28px 108px;
           }
+          #com-o-mapa-voce-vai .map-shell {
+            max-width: 980px;
+          }
           #com-o-mapa-voce-vai .map-path {
             max-width: 920px;
             margin-top: 74px;
           }
           #com-o-mapa-voce-vai .map-row {
             column-gap: 76px;
-            min-height: 126px;
             margin-bottom: 24px;
           }
           #com-o-mapa-voce-vai .map-card {
-            min-height: 92px;
+            min-height: 126px;
             padding: 18px 20px 17px;
           }
           #com-o-mapa-voce-vai .map-row::before {
@@ -239,7 +248,7 @@ export default function MapaVai() {
             width: 76px;
           }
           #com-o-mapa-voce-vai .map-text {
-            font-size: clamp(1.34rem, 2.4vw, 2rem);
+            font-size: clamp(1.18rem, 2.05vw, 1.74rem);
             line-height: 0.95;
           }
         }
@@ -261,9 +270,8 @@ export default function MapaVai() {
 
       <div className="map-shell">
         <h2 id="com-o-mapa-voce-vai-title" className="map-display map-title">
-          COM O MAPA DO DEGRADÊ SEM MARCA,
-          <br />
-          VOCÊ VAI...
+          <span className="map-title-line">COM O MAPA DO DEGRADÊ SEM MARCA,</span>
+          <span className="map-title-line">VOCÊ VAI...</span>
         </h2>
 
         <div className="map-path" aria-label="Capacidades que o Mapa do Degradê Sem Marca ajuda a desenvolver">

@@ -6,8 +6,8 @@ export default function Garantia() {
     id="garantia"
     aria-labelledby="garantia-title"
     data-track-section="garantia"
-    data-track-order="12"
-    data-track-title="12 - GARANTIA"
+    data-track-order="13"
+    data-track-title="13 - GARANTIA"
   >
       <style>{`
         #garantia {
@@ -19,8 +19,8 @@ export default function Garantia() {
           overflow: hidden;
           box-sizing: border-box;
           padding: 72px 18px 78px;
-          background: #0B0704;
-          color: #FFF4E6;
+          background: var(--color-paper-alt);
+          color: var(--color-ink);
           border-top: 1px solid rgba(216, 166, 74, 0.2);
           border-bottom: 1px solid rgba(216, 166, 74, 0.18);
         }
@@ -41,7 +41,7 @@ export default function Garantia() {
           height: auto;
           margin: 0 auto 24px;
           object-fit: contain;
-          filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.42));
+          filter: sepia(0.38) saturate(0.9) hue-rotate(348deg) drop-shadow(0 10px 22px rgba(11, 7, 4, 0.16));
         }
         #garantia .guarantee-title {
           margin: 0;
@@ -54,16 +54,16 @@ export default function Garantia() {
         }
         #garantia .guarantee-title-main {
           display: block;
-          color: #D8A64A;
+          color: var(--color-gold);
         }
         #garantia .guarantee-title-rest {
           display: block;
-          color: #FFF4E6;
+          color: var(--color-ink);
         }
         #garantia .guarantee-copy {
           max-width: 560px;
           margin: 24px auto 0;
-          color: rgba(255, 244, 230, 0.78);
+          color: #4B4035;
           font-size: clamp(1rem, 4vw, 1.14rem);
           font-weight: 650;
           line-height: 1.52;
@@ -76,17 +76,13 @@ export default function Garantia() {
         }
         #garantia .guarantee-close {
           margin: 28px 0 0;
-          color: #FFF4E6;
+          color: var(--color-ink);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: clamp(1.52rem, 6.2vw, 2.65rem);
           font-weight: 900;
           letter-spacing: 0;
           line-height: 0.98;
           text-transform: uppercase;
-        }
-        #garantia .guarantee-close span {
-          display: block;
-          color: #D8A64A;
         }
         @media (min-width: 760px) {
           #garantia {
@@ -130,7 +126,6 @@ export default function Garantia() {
 
         <p className="guarantee-close">
           Seu acesso é imediato.
-          <span>O risco fica com a gente.</span>
         </p>
       </div>
     </section>

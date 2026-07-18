@@ -8,7 +8,7 @@ import './globals.css';
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-sans',
-  display: 'swap',
+  display: 'block',
   preload: true,
 });
 
@@ -16,7 +16,7 @@ const bebasNeue = Bebas_Neue({
   subsets: ['latin'],
   variable: '--font-display',
   weight: '400',
-  display: 'swap',
+  display: 'block',
   preload: true,
 });
 
@@ -84,11 +84,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://api6.ipify.org" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
+        <script
+          src="https://cdn.utmify.com.br/scripts/utms/latest.js"
+          data-utmify-prevent-xcod-sck
+          data-utmify-prevent-subids
+          async
+          defer
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.pixelId = "6a4b090cd0b0714e73bcc2f6";
+              var a = document.createElement("script");
+              a.setAttribute("async", "");
+              a.setAttribute("defer", "");
+              a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
+              document.head.appendChild(a);
+            `,
+          }}
+        />
+
         {/* ── Preload da imagem LCP — tamanho real de exibição 648px ────── */}
         <link
           rel="preload"
           as="image"
-          href="/_next/image?url=%2Fimages%2Fhero%2Fmockup-hero-sf.webp&w=828&q=75"
+          href="/images/hero/mockup-hero-sf.webp"
           type="image/webp"
           fetchPriority="high"
         />
@@ -99,39 +119,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style dangerouslySetInnerHTML={{ __html: `
           *,::after,::before{box-sizing:border-box}
           html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
-          body{margin:0;background:#0B0704;color:#FFF4E6;overflow-x:hidden;font-family:system-ui,sans-serif}
+          body{margin:0;background:#0B0704;color:#F7F1E8;overflow-x:hidden;font-family:system-ui,sans-serif}
           img{display:block;max-width:100%;height:auto}
-          .texture-brick{background-color:#160D08;position:relative}
+          .texture-brick{background-color:#140D08;position:relative}
           .font-display{font-family:var(--font-display),'Bebas Neue',system-ui,sans-serif}
-          .badge-gold{display:inline-block;padding:4px 12px;border-radius:9999px;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:rgba(216,166,74,.15);border:1px solid rgba(216,166,74,.4);color:#D8A64A}
+          .badge-gold{display:inline-block;padding:4px 12px;border-radius:8px;font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:#EFE6D8;border:1px solid #D8C9B6;color:#6E4A11}
           .font-sans{font-family:var(--font-sans),system-ui,sans-serif}
           .antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
         ` }} />
       </head>
 
-      <body className="font-sans antialiased bg-[#0B0704] text-[#FFF4E6]" suppressHydrationWarning>
+      <body className="font-sans antialiased bg-[#0B0704] text-[#F7F1E8]" suppressHydrationWarning>
         {children}
         <SpeedInsights />
         <Analytics />
-
-        {/* ── UTMify latest.js — afterInteractive ────────────────────────
-            Captura UTMs da URL assim que a página interagir.
-            Deve carregar ANTES do pixel.js para herança de atribuição.
-            NÃO alterar para lazyOnload — pode perder UTM em clique rápido. ── */}
-        <Script
-          src="https://cdn.utmify.com.br/scripts/utms/latest.js"
-          data-utmify-prevent-xcod-sck=""
-          data-utmify-prevent-subids=""
-          strategy="afterInteractive"
-        />
-
-        {/* ── Pixel Facebook via UTMify — afterInteractive ────────────────
-            Carrega pixel.js APÓS latest.js para herdar dados de UTM.
-            window.pixelId deve estar definido antes do script carregar.
-            NÃO alterar para lazyOnload — pode perder PageView de atribuição. ── */}
-        <Script id="utmify-pixel" strategy="afterInteractive">
-          {`window.pixelId="6a4b090cd0b0714e73bcc2f6";var a=document.createElement("script");a.setAttribute("async","");a.setAttribute("defer","");a.setAttribute("src","https://cdn.utmify.com.br/scripts/pixel/pixel.js");document.head.appendChild(a);`}
-        </Script>
 
         {/* ── Microsoft Clarity — lazyOnload (após idle) ───────────────── */}
         {clarityId && (

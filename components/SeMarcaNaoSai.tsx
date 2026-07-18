@@ -92,8 +92,8 @@ export default function SeMarcaNaoSai() {
           box-sizing: border-box;
           overflow: hidden;
           padding: 74px 20px 84px;
-          background: #F7F1E8;
-          color: #100F0D;
+          background: var(--color-paper);
+          color: var(--color-ink);
           border-bottom: 1px solid rgba(31, 24, 16, 0.12);
         }
         #se-a-marca-nao-sai *,
@@ -115,7 +115,7 @@ export default function SeMarcaNaoSai() {
         }
         #se-a-marca-nao-sai .sai-title {
           margin: 0 auto;
-          color: #100F0D;
+          color: var(--color-ink);
           text-align: center;
           font-size: clamp(3.25rem, 13.8vw, 6.4rem);
         }
@@ -131,7 +131,7 @@ export default function SeMarcaNaoSai() {
           right: 0.04em;
           bottom: -0.08em;
           height: 0.08em;
-          background: #A92A2A;
+          background: var(--color-alert);
         }
         #se-a-marca-nao-sai .sai-consequence {
           position: relative;
@@ -140,7 +140,7 @@ export default function SeMarcaNaoSai() {
           max-width: 720px;
           margin: 66px auto 0;
           text-align: center;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(1.35rem, 5.7vw, 3.2rem);
         }
         #se-a-marca-nao-sai .sai-lines {
@@ -180,24 +180,21 @@ export default function SeMarcaNaoSai() {
           justify-self: end;
           text-align: right;
         }
-        #se-a-marca-nao-sai .sai-branch .sai-node {
-          font-size: 0.86em;
-        }
         #se-a-marca-nao-sai .sai-consequence .sai-mark {
           display: inline-block;
-          color: #A92A2A;
+          color: var(--color-alert);
         }
         #se-a-marca-nao-sai .sai-intro {
           max-width: 680px;
           margin: 72px auto 0;
           text-align: center;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2.1rem, 8.4vw, 3.85rem);
         }
         #se-a-marca-nao-sai .sai-gold {
           display: inline-block;
           padding-bottom: 0.06em;
-          border-bottom: 0.08em solid #D7A42C;
+          border-bottom: 0.08em solid var(--color-gold);
         }
         #se-a-marca-nao-sai .sai-slot {
           width: min(100%, 540px);
@@ -211,7 +208,7 @@ export default function SeMarcaNaoSai() {
           align-items: center;
           justify-content: center;
           gap: 14px;
-          margin-bottom: 14px;
+          margin: 0 0 14px;
           color: #5B4E3F;
           font-size: 0.78rem;
           font-weight: 900;
@@ -229,8 +226,12 @@ export default function SeMarcaNaoSai() {
           opacity: 0;
         }
         #se-a-marca-nao-sai .sai-counter {
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: 0.9rem;
+        }
+        #se-a-marca-nao-sai .sai-progress,
+        #se-a-marca-nao-sai .sai-side {
+          display: none;
         }
         #se-a-marca-nao-sai .sai-stage {
           position: relative;
@@ -253,11 +254,11 @@ export default function SeMarcaNaoSai() {
         }
         #se-a-marca-nao-sai .sai-stage::before {
           top: 0;
-          background: linear-gradient(180deg, #F7F1E8 0%, rgba(247, 241, 232, 0) 100%);
+          background: linear-gradient(180deg, var(--color-paper) 0%, rgba(247, 241, 232, 0) 100%);
         }
         #se-a-marca-nao-sai .sai-stage::after {
           bottom: 0;
-          background: linear-gradient(0deg, #F7F1E8 0%, rgba(247, 241, 232, 0) 100%);
+          background: linear-gradient(0deg, var(--color-paper) 0%, rgba(247, 241, 232, 0) 100%);
         }
         #se-a-marca-nao-sai .sai-main {
           position: absolute;
@@ -278,30 +279,30 @@ export default function SeMarcaNaoSai() {
           position: absolute;
           top: 50%;
           z-index: 8;
-          width: 40px;
-          height: 40px;
+          width: 44px;
+          height: 44px;
           display: grid;
           place-items: center;
           border: 1px solid rgba(16, 15, 13, 0.16);
-          border-radius: 999px;
+          border-radius: 8px;
           background: rgba(247, 241, 232, 0.9);
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: 1.7rem;
           font-weight: 900;
           line-height: 1;
           cursor: pointer;
           transform: translateY(-50%);
-          box-shadow: 0 10px 22px rgba(31, 24, 16, 0.12);
+          box-shadow: none;
         }
         #se-a-marca-nao-sai .sai-arrow:focus-visible {
-          outline: 3px solid #D7A42C;
+          outline: 3px solid var(--color-gold);
           outline-offset: 3px;
         }
         #se-a-marca-nao-sai .sai-arrow-left {
-          left: 2px;
+          left: 4px;
         }
         #se-a-marca-nao-sai .sai-arrow-right {
-          right: 2px;
+          right: 4px;
         }
         #se-a-marca-nao-sai .sai-image {
           display: block;
@@ -319,7 +320,7 @@ export default function SeMarcaNaoSai() {
           max-width: calc(100% - 24px);
           padding: 0.36em 0.6em 0.42em;
           background: rgba(247, 241, 232, 0.92);
-          color: #100F0D;
+          color: var(--color-ink);
           border: 1px solid rgba(215, 164, 44, 0.7);
           font-size: clamp(1.1rem, 5vw, 1.65rem);
           text-align: center;
@@ -327,7 +328,7 @@ export default function SeMarcaNaoSai() {
         #se-a-marca-nao-sai .sai-close {
           margin: 64px auto 0;
           text-align: center;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2.05rem, 8.2vw, 3.75rem);
         }
         #se-a-marca-nao-sai .sai-close span {
@@ -356,6 +357,22 @@ export default function SeMarcaNaoSai() {
           }
           #se-a-marca-nao-sai .sai-main {
             width: min(82%, 500px);
+          }
+        }
+        @media (max-width: 759px) {
+          #se-a-marca-nao-sai .sai-consequence {
+            max-width: 420px;
+          }
+          #se-a-marca-nao-sai .sai-branch {
+            grid-template-columns: 1fr;
+          }
+          #se-a-marca-nao-sai .sai-node-left,
+          #se-a-marca-nao-sai .sai-node-right {
+            justify-self: center;
+            text-align: center;
+          }
+          #se-a-marca-nao-sai .sai-lines {
+            display: none;
           }
         }
         @media (max-width: 374px) {
@@ -394,112 +411,111 @@ export default function SeMarcaNaoSai() {
 
       <div className="sai-shell">
         <h2 id="se-a-marca-nao-sai-title" className="sai-display sai-title">
-          SE A MARCA NÃO SAI,
+          Antes de corrigir,
           <br />
-          <span className="sai-title-alert">
-            NÃO PASSE A MÁQUINA
-            <br />
-            DE NOVO.
-          </span>
+          compara estas
+          <br />
+          <span className="sai-title-alert">4 partes da lateral</span>
         </h2>
 
-        <div className="sai-display sai-consequence" aria-label="Diagrama de causa e consequência da correção sem clareza visual">
-          <svg className="sai-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M50 9 L27 38" />
-            <path d="M50 9 L73 38" />
-            <path d="M27 62 L50 91" />
-            <path d="M73 62 L50 91" />
-          </svg>
-          <div className="sai-node">
-            SEM CLAREZA VISUAL
-            <br />
-            DO QUE REVISAR,
-          </div>
-          <div className="sai-branch">
-            <div className="sai-node sai-node-left">
-              VOCÊ PODE MEXER
-              <br />
-              NA FAIXA ERRADA,
-            </div>
-            <div className="sai-node sai-node-right sai-mark">SUBIR O DEGRADÊ</div>
-          </div>
-          <div className="sai-node">
-            E DEIXAR A MARCA
-            <br />
-            <span className="sai-mark">AINDA MAIS PESADA.</span>
-          </div>
-        </div>
-
-        <p className="sai-display sai-intro">
-          ANTES DE CORRIGIR,
-          <br />
-          <br />
-          COMPARE ESTAS
-          <br />
-          <span className="sai-gold">4 PARTES DA LATERAL.</span>
-        </p>
-
-        <div className="sai-slot" aria-label="Sequência visual das quatro partes da lateral">
-          <div className="sai-slot-head">
-            <span className="sai-counter" aria-live="polite">
-              {padIndex(active)} / 04
-            </span>
-            <p className={`sai-slot-hint${hasInteracted ? ' is-muted' : ''}`}>
-              ARRASTE PARA O LADO
-              <br />
-              PARA VER CADA PARTE
-            </p>
-          </div>
-
-          <div
-            className="sai-stage"
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={() => { swipeStartRef.current = null; }}
-          >
-            <button
-              className="sai-arrow sai-arrow-left"
-              type="button"
-              onClick={() => show(previousIndex)}
-              aria-label="Mostrar etapa anterior"
-            >
-              ‹
-            </button>
-
-            <div className="sai-main" key={current.label} aria-current="true">
-              <Image
-                className="sai-image"
-                src={current.src}
-                alt={current.alt}
-                width={current.width}
-                height={current.height}
-                sizes="(max-width: 759px) 92vw, 520px"
-              />
-              <div className="sai-display sai-step-label">{current.label}</div>
+        <div className="sai-method-block">
+          <div className="sai-slot" aria-label="Sequencia visual das quatro partes da lateral">
+            <div className="sai-slot-head">
+              <span className="sai-counter" aria-live="polite">
+                {padIndex(active)} / 04
+              </span>
+              <p className={`sai-slot-hint${hasInteracted ? ' is-muted' : ''}`}>
+                ARRASTE PARA O LADO
+                <br />
+                PARA VER CADA PARTE
+              </p>
             </div>
 
-            <button
-              className="sai-arrow sai-arrow-right"
-              type="button"
-              onClick={() => show(nextIndex)}
-              aria-label="Mostrar próxima etapa"
+            <div className="sai-progress" aria-label="Etapas do Metodo M.A.P.A.">
+              {steps.map((step, index) => (
+                <div className={`sai-progress-item${index === active ? ' is-active' : ''}`} key={step.label}>
+                  <span className="sai-progress-letter">{step.label.charAt(0)}</span>
+                  <span><span aria-hidden="true">— </span>{step.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div
+              className="sai-stage"
+              onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={() => { swipeStartRef.current = null; }}
             >
-              ›
-            </button>
+              <button
+                className="sai-arrow sai-arrow-left"
+                type="button"
+                onClick={() => show(previousIndex)}
+                aria-label="Mostrar etapa anterior"
+              >
+                &lsaquo;
+              </button>
+
+              <button
+                className="sai-side sai-side-left"
+                type="button"
+                onClick={() => show(previousIndex)}
+                aria-label="Mostrar etapa anterior"
+              >
+                <Image
+                  className="sai-image"
+                  src={steps[previousIndex].src}
+                  alt=""
+                  width={steps[previousIndex].width}
+                  height={steps[previousIndex].height}
+                  sizes="(max-width: 759px) 58vw, 430px"
+                  aria-hidden="true"
+                />
+              </button>
+
+              <div className="sai-main" key={current.label} aria-current="true">
+                <Image
+                  className="sai-image"
+                  src={current.src}
+                  alt={current.alt}
+                  width={current.width}
+                  height={current.height}
+                  sizes="(max-width: 759px) 76vw, 600px"
+                />
+                <div className="sai-display sai-step-label">{current.label}</div>
+              </div>
+
+              <button
+                className="sai-side sai-side-right"
+                type="button"
+                onClick={() => show(nextIndex)}
+                aria-label="Mostrar proxima etapa"
+              >
+                <Image
+                  className="sai-image"
+                  src={steps[nextIndex].src}
+                  alt=""
+                  width={steps[nextIndex].width}
+                  height={steps[nextIndex].height}
+                  sizes="(max-width: 759px) 58vw, 430px"
+                  aria-hidden="true"
+                />
+              </button>
+
+              <button
+                className="sai-arrow sai-arrow-right"
+                type="button"
+                onClick={() => show(nextIndex)}
+                aria-label="Mostrar proxima etapa"
+              >
+                &rsaquo;
+              </button>
+            </div>
           </div>
         </div>
 
         <p className="sai-display sai-close">
-          <span>EM VEZ DE VOLTAR</span>
-          <br />
-          <span>EM TUDO,</span>
-          <br />
-          <br />
-          <span>VOCÊ CONSEGUE VER</span>
-          <br />
-          <span>QUAL PARTE PRECISA</span>
-          <br />
-          <span>SER REVISADA.</span>
+          SEM CLAREZA VISUAL DO QUE REVISAR, VOCÊ PODE MEXER NA FAIXA ERRADA,
+          SUBIR O DEGRADÊ E DEIXAR A MARCA AINDA MAIS PESADA.
         </p>
       </div>
     </section>

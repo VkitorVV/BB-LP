@@ -6,8 +6,8 @@ export default function Rodape() {
     id="rodape"
     aria-labelledby="rodape-title"
     data-track-section="rodape"
-    data-track-order="15"
-    data-track-title="15 - RODAPÉ"
+    data-track-order="16"
+    data-track-title="16 - RODAPE"
   >
       <style>{`
         #rodape {
@@ -19,8 +19,8 @@ export default function Rodape() {
           overflow-x: clip;
           box-sizing: border-box;
           padding: 34px 18px 36px;
-          background: #0F0A06;
-          color: #D9C3A3;
+          background: var(--color-espresso);
+          color: var(--color-paper-alt);
           border-top: 1px solid rgba(216, 166, 74, 0.2);
         }
         #rodape *,
@@ -40,7 +40,7 @@ export default function Rodape() {
         }
         #rodape .footer-brand {
           margin: 0 0 6px;
-          color: #FFF4E6;
+          color: var(--color-paper);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: 1.35rem;
           font-weight: 900;
@@ -60,7 +60,7 @@ export default function Rodape() {
           color: #C9B89A;
         }
         #rodape .footer-support a {
-          color: #D8A64A;
+          color: var(--color-gold);
           overflow-wrap: anywhere;
           text-decoration: none;
           font-weight: 850;

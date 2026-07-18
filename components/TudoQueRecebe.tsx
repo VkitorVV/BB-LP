@@ -70,6 +70,9 @@ export default function TudoQueRecebe() {
     <section
       id="veja-tudo-que-recebe"
       aria-labelledby="veja-tudo-que-recebe-title"
+      data-track-section="veja-tudo-que-recebe"
+      data-track-order="8"
+      data-track-title="08 - VEJA TUDO QUE VOCE VAI RECEBER"
     >
       <style>{`
         #veja-tudo-que-recebe {
@@ -81,8 +84,8 @@ export default function TudoQueRecebe() {
           overflow: hidden;
           box-sizing: border-box;
           padding: 78px 0 88px;
-          background: #F7F1E8;
-          color: #100F0D;
+          background: var(--color-paper);
+          color: var(--color-ink);
           border-bottom: 1px solid rgba(31, 24, 16, 0.12);
         }
         #veja-tudo-que-recebe *,
@@ -107,7 +110,7 @@ export default function TudoQueRecebe() {
           max-width: 760px;
           margin: 0 auto 48px;
           text-align: center;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2.7rem, 11.6vw, 5.8rem);
         }
         #veja-tudo-que-recebe .main-product {
@@ -140,11 +143,11 @@ export default function TudoQueRecebe() {
           border-radius: 6px;
           background: rgba(255, 255, 255, 0.5);
           border: 1px solid rgba(196, 154, 74, 0.18);
-          box-shadow: 0 18px 42px rgba(52, 35, 18, 0.14);
+          box-shadow: var(--shadow-card);
         }
         #veja-tudo-que-recebe .main-name {
           margin: 24px auto 12px;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2.05rem, 9vw, 4.2rem);
         }
         #veja-tudo-que-recebe .main-description {
@@ -170,7 +173,7 @@ export default function TudoQueRecebe() {
         }
         #veja-tudo-que-recebe .transition-title {
           margin: 0;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(2.25rem, 10vw, 4.9rem);
         }
         #veja-tudo-que-recebe .bonus-list {
@@ -234,7 +237,7 @@ export default function TudoQueRecebe() {
         }
         #veja-tudo-que-recebe .bonus-name {
           margin: 0 0 7px;
-          color: #100F0D;
+          color: var(--color-ink);
           font-size: clamp(1.22rem, 5.45vw, 2.55rem);
         }
         #veja-tudo-que-recebe .bonus-description {
@@ -334,8 +337,8 @@ export default function TudoQueRecebe() {
           className="main-product"
           data-recebe-reveal
           data-track-section="veja-tudo-produto-principal"
-          data-track-order="8"
-          data-track-title="08 - PRODUTO PRINCIPAL"
+          data-track-order="9"
+          data-track-title="09 - PRODUTO PRINCIPAL"
         >
           <div className="value-mark">GUIA PRINCIPAL - R$ 19,90</div>
 
@@ -367,8 +370,8 @@ export default function TudoQueRecebe() {
           className="bonus-transition"
           data-recebe-reveal
           data-track-section="veja-tudo-bonus"
-          data-track-order="9"
-          data-track-title="09 - BÔNUS"
+          data-track-order="10"
+          data-track-title="10 - BONUS"
         >
           <p className="recebe-display transition-kicker">E ISSO É SÓ O COMEÇO...</p>
           <p className="recebe-display transition-title">

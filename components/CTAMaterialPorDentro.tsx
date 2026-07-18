@@ -15,7 +15,7 @@ export default function CTAMaterialPorDentro() {
       ctaLabel: 'CTA Material Por Dentro',
       buttonLocation: 'cta-material-por-dentro',
       sourceSectionId: 'cta-material-por-dentro',
-      sourceSectionTitle: '05 - CTA MATERIAL POR DENTRO',
+      sourceSectionTitle: '05 - CTA MATERIAL',
       sourceSectionOrder: 5,
       sessionId: getSessionId(),
       utms: getUtmParams(),
@@ -30,7 +30,7 @@ export default function CTAMaterialPorDentro() {
       aria-labelledby="cta-material-por-dentro-title"
       data-track-section="cta-material-por-dentro"
       data-track-order="5"
-      data-track-title="05 - CTA MATERIAL POR DENTRO"
+      data-track-title="05 - CTA MATERIAL"
     >
       <style>{`
         #cta-material-por-dentro {
@@ -42,8 +42,8 @@ export default function CTAMaterialPorDentro() {
           overflow: hidden;
           box-sizing: border-box;
           padding: 34px 18px 40px;
-          background: #F7F1E8;
-          color: #FFF4E6;
+          background: var(--color-paper);
+          color: var(--color-paper);
         }
         #cta-material-por-dentro *,
         #cta-material-por-dentro *::before,
@@ -57,21 +57,22 @@ export default function CTAMaterialPorDentro() {
           border-radius: 8px;
           padding: 30px 20px 24px;
           background: #100C08;
-          border: 1px solid rgba(216, 166, 74, 0.24);
-          box-shadow: 0 20px 46px rgba(31, 24, 16, 0.2);
+          border: 1px solid rgba(216, 201, 182, 0.22);
+          box-shadow: 0 14px 40px rgba(11, 7, 4, 0.08);
+          text-align: center;
         }
         #cta-material-por-dentro .cta-detail {
           display: block;
           width: 52px;
           height: 3px;
-          margin: 0 0 18px;
-          border-radius: 999px;
-          background: #D8A64A;
+          margin: 0 auto 18px;
+          border-radius: 4px;
+          background: var(--color-gold);
         }
         #cta-material-por-dentro .cta-title {
           max-width: 640px;
-          margin: 0;
-          color: #FFF4E6;
+          margin: 0 auto;
+          color: var(--color-paper);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
           font-size: clamp(1.74rem, 7.9vw, 4.2rem);
           font-weight: 900;
@@ -82,11 +83,16 @@ export default function CTAMaterialPorDentro() {
         }
         #cta-material-por-dentro .cta-copy {
           max-width: 590px;
-          margin: 18px 0 0;
+          margin: 18px auto 0;
           color: rgba(255, 244, 230, 0.78);
-          font-size: clamp(0.98rem, 3.9vw, 1.1rem);
+          font-size: clamp(0.93rem, 3.7vw, 1.045rem);
           line-height: 1.45;
           font-weight: 650;
+          text-align: center;
+        }
+        #cta-material-por-dentro .cta-copy-break {
+          display: block;
+          margin-top: 12px;
         }
         #cta-material-por-dentro .cta-button {
           display: inline-flex;
@@ -96,11 +102,11 @@ export default function CTAMaterialPorDentro() {
           min-height: 56px;
           margin: 24px 0 0;
           border-radius: 7px;
-          background: #D8A64A;
+          background: var(--color-gold);
           color: #100C08;
-          border: 2px solid #D8A64A;
-          font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
-          font-size: 1.16rem;
+          border: 2px solid var(--color-gold);
+          font-family: var(--font-sans), var(--font-sans-family);
+          font-size: 0.86rem;
           font-weight: 900;
           line-height: 1;
           letter-spacing: 0;
@@ -110,11 +116,15 @@ export default function CTAMaterialPorDentro() {
           -webkit-tap-highlight-color: transparent;
           transition: transform 150ms ease, background-color 150ms ease, border-color 150ms ease;
         }
+        #cta-material-por-dentro .cta-button:hover {
+          background: #E2B45B;
+          border-color: #E2B45B;
+        }
         #cta-material-por-dentro .cta-button:active {
           transform: scale(0.985);
         }
         #cta-material-por-dentro .cta-button:focus-visible {
-          outline: 3px solid #FFF4E6;
+          outline: 3px solid var(--color-paper);
           outline-offset: 3px;
         }
         #cta-material-por-dentro .cta-safe {
@@ -139,7 +149,7 @@ export default function CTAMaterialPorDentro() {
             padding-right: 30px;
           }
           #cta-material-por-dentro .cta-safe {
-            text-align: left;
+            text-align: center;
           }
         }
       `}</style>
@@ -147,10 +157,14 @@ export default function CTAMaterialPorDentro() {
       <div className="cta-shell">
         <span className="cta-detail" aria-hidden="true" />
         <h2 id="cta-material-por-dentro-title" className="cta-title">
-          Acesse ainda hoje e consulte o material quando for treinar
+          DEIXE O MAPA SALVO NO CELULAR PARA O PRÓXIMO CORTE
         </h2>
         <p className="cta-copy">
-          O Mapa do Degradê Sem Marca é digital. Após a confirmação da compra, você recebe o acesso e pode abrir pelo celular, computador ou tablet.
+          Assim que a compra for confirmada, você recebe o mapa e pode abrir pelo celular,
+          computador ou tablet.
+          <span className="cta-copy-break">
+            E ainda pode imprimir, pois as páginas vão em formato A4, perfeitas para impressão.
+          </span>
         </p>
         <a
           className="cta-button"
@@ -159,7 +173,7 @@ export default function CTAMaterialPorDentro() {
           data-track-cta="CTA Material Por Dentro"
           data-button-location="cta-material-por-dentro"
         >
-          Quero acessar agora
+          QUERO USAR O MAPA NO PRÓXIMO CORTE
         </a>
         <p className="cta-safe">
           🔒 Compra segura. Material digital. Acesso após confirmação.

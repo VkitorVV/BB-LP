@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 
 export default function MarcaNaoAparece() {
   React.useEffect(() => {
@@ -35,7 +34,7 @@ export default function MarcaNaoAparece() {
       aria-labelledby="marca-nao-aparece-title"
       data-track-section="marca-nao-aparece"
       data-track-order="2"
-      data-track-title="02 - NÃO APARECE DO NADA"
+      data-track-title="02 - ELA COMECA ANTES"
     >
       <style>{`
         #marca-nao-aparece {
@@ -48,7 +47,7 @@ export default function MarcaNaoAparece() {
           overflow: hidden;
           padding: 72px 20px 84px;
           background: #F3EEE6;
-          color: #11100E;
+          color: var(--color-ink);
           border-bottom: 1px solid rgba(20, 16, 12, 0.12);
         }
         #marca-nao-aparece *,
@@ -78,24 +77,26 @@ export default function MarcaNaoAparece() {
           text-transform: uppercase;
         }
         #marca-nao-aparece .marca-opening {
-          margin: 0 auto 54px;
-          color: #11100E;
+          max-width: 760px;
+          margin: 0 auto 34px;
+          color: var(--color-ink);
           text-align: center;
-          font-size: clamp(3.9rem, 16vw, 7rem);
+          font-size: clamp(3.05rem, 13vw, 6rem);
         }
         #marca-nao-aparece .marca-composition {
           position: relative;
-          width: min(100%, 620px);
-          min-height: 360px;
+          width: min(100%, 680px);
+          min-height: 0;
           margin: 0 auto;
+          text-align: center;
         }
         #marca-nao-aparece .marca-image {
           position: relative;
           z-index: 1;
           display: block;
-          width: 76%;
+          width: min(100%, 560px);
           height: auto;
-          margin-right: auto;
+          margin: 0 auto;
           object-fit: contain;
         }
         #marca-nao-aparece .marca-nao {
@@ -105,8 +106,8 @@ export default function MarcaNaoAparece() {
           top: 33%;
           max-width: 46%;
           transform: translateY(-50%);
-          color: #11100E;
-          font-size: clamp(2.55rem, 13vw, 5.2rem);
+          color: var(--color-ink);
+          font-size: clamp(2.55rem, 13vw, 5rem);
           text-align: left;
           text-shadow:
             0 1px 0 rgba(243, 238, 230, 0.9),
@@ -116,40 +117,40 @@ export default function MarcaNaoAparece() {
         #marca-nao-aparece .marca-nada {
           margin: 56px 0 0;
           text-align: center;
-          color: #11100E;
-          font-size: clamp(3.6rem, 15vw, 6.6rem);
+          color: var(--color-ink);
+          font-size: clamp(3.2rem, 13.6vw, 5.9rem);
         }
         #marca-nao-aparece .marca-nada-alert {
           display: inline-block;
           margin-left: 0.08em;
           padding: 0.02em 0.13em 0.08em;
           border-radius: 2px;
-          background: #A92A2A;
+          background: var(--color-alert);
           color: #FFFFFF;
         }
         #marca-nao-aparece .marca-copy-strong {
           max-width: 620px;
           margin: 44px auto 0;
           text-align: center;
-          color: #11100E;
+          color: var(--color-ink);
           font-size: clamp(1.8rem, 7.5vw, 3.3rem);
         }
         #marca-nao-aparece .marca-causes {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 17px;
-          max-width: 620px;
-          margin: 42px auto 0;
-          text-align: center;
+          max-width: 680px;
+          margin: 34px auto 0;
+          text-align: left;
+        }
+        #marca-nao-aparece .marca-cause-block {
+          display: contents;
         }
         #marca-nao-aparece .marca-cause {
           width: 100%;
           margin: 0;
           color: #30271F;
-          font-size: clamp(1.18rem, 4.7vw, 1.85rem);
-          line-height: 1.12;
-          font-weight: 800;
+          font-family: var(--font-sans), var(--font-sans-family);
+          font-size: clamp(1rem, 4.2vw, 1.25rem);
+          line-height: 1.58;
+          font-weight: 650;
         }
         #marca-nao-aparece .marca-conclusion {
           margin: 52px auto 0;
@@ -157,7 +158,7 @@ export default function MarcaNaoAparece() {
         }
         #marca-nao-aparece .marca-conclusion-title {
           margin: 0;
-          color: #11100E;
+          color: var(--color-ink);
           font-size: clamp(2.05rem, 8vw, 3.65rem);
         }
         #marca-nao-aparece .marca-conclusion-title span {
@@ -167,7 +168,7 @@ export default function MarcaNaoAparece() {
           max-width: 620px;
           margin: 52px auto 0;
           text-align: center;
-          color: #11100E;
+          color: var(--color-ink);
           font-size: clamp(1.85rem, 7.4vw, 3.45rem);
           line-height: 1;
           font-weight: 900;
@@ -176,8 +177,8 @@ export default function MarcaNaoAparece() {
           display: inline-block;
           padding: 0.04em 0.14em 0.1em;
           border-radius: 2px;
-          background: #2FFF00;
-          color: #11100E;
+          background: var(--color-gold);
+          color: var(--color-ink);
         }
         #marca-nao-aparece .marca-arrow {
           display: block;
@@ -185,6 +186,7 @@ export default function MarcaNaoAparece() {
           height: auto;
           margin: 22px auto 0;
           animation: marcaArrowDrift 1500ms ease-in-out infinite;
+          filter: sepia(1) saturate(0.75) hue-rotate(354deg) brightness(0.92);
         }
         @keyframes marcaArrowDrift {
           0%, 100% { transform: translateY(0); }
@@ -196,10 +198,10 @@ export default function MarcaNaoAparece() {
           }
           #marca-nao-aparece .marca-composition {
             width: min(100%, 760px);
-            min-height: 470px;
+            min-height: 0;
           }
           #marca-nao-aparece .marca-image {
-            width: 70%;
+            width: min(100%, 620px);
           }
           #marca-nao-aparece .marca-nao {
             left: 61%;
@@ -213,14 +215,14 @@ export default function MarcaNaoAparece() {
             padding-bottom: 120px;
           }
           #marca-nao-aparece .marca-opening {
-            margin-bottom: 76px;
+            margin-bottom: 42px;
           }
           #marca-nao-aparece .marca-composition {
-            width: min(100%, 980px);
-            min-height: 590px;
+            width: min(100%, 920px);
+            min-height: 0;
           }
           #marca-nao-aparece .marca-image {
-            width: 64%;
+            width: min(100%, 690px);
           }
           #marca-nao-aparece .marca-nao {
             left: 58%;
@@ -241,14 +243,14 @@ export default function MarcaNaoAparece() {
             font-size: clamp(3.35rem, 15vw, 4rem);
           }
           #marca-nao-aparece .marca-composition {
-            min-height: 330px;
+            min-height: 0;
           }
           #marca-nao-aparece .marca-image {
-            width: 74%;
+            width: 100%;
           }
           #marca-nao-aparece .marca-nao {
-            left: 62%;
-            top: 33%;
+            left: 58%;
+            top: 31%;
             font-size: clamp(2.35rem, 12.8vw, 2.9rem);
           }
         }
@@ -266,73 +268,32 @@ export default function MarcaNaoAparece() {
 
       <div className="marca-shell">
         <h2 id="marca-nao-aparece-title" className="marca-display marca-opening" data-reveal>
-          A MARCA
+          Ela começa antes de você perceber
         </h2>
 
         <div className="marca-composition" data-reveal>
-          <Image
-            src="/images/problema/problema.webp"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/problema/problema.webp?v=20260717-165129"
             alt="Corte degradê visto de perfil mostrando a marca antes de ficar evidente"
             width={1122}
             height={1402}
             loading="lazy"
-            sizes="(max-width: 639px) 76vw, (max-width: 1023px) 70vw, 630px"
+            decoding="async"
+            sizes="(max-width: 639px) 92vw, (max-width: 1023px) 78vw, 690px"
             className="marca-image"
           />
-          <div className="marca-display marca-nao" aria-label="Não aparece">
-            NÃO
-            <br />
-            APARECE
-          </div>
         </div>
 
-        <p className="marca-display marca-nada" data-reveal>
-          DO <span className="marca-nada-alert">NADA</span>.
-        </p>
-
-        <p className="marca-display marca-copy-strong" data-reveal>
-          Ela começa antes
-          <br />
-          de você perceber.
-        </p>
-
-        <div className="marca-causes">
-          <p className="marca-cause" data-reveal>
-            Quando uma altura invade a outra.
-          </p>
-          <p className="marca-cause" data-reveal>
-            Quando o pente sobe
+        <div className="marca-causes" data-reveal>
+          <p className="marca-cause">
+            Às vezes uma faixa sobe mais do que devia, você pula uma altura, ou pesa a
+            mão justamente onde só precisava conectar.
             <br />
-            além do necessário.
-          </p>
-          <p className="marca-cause" data-reveal>
-            A alavanca,
-          </p>
-          <p className="marca-cause" data-reveal>
-            O ângulo,
-          </p>
-          <p className="marca-cause" data-reveal>
-            E a pressão,
-          </p>
-          <p className="marca-cause" data-reveal>
-            Deixam peso
             <br />
-            no lugar da transição.
+            Mesmo com o pente certo, um mau ajuste na alavanca, no ângulo ou na pressão
+            já muda o resultado. Por isso passar a máquina de novo nem sempre resolve.
           </p>
-        </div>
-
-        <div className="marca-easy-wrap" data-reveal>
-          <p className="marca-display marca-easy">
-            Mas isso é <span className="marca-easy-highlight">bem mais fácil</span>
-            <br />
-            de resolver do que você imagina.
-          </p>
-          <img
-            className="marca-arrow"
-            src="/images/seta-anima%C3%A7%C3%A3o/seta-verde-anima%C3%A7%C3%A3o.svg"
-            alt=""
-            aria-hidden="true"
-          />
         </div>
       </div>
     </section>
