@@ -6,8 +6,8 @@ export default function Garantia() {
     id="garantia"
     aria-labelledby="garantia-title"
     data-track-section="garantia"
-    data-track-order="13"
-    data-track-title="13 - GARANTIA"
+    data-track-order="14"
+    data-track-title="14 - GARANTIA"
   >
       <style>{`
         #garantia {

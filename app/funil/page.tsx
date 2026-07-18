@@ -64,7 +64,7 @@ interface DashData {
 interface SessionDetail {
   session:Record<string,unknown>|null;
   sectionsReached:{section_title:string;section_order:number;created_at:string}[];
-  clicks:{checkout_type:string;checkout_label:string|null;checkout_price:number|null;button_location:string|null;current_section_title:string|null;clicked_at:string}[];
+  clicks:{checkout_type:string;checkout_label:string|null;checkout_price:number|null;button_location:string|null;current_section_title:string|null;click_kind?:string|null;clicked_at:string}[];
   purchase:Record<string,unknown>|null;
 }
 
@@ -78,7 +78,7 @@ const dropCol = (d:number)=>d<=10?'#22c55e':d<=30?'#f59e0b':'#ef4444';
 const brazilToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const STATUS_COLOR:Record<SessionStatus,string>={online:'#22c55e',recente:'#3b82f6',saiu:'#6b7280',inativo:'#374151'};
 const CLICK_BADGE:Record<string,{label:string;color:string}>={
-  plano_basico_popup_open:{label:'Básico→popup',color:'#6366f1'},
+  plano_basico_popup_open:{label:'Abriu popup',color:'#6366f1'},
   plano_basico:           {label:'Básico',       color:'#3b82f6'},
   kit_completo:           {label:'Kit R$29',      color:'#f59e0b'},
   kit_desconto_popup:     {label:'Kit R$24',      color:'#22c55e'},
@@ -555,10 +555,27 @@ export default function FunilPage() {
                       })}
                     </div>
                   </DBlock>}
-                  <DBlock title={`Cliques em Checkout (${detail.clicks.length})`}>
-                    {detail.clicks.length===0?<p style={{color:'#6b7280',fontSize:12,margin:0}}>Sem clique em checkout.</p>:(
+                  <DBlock title={`Popup aberto (${detail.clicks.filter(cl=>cl.click_kind==='popup_open'||cl.checkout_type==='plano_basico_popup_open').length})`}>
+                    {detail.clicks.filter(cl=>cl.click_kind==='popup_open'||cl.checkout_type==='plano_basico_popup_open').length===0?<p style={{color:'#6b7280',fontSize:12,margin:0}}>Nenhum popup aberto.</p>:(
                       <div style={{background:'#070a0f',borderRadius:6,overflow:'hidden'}}>
-                        {detail.clicks.map((cl,i)=>{
+                        {detail.clicks.filter(cl=>cl.click_kind==='popup_open'||cl.checkout_type==='plano_basico_popup_open').map((cl,i)=>{
+                          const badge=CLICK_BADGE[cl.checkout_type];
+                          return <div key={i} style={{padding:'10px 12px',borderBottom:'1px solid #111827',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                            <div>
+                              <span style={{...g.clickBadge,background:(badge?.color||'#6b7280')+'22',color:(badge?.color||'#9ca3af'),marginRight:8}}>{badge?.label||cl.checkout_type}</span>
+                              {cl.checkout_price&&<span style={{color:'#22c55e',fontSize:12,fontWeight:700}}>{fmtBRL(cl.checkout_price)}</span>}
+                              {cl.current_section_title&&<p style={{fontSize:10,color:'#6b7280',margin:'4px 0 0'}}>na seção: {cl.current_section_title}</p>}
+                            </div>
+                            <span style={{fontSize:10,color:'#6b7280',whiteSpace:'nowrap'}}>{fmtTime(cl.clicked_at)}</span>
+                          </div>;
+                        })}
+                      </div>
+                    )}
+                  </DBlock>
+                  <DBlock title={`Redirecionamentos para Checkout (${detail.clicks.filter(cl=>cl.click_kind!=='popup_open'&&cl.checkout_type!=='plano_basico_popup_open'&&cl.click_kind!=='internal_cta').length})`}>
+                    {detail.clicks.filter(cl=>cl.click_kind!=='popup_open'&&cl.checkout_type!=='plano_basico_popup_open'&&cl.click_kind!=='internal_cta').length===0?<p style={{color:'#6b7280',fontSize:12,margin:0}}>Sem redirecionamento para checkout.</p>:(
+                      <div style={{background:'#070a0f',borderRadius:6,overflow:'hidden'}}>
+                        {detail.clicks.filter(cl=>cl.click_kind!=='popup_open'&&cl.checkout_type!=='plano_basico_popup_open'&&cl.click_kind!=='internal_cta').map((cl,i)=>{
                           const badge=CLICK_BADGE[cl.checkout_type];
                           return <div key={i} style={{padding:'10px 12px',borderBottom:'1px solid #111827',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
                             <div>

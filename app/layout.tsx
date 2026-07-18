@@ -119,8 +119,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style dangerouslySetInnerHTML={{ __html: `
           *,::after,::before{box-sizing:border-box}
           html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+          html,body{background:#0B0704}
           body{margin:0;background:#0B0704;color:#F7F1E8;overflow-x:hidden;font-family:system-ui,sans-serif}
           img{display:block;max-width:100%;height:auto}
+          main{background:#0B0704;color:#F7F1E8}
+          #hero{background:#0B0704!important;color:#F7F1E8!important}
+          #hero .hero-bg{background:#0B0704!important}
+          #hero .hero-title,#hero .hero-title-line,#hero .hero-underline-text{color:#F7F1E8!important}
+          #hero .hero-tension,#hero .hero-product-copy{color:rgba(247,241,232,.78)!important}
           .texture-brick{background-color:#140D08;position:relative}
           .font-display{font-family:var(--font-display),'Bebas Neue',system-ui,sans-serif}
           .badge-gold{display:inline-block;padding:4px 12px;border-radius:8px;font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:#EFE6D8;border:1px solid #D8C9B6;color:#6E4A11}
@@ -149,7 +155,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               strategy="afterInteractive"
             />
             <Script id="ga4-init" strategy="afterInteractive">
-              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`}
+              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}',{send_page_view:false});`}
             </Script>
           </>
         )}

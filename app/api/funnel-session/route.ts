@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       .order('section_order', { ascending: true }),
     supabaseAdmin
       .from('funnel_click_events')
-      .select('checkout_type,checkout_label,checkout_price,button_location,target_url,current_section_title,current_section_order,clicked_at')
+      .select('checkout_type,checkout_label,checkout_price,button_location,target_url,current_section_title,current_section_order,click_kind,clicked_at')
       .eq('session_id', sessionId)
       .eq('date', date)
       .order('clicked_at', { ascending: true }),

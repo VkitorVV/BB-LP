@@ -187,7 +187,13 @@ export async function GET(request: NextRequest) {
   const lastClickBySession: Record<string, { checkoutType: string; checkoutLabel: string | null; checkoutPrice: number | null; buttonLocation: string | null; clickedAt: string | null }> = {};
 
   clickEvents.forEach((e: ClickEvent) => {
-    clicksBySession[e.session_id] = (clicksBySession[e.session_id] || 0) + 1;
+    const isInternalCta = e.click_kind === 'internal_cta';
+    const isPopupOpen = e.click_kind === 'popup_open' || e.checkout_type === 'plano_basico_popup_open';
+    if (!isInternalCta && !isPopupOpen) {
+      clicksBySession[e.session_id] = (clicksBySession[e.session_id] || 0) + 1;
+    }
+    if (isInternalCta) return;
+
     const previousClick = lastClickBySession[e.session_id];
     const isLatestClick = !previousClick?.clickedAt || (
       e.clicked_at && new Date(e.clicked_at).getTime() > new Date(previousClick.clickedAt).getTime()
@@ -324,6 +330,8 @@ export async function GET(request: NextRequest) {
       if (r.click_kind === 'internal_cta') {
         const label = r.cta_label || 'CTA desconhecido';
         internalCtaClicks[label] = (internalCtaClicks[label] || 0) + 1;
+      } else if (r.click_kind === 'popup_open' || r.checkout_type === 'plano_basico_popup_open') {
+        checkoutClicks.plano_basico_popup_open++;
       } else {
         rawCheckoutEvents++;
         if (r.checkout_type in checkoutClicks) checkoutClicks[r.checkout_type]++;

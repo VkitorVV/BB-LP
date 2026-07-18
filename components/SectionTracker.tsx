@@ -101,6 +101,11 @@ export default function SectionTracker() {
 
     const checkSections = () => {
       const triggerLine = window.scrollY + window.innerHeight * 0.75;
+      const pageHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+      );
+      const reachedPageEnd = window.scrollY + window.innerHeight >= pageHeight - 12;
       const jump = window.__internalCtaJump;
       const isJumping = jump?.active && (Date.now() - (jump?.startedAt || 0)) < 2500;
 
@@ -109,7 +114,7 @@ export default function SectionTracker() {
         if (!el) return;
 
         const top = el.getBoundingClientRect().top + window.scrollY;
-        if (top > triggerLine) return;
+        if (top > triggerLine && !(id === 'rodape' && reachedPageEnd)) return;
 
         if (isJumping && jump) {
           if (id === jump.targetSectionId) {
@@ -156,8 +161,14 @@ export default function SectionTracker() {
     }, 500);
 
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    window.addEventListener('touchend', onScroll, { passive: true });
+    window.addEventListener('keydown', onScroll);
     return () => {
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('touchend', onScroll);
+      window.removeEventListener('keydown', onScroll);
       if (rafId !== null) cancelAnimationFrame(rafId);
       clearInterval(jumpGuard);
     };

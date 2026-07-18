@@ -22,12 +22,13 @@ export const TRACKING_SECTIONS = [
   { id: 'veja-tudo-que-recebe', title: '08 - VEJA TUDO QUE VOCE VAI RECEBER', order: 8 },
   { id: 'veja-tudo-produto-principal', title: '09 - PRODUTO PRINCIPAL', order: 9 },
   { id: 'veja-tudo-bonus', title: '10 - BONUS', order: 10 },
-  { id: 'precos-acesso', title: '11 - PRECOS / PLANOS', order: 11 },
-  { id: 'prova-social', title: '12 - PROVA SOCIAL', order: 12 },
-  { id: 'garantia', title: '13 - GARANTIA', order: 13 },
-  { id: 'faq', title: '14 - FAQ', order: 14 },
-  { id: 'cta-final', title: '15 - CTA FINAL', order: 15 },
-  { id: 'rodape', title: '16 - RODAPE', order: 16 },
+  { id: 'contador-oferta', title: '11 - OFERTA LIMITADA', order: 11 },
+  { id: 'precos-acesso', title: '12 - PRECOS / PLANOS', order: 12 },
+  { id: 'prova-social', title: '13 - PROVA SOCIAL', order: 13 },
+  { id: 'garantia', title: '14 - GARANTIA', order: 14 },
+  { id: 'faq', title: '15 - FAQ', order: 15 },
+  { id: 'cta-final', title: '16 - CTA FINAL', order: 16 },
+  { id: 'rodape', title: '17 - RODAPE', order: 17 },
 ] as const;
 
 export type TrackingSection = typeof TRACKING_SECTIONS[number];

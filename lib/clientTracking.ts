@@ -183,8 +183,8 @@ export function buildCheckoutUrl(checkoutType: CheckoutRedirectType): string {
 export function getOfferTrackingSection() {
   return getTrackingSection(OFFER_SECTION_ID) || {
     id: OFFER_SECTION_ID,
-    title: '11 - PRECOS / PLANOS',
-    order: 11,
+    title: '12 - PRECOS / PLANOS',
+    order: 12,
   };
 }
 

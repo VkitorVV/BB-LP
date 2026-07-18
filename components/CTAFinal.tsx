@@ -15,8 +15,8 @@ export default function CTAFinal() {
       ctaLabel: 'CTA Final',
       buttonLocation: 'cta-final',
       sourceSectionId: 'cta-final',
-      sourceSectionTitle: '15 - CTA FINAL',
-      sourceSectionOrder: 15,
+      sourceSectionTitle: '16 - CTA FINAL',
+      sourceSectionOrder: 16,
       sessionId: getSessionId(),
       utms: getUtmParams(),
     });
@@ -29,8 +29,8 @@ export default function CTAFinal() {
       id="cta-final"
       aria-labelledby="cta-final-title"
       data-track-section="cta-final"
-      data-track-order="15"
-      data-track-title="15 - CTA FINAL"
+      data-track-order="16"
+      data-track-title="16 - CTA FINAL"
     >
       <style>{`
         #cta-final {

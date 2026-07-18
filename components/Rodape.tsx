@@ -6,8 +6,8 @@ export default function Rodape() {
     id="rodape"
     aria-labelledby="rodape-title"
     data-track-section="rodape"
-    data-track-order="16"
-    data-track-title="16 - RODAPE"
+    data-track-order="17"
+    data-track-title="17 - RODAPE"
   >
       <style>{`
         #rodape {

@@ -3,6 +3,8 @@ import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
 import MarcaNaoAparece from '@/components/MarcaNaoAparece';
 import ClientTrackers from '@/components/ClientTrackers';
+import OfertaLimitadaTimer from '@/components/OfertaLimitadaTimer';
+import VisualRedesignStyles from '@/components/VisualRedesignStyles';
 
 // Below-the-fold: code-split, SSR mantido para SEO
 const ProdutoPorDentro = dynamic(() => import('@/components/ProdutoPorDentro'), { ssr: true });
@@ -16,7 +18,6 @@ const Garantia = dynamic(() => import('@/components/Garantia'), { ssr: true });
 const FAQ = dynamic(() => import('@/components/FAQ'), { ssr: true });
 const CTAFinal = dynamic(() => import('@/components/CTAFinal'), { ssr: true });
 const Rodape = dynamic(() => import('@/components/Rodape'), { ssr: true });
-const VisualRedesignStyles = dynamic(() => import('@/components/VisualRedesignStyles'), { ssr: true });
 
 export default function Home() {
   return (
@@ -33,6 +34,7 @@ export default function Home() {
         }}
       >
         {/* Trackers client-only: não entram no SSR nem bloqueiam LCP */}
+        <VisualRedesignStyles />
         <ClientTrackers />
 
         {/* 1. Hero: import estático, renderiza sem esperar JS */}
@@ -45,13 +47,13 @@ export default function Home() {
         <MapaVai />
         <CarrosselCortes />
         <TudoQueRecebe />
+        <OfertaLimitadaTimer />
         <PrecosAcesso />
         <ProvaSocial />
         <Garantia />
         <FAQ />
         <CTAFinal />
         <Rodape />
-        <VisualRedesignStyles />
       </div>
     </main>
   );

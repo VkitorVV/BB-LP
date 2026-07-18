@@ -50,6 +50,7 @@ function trackClick(
   checkoutPrice: number,
   targetUrl: string,
   buttonLocation = 'oferta',
+  clickKind = 'checkout',
 ) {
   const offerSection = getOfferTrackingSection();
 
@@ -64,6 +65,7 @@ function trackClick(
       checkoutPrice,
       buttonLocation,
       targetUrl,
+      clickKind,
       currentSectionId: offerSection.id,
       currentSectionTitle: offerSection.title,
       currentSectionOrder: offerSection.order,
@@ -136,14 +138,6 @@ export default function PrecosAcesso() {
       ? document.activeElement
       : basicButtonRef.current;
 
-    if (typeof window.gtag === 'function') {
-      window.gtag('event', 'checkout_click', {
-        checkout_type: 'plano_basico_popup_open',
-        checkout_price: '19.90',
-        button_location: 'oferta',
-        transport_type: 'beacon',
-      });
-    }
     const popupMeta = getCheckoutMeta('plano_basico_popup_open');
     trackClick(
       'plano_basico_popup_open',
@@ -151,6 +145,7 @@ export default function PrecosAcesso() {
       popupMeta.price,
       'popup_upgrade',
       'oferta',
+      'popup_open',
     );
     setIsUpgradeModalOpen(true);
   };
@@ -228,8 +223,8 @@ export default function PrecosAcesso() {
       id="precos-acesso"
       aria-labelledby="precos-acesso-title"
       data-track-section="precos-acesso"
-      data-track-order="11"
-      data-track-title="11 - PRECOS / PLANOS"
+      data-track-order="12"
+      data-track-title="12 - PRECOS / PLANOS"
     >
       <style>{`
         #precos-acesso {
@@ -585,14 +580,14 @@ export default function PrecosAcesso() {
         }
         .upgrade-modal {
           position: relative;
-          width: min(100%, 960px);
+          width: min(100%, 920px);
           max-height: min(92vh, 900px);
           overflow-y: auto;
-          border-radius: 10px;
-          background: var(--color-paper);
+          border-radius: 12px;
+          background: #FFF7E9;
           color: var(--color-ink);
-          border: 1px solid var(--color-border);
-          box-shadow: 0 14px 40px rgba(11, 7, 4, 0.18);
+          border: 2px solid var(--color-gold);
+          box-shadow: 0 14px 40px rgba(11, 7, 4, 0.2);
           animation: upgradeModalIn 220ms ease both;
         }
         .upgrade-modal * {
@@ -619,16 +614,36 @@ export default function PrecosAcesso() {
         }
         .upgrade-modal-content {
           display: grid;
-          gap: 13px;
-          padding: 30px 16px 16px;
+          gap: 14px;
+          padding: 28px 14px 14px;
+        }
+        .upgrade-modal-left,
+        .upgrade-modal-right {
+          min-width: 0;
+          border-radius: 10px;
+          border: 1px solid var(--color-border);
+          background: var(--color-paper);
+          box-shadow: 0 14px 40px rgba(11, 7, 4, 0.08);
+        }
+        .upgrade-modal-left {
+          display: grid;
+          gap: 12px;
+          padding: 18px 14px;
+          text-align: center;
+        }
+        .upgrade-modal-right {
+          display: grid;
+          gap: 12px;
+          padding: 18px 14px 16px;
         }
         .upgrade-modal-label {
           display: inline-flex;
+          justify-self: center;
           width: fit-content;
-          padding: 7px 10px 6px;
+          padding: 8px 10px 7px;
           border-radius: 8px;
-          background: rgba(216, 166, 74, 0.18);
-          color: #7B5616;
+          background: var(--color-gold);
+          color: #0B0704;
           font-size: 0.68rem;
           font-weight: 950;
           letter-spacing: 0.08em;
@@ -639,26 +654,28 @@ export default function PrecosAcesso() {
           margin: 0;
           color: var(--color-ink);
           font-family: var(--font-display), var(--font-display-family), Impact, sans-serif;
-          font-size: clamp(1.9rem, 9.7vw, 4.8rem);
+          font-size: clamp(2rem, 9vw, 4.2rem);
           font-weight: 900;
           letter-spacing: 0;
-          line-height: 0.9;
+          line-height: 0.92;
+          text-align: center;
           text-transform: uppercase;
         }
         .upgrade-modal-copy {
-          margin: 0;
+          max-width: 540px;
+          margin: 0 auto;
           color: #3B3126;
-          font-size: 0.88rem;
-          font-weight: 650;
-          line-height: 1.45;
+          font-size: 0.86rem;
+          font-weight: 600;
+          line-height: 1.48;
         }
         .upgrade-modal-visual {
           width: 100%;
-          max-width: 290px;
-          margin: 2px auto 0;
+          max-width: 260px;
+          margin: 4px auto 0;
           border-radius: 8px;
           background: #FFF7E9;
-          box-shadow: var(--shadow-card);
+          box-shadow: none;
         }
         .upgrade-modal-visual img {
           display: block;
@@ -667,11 +684,12 @@ export default function PrecosAcesso() {
           border-radius: 8px;
         }
         .upgrade-modal-included {
-          margin: 0;
+          margin: 0 auto;
           color: var(--color-ink);
-          font-size: 0.86rem;
+          font-size: 0.8rem;
           font-weight: 950;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.06em;
+          text-align: center;
           text-transform: uppercase;
         }
         .upgrade-modal-list {
@@ -679,16 +697,16 @@ export default function PrecosAcesso() {
           margin: 0;
           padding: 0;
           display: grid;
-          gap: 6px;
+          gap: 7px;
         }
         .upgrade-modal-list li {
           display: flex;
           align-items: flex-start;
           gap: 9px;
           color: #211A14;
-          font-size: 0.84rem;
-          font-weight: 780;
-          line-height: 1.22;
+          font-size: 0.82rem;
+          font-weight: 760;
+          line-height: 1.25;
         }
         .upgrade-modal-check {
           flex: 0 0 auto;
@@ -697,9 +715,14 @@ export default function PrecosAcesso() {
         }
         .upgrade-modal-pricebox {
           display: grid;
-          gap: 5px;
-          padding-top: 14px;
-          border-top: 1px solid rgba(16, 15, 13, 0.12);
+          justify-items: center;
+          gap: 6px;
+          margin-top: 4px;
+          padding: 16px 12px 14px;
+          border: 1px solid rgba(49, 91, 70, 0.22);
+          border-radius: 10px;
+          background: #F7F1E8;
+          text-align: center;
         }
         .upgrade-modal-old-price {
           color: rgba(69, 56, 43, 0.62);
@@ -710,6 +733,7 @@ export default function PrecosAcesso() {
         .upgrade-modal-price-row {
           display: flex;
           align-items: baseline;
+          justify-content: center;
           gap: 9px;
           flex-wrap: wrap;
         }
@@ -728,10 +752,11 @@ export default function PrecosAcesso() {
           line-height: 0.9;
         }
         .upgrade-modal-anchor {
+          max-width: 300px;
           margin: 2px 0 0;
           color: #3B3126;
-          font-size: 0.9rem;
-          font-weight: 850;
+          font-size: 0.84rem;
+          font-weight: 760;
           line-height: 1.35;
         }
         .upgrade-modal-payment-note {
@@ -744,8 +769,8 @@ export default function PrecosAcesso() {
         }
         .upgrade-modal-actions {
           display: grid;
-          gap: 10px;
-          margin-top: 2px;
+          gap: 9px;
+          margin-top: 0;
         }
         .upgrade-modal-primary,
         .upgrade-modal-secondary {
@@ -753,7 +778,7 @@ export default function PrecosAcesso() {
           min-height: 52px;
           border-radius: 7px;
           font-family: var(--font-sans), var(--font-sans-family);
-          font-size: 0.88rem;
+          font-size: 0.84rem;
           font-weight: 900;
           letter-spacing: 0;
           line-height: 1;
@@ -803,33 +828,27 @@ export default function PrecosAcesso() {
         }
         @media (min-width: 820px) {
           .upgrade-modal-content {
-            grid-template-columns: minmax(0, 0.92fr) minmax(340px, 1fr);
-            align-items: center;
-            gap: 26px;
-            padding: 44px 34px 34px;
-          }
-          .upgrade-modal-left,
-          .upgrade-modal-right {
-            min-width: 0;
+            grid-template-columns: minmax(0, 0.88fr) minmax(360px, 1fr);
+            align-items: stretch;
+            gap: 16px;
+            padding: 32px 24px 24px;
           }
           .upgrade-modal-left {
-            display: grid;
-            gap: 15px;
+            padding: 24px 20px;
           }
           .upgrade-modal-right {
-            display: grid;
-            gap: 14px;
+            padding: 24px 20px 20px;
           }
           .upgrade-modal-visual {
             margin: 0 auto;
-            max-width: 420px;
+            max-width: 360px;
           }
           .upgrade-modal-copy {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
           }
           .upgrade-modal-list {
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            column-gap: 14px;
+            gap: 8px 14px;
           }
         }
         @media (max-width: 374px) {
@@ -905,9 +924,7 @@ export default function PrecosAcesso() {
               type="button"
               className="plan-button basic-button"
               onClick={openUpgradeModal}
-              data-checkout-type="plano_basico_popup_open"
-              data-checkout-label="Plano Básico - abriu popup"
-              data-checkout-price="19.90"
+              data-popup-action="open_upgrade"
               data-button-location="oferta"
             >
               QUERO APENAS O GUIA

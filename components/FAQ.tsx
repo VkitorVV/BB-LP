@@ -96,8 +96,8 @@ export default function FAQ() {
       id="faq"
       aria-labelledby="faq-title"
       data-track-section="faq"
-      data-track-order="14"
-      data-track-title="14 - FAQ"
+      data-track-order="15"
+      data-track-title="15 - FAQ"
     >
       <style>{`
         #faq {
