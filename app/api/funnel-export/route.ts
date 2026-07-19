@@ -49,6 +49,88 @@ async function fetchPurchases(date: string): Promise<Record<string, unknown>[]> 
   throw lastError instanceof Error ? lastError : new Error('Erro ao buscar compras');
 }
 
+async function fetchSessions(date: string): Promise<Record<string, unknown>[]> {
+  const attempts = [
+    'session_id,date,first_seen,last_seen,left_at,page_status,utm_source,utm_medium,utm_campaign,utm_content,utm_term,campaign_id,adset_id,ad_id,placement,site_source_name,max_section_order,max_section_title,visitor_id,visitor_first_seen_at,visitor_last_seen_at,visit_number,return_count,is_returning',
+    'session_id,date,first_seen,last_seen,left_at,page_status,utm_source,utm_medium,utm_campaign,utm_content,utm_term,campaign_id,adset_id,ad_id,placement,site_source_name,max_section_order,max_section_title',
+    'session_id,date,first_seen,last_seen,page_status,utm_source,utm_medium,utm_campaign,utm_content,utm_term,max_section_order,max_section_title',
+    'session_id,date,first_seen,last_seen,utm_source,utm_medium,utm_campaign,utm_content,utm_term',
+  ];
+
+  let lastError: unknown = null;
+  for (const select of attempts) {
+    try {
+      return await fetchAllRows(() =>
+        supabaseAdmin
+          .from('funnel_sessions')
+          .select(select)
+          .eq('date', date)
+          .order('last_seen', { ascending: false }),
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Erro ao buscar sessoes');
+}
+
+async function fetchSectionEvents(date: string): Promise<Record<string, unknown>[]> {
+  const attempts = [
+    'session_id,section_id,section_title,section_order,reach_method,source_cta_label,source_section_title,created_at',
+    'session_id,section_id,section_title,section_order,reach_method,source_cta_label,source_section_title',
+    'session_id,section_id,section_title,section_order,reach_method',
+    'session_id,section_id,section_title,section_order',
+  ];
+
+  let lastError: unknown = null;
+  for (const select of attempts) {
+    try {
+      return await fetchAllRows(() =>
+        supabaseAdmin
+          .from('funnel_section_events')
+          .select(select)
+          .eq('date', date)
+          .order('section_order', { ascending: true }),
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Erro ao buscar secoes');
+}
+
+async function fetchClickEvents(date: string): Promise<Record<string, unknown>[]> {
+  const attempts = [
+    { select: 'session_id,checkout_type,checkout_label,checkout_price,button_location,click_kind,cta_label,source_section_title,target_section_title,current_section_title,clicked_at,utm_campaign,utm_content,utm_term', order: 'clicked_at' },
+    { select: 'session_id,checkout_type,checkout_label,checkout_price,button_location,click_kind,cta_label,current_section_title,clicked_at,utm_campaign,utm_content,utm_term', order: 'clicked_at' },
+    { select: 'session_id,checkout_type,checkout_label,checkout_price,button_location,current_section_title,clicked_at,utm_campaign,utm_content,utm_term', order: 'clicked_at' },
+    { select: 'session_id,checkout_type,checkout_label,checkout_price,button_location,clicked_at', order: 'clicked_at' },
+    { select: 'session_id,checkout_type,checkout_label,checkout_price', order: null },
+  ];
+
+  let lastError: unknown = null;
+  for (const attempt of attempts) {
+    try {
+      return await fetchAllRows(() => {
+        const query = supabaseAdmin
+          .from('funnel_click_events')
+          .select(attempt.select)
+          .eq('date', date);
+
+        return attempt.order
+          ? query.order(attempt.order, { ascending: true })
+          : query;
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Erro ao buscar cliques');
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token  = searchParams.get('token');
@@ -61,24 +143,9 @@ export async function GET(request: NextRequest) {
 
   // ── 1. Buscar dados do Supabase ─────────────────────────────────────────
   const [sessions, sectionEvts, clickEvts, purchases] = await Promise.all([
-    fetchAllRows(() => supabaseAdmin
-      .from('funnel_sessions')
-      .select('session_id,date,first_seen,last_seen,left_at,page_status,utm_source,utm_medium,utm_campaign,utm_content,utm_term,campaign_id,adset_id,ad_id,placement,site_source_name,max_section_order,max_section_title')
-      .eq('date', date)
-      .order('last_seen', { ascending: false })),
-
-    fetchAllRows(() => supabaseAdmin
-      .from('funnel_section_events')
-      .select('session_id,section_id,section_title,section_order,reach_method,source_cta_label,source_section_title,created_at')
-      .eq('date', date)
-      .order('section_order', { ascending: true })),
-
-    fetchAllRows(() => supabaseAdmin
-      .from('funnel_click_events')
-      .select('session_id,checkout_type,checkout_label,checkout_price,button_location,click_kind,cta_label,source_section_title,target_section_title,current_section_title,clicked_at,utm_campaign,utm_content,utm_term')
-      .eq('date', date)
-      .order('clicked_at', { ascending: true })),
-
+    fetchSessions(date),
+    fetchSectionEvents(date),
+    fetchClickEvents(date),
     fetchPurchases(date),
   ]);
 

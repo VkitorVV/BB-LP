@@ -13,15 +13,24 @@ export default function OfertaLimitadaTimer() {
   const [remaining, setRemaining] = React.useState(TIMER_SECONDS);
 
   React.useEffect(() => {
-    const startedAt = Date.now();
+    let startedAt = Date.now();
     const tick = () => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000);
       setRemaining(Math.max(0, TIMER_SECONDS - elapsed));
     };
+    const resetTimer = () => {
+      startedAt = Date.now();
+      setRemaining(TIMER_SECONDS);
+      tick();
+    };
 
     tick();
     const timer = window.setInterval(tick, 1000);
-    return () => window.clearInterval(timer);
+    window.addEventListener('pageshow', resetTimer);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pageshow', resetTimer);
+    };
   }, []);
 
   const hours = Math.floor(remaining / 3600);
