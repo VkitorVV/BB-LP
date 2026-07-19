@@ -164,6 +164,11 @@ export function buildCheckoutUrl(checkoutType: CheckoutRedirectType): string {
   const url = new URL(baseUrl);
   const sessionId = getSessionId();
   const params = new URLSearchParams(window.location.search);
+  const storedAttribution = readStoredAttribution();
+  const cleanParam = (value: string | undefined | null) => {
+    const cleaned = value?.trim();
+    return cleaned || undefined;
+  };
 
   if (sessionId) {
     url.searchParams.set('session_id', sessionId);
@@ -171,8 +176,8 @@ export function buildCheckoutUrl(checkoutType: CheckoutRedirectType): string {
   }
 
   UTM_KEYS.forEach((key) => {
-    const fromUrl = params.get(key);
-    const fromStorage = readStoredAttribution()[UTM_TO_PAYLOAD_KEY[key]];
+    const fromUrl = cleanParam(params.get(key));
+    const fromStorage = cleanParam(storedAttribution[UTM_TO_PAYLOAD_KEY[key]]);
     const value = fromUrl || fromStorage;
     if (value && !url.searchParams.has(key)) url.searchParams.set(key, value);
   });

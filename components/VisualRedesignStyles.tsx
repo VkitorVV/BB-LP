@@ -264,7 +264,7 @@ export default function VisualRedesignStyles() {
       #com-o-mapa-voce-vai .map-number {
         position: static !important;
         display: block !important;
-        color: var(--color-clarity) !important;
+        color: #7DB592 !important;
         font-family: var(--font-display), var(--font-display-family) !important;
         font-size: clamp(2.1rem, 8vw, 3.3rem) !important;
         letter-spacing: 0 !important;
@@ -356,7 +356,7 @@ export default function VisualRedesignStyles() {
       }
       #prova-social .social-count,
       #prova-social .social-hint {
-        color: var(--color-muted) !important;
+        color: #4D4237 !important;
         font-size: 0.76rem !important;
         letter-spacing: 0.08em !important;
         text-transform: uppercase !important;
@@ -369,7 +369,7 @@ export default function VisualRedesignStyles() {
         border-bottom-color: rgba(17, 16, 14, 0.08) !important;
       }
       #garantia .guarantee-title-main {
-        color: var(--color-gold) !important;
+        color: #8A5F16 !important;
       }
       #garantia .guarantee-title-rest,
       #garantia .guarantee-close {
@@ -432,7 +432,7 @@ export default function VisualRedesignStyles() {
         color: rgba(247, 241, 232, 0.72) !important;
       }
       #rodape .footer-copy {
-        color: rgba(247, 241, 232, 0.38) !important;
+        color: rgba(247, 241, 232, 0.68) !important;
       }
 
       @media (min-width: 760px) {

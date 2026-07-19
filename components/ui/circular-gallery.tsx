@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React from 'react';
 
 function cn(...classes: Array<string | undefined | null | false>) {
@@ -23,39 +24,89 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
   ({ items, className, radius = 420, autoRotateSpeed = 0.18, onItemClick, ...props }, ref) => {
     const [rotation, setRotation] = React.useState(0);
     const [isPaused, setIsPaused] = React.useState(false);
+    const [isInViewport, setIsInViewport] = React.useState(false);
+    const [isDocumentVisible, setIsDocumentVisible] = React.useState(true);
+    const rootRef = React.useRef<HTMLDivElement | null>(null);
     const frameRef = React.useRef<number | null>(null);
     const resumeTimerRef = React.useRef<number | null>(null);
     const pointerRef = React.useRef<{ x: number; rotation: number; moved: boolean } | null>(null);
     const lastDragTimeRef = React.useRef(0);
 
-    React.useEffect(() => {
-      items.forEach((item) => {
-        const image = new window.Image();
-        image.decoding = 'async';
-        image.src = item.image;
-      });
-    }, [items]);
+    const setRootRef = React.useCallback((node: HTMLDivElement | null) => {
+      rootRef.current = node;
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    }, [ref]);
 
     React.useEffect(() => {
-      const animate = () => {
-        if (!isPaused && !pointerRef.current) {
-          setRotation((current) => current + autoRotateSpeed);
+      const root = rootRef.current;
+      if (!root) return;
+
+      if (typeof IntersectionObserver === 'undefined') {
+        setIsInViewport(true);
+        return;
+      }
+
+      const rect = root.getBoundingClientRect();
+      setIsInViewport(rect.top < window.innerHeight + 360 && rect.bottom > -360);
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          setIsInViewport(Boolean(entry?.isIntersecting));
+        },
+        { rootMargin: '360px 0px 360px 0px', threshold: 0.01 },
+      );
+
+      observer.observe(root);
+      return () => observer.disconnect();
+    }, []);
+
+    React.useEffect(() => {
+      const handleVisibilityChange = () => {
+        setIsDocumentVisible(document.visibilityState !== 'hidden');
+      };
+
+      handleVisibilityChange();
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }, []);
+
+    React.useEffect(() => {
+      if (isPaused || !isInViewport || !isDocumentVisible) {
+        if (frameRef.current) {
+          cancelAnimationFrame(frameRef.current);
+          frameRef.current = null;
         }
+        return;
+      }
+
+      const animate = () => {
+        setRotation((current) => current + autoRotateSpeed);
         frameRef.current = requestAnimationFrame(animate);
       };
 
       frameRef.current = requestAnimationFrame(animate);
       return () => {
         if (frameRef.current) cancelAnimationFrame(frameRef.current);
-        if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
       };
-    }, [autoRotateSpeed, isPaused]);
+    }, [autoRotateSpeed, isDocumentVisible, isInViewport, isPaused]);
+
+    React.useEffect(() => (
+      () => {
+        if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
+      }
+    ), []);
 
     const itemAngle = 360 / items.length;
 
     return (
       <div
-        ref={ref}
+        ref={setRootRef}
         role="region"
         aria-label="Galeria circular de páginas do material"
         className={cn('circular-gallery', className)}
@@ -123,8 +174,16 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                   transform: `translate(-50%, -50%) rotateY(${angle}deg) translateZ(${radius}px)`,
                 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image} alt={item.alt} draggable={false} />
+                <Image
+                  src={item.image}
+                  alt={item.alt}
+                  width={1055}
+                  height={1491}
+                  loading="lazy"
+                  decoding="async"
+                  sizes="(max-width: 759px) 58vw, 335px"
+                  draggable={false}
+                />
               </div>
             );
           })}

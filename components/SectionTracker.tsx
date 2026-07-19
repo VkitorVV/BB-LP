@@ -17,6 +17,7 @@ declare global {
       ctaLabel: string;
       startedAt: number;
     } | null;
+    __internalCtaJumpTimeout?: number;
   }
 }
 
@@ -98,8 +99,34 @@ export default function SectionTracker() {
   useEffect(() => {
     const sessionId = getSessionId();
     let rafId: number | null = null;
+    let hasStoppedTracking = false;
+
+    function stopTracking() {
+      if (hasStoppedTracking) return;
+      hasStoppedTracking = true;
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('touchend', onScroll);
+      window.removeEventListener('keydown', onScroll);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function maybeStopTracking() {
+      if (typeof window.gtag !== 'function') return;
+
+      const existingSections = TRACKING_SECTIONS.filter(({ id }) => document.getElementById(id));
+      if (!existingSections.length) return;
+
+      const allSectionsSent = existingSections.every(({ id }) => panelFiredThisLoad.has(id));
+      if (allSectionsSent) stopTracking();
+    }
 
     const checkSections = () => {
+      if (hasStoppedTracking) return;
+
       const triggerLine = window.scrollY + window.innerHeight * 0.75;
       const pageHeight = Math.max(
         document.documentElement.scrollHeight,
@@ -132,15 +159,18 @@ export default function SectionTracker() {
           firePanel(sessionId, id, title, order, 'scroll');
         }
       });
+
+      maybeStopTracking();
     };
 
-    const onScroll = () => {
+    function onScroll() {
+      if (hasStoppedTracking) return;
       if (rafId !== null) return;
       rafId = requestAnimationFrame(() => {
         checkSections();
         rafId = null;
       });
-    };
+    }
 
     checkSections();
 
@@ -153,24 +183,12 @@ export default function SectionTracker() {
     };
     tryGA4();
 
-    const jumpGuard = setInterval(() => {
-      const j = window.__internalCtaJump;
-      if (j?.active && Date.now() - (j?.startedAt || 0) > 2500) {
-        window.__internalCtaJump = null;
-      }
-    }, 500);
-
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
     window.addEventListener('touchend', onScroll, { passive: true });
     window.addEventListener('keydown', onScroll);
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      window.removeEventListener('touchend', onScroll);
-      window.removeEventListener('keydown', onScroll);
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      clearInterval(jumpGuard);
+      stopTracking();
     };
   }, []);
 

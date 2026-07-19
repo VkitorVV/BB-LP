@@ -1,33 +1,6 @@
-'use client';
-
-import React from 'react';
+import Image from 'next/image';
 
 export default function MarcaNaoAparece() {
-  React.useEffect(() => {
-    const elements = Array.from(document.querySelectorAll<HTMLElement>('#marca-nao-aparece [data-reveal]'));
-    if (!elements.length) return;
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
-      elements.forEach((element) => element.classList.add('is-visible'));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.22, rootMargin: '0px 0px -8% 0px' }
-    );
-
-    elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <section
       id="marca-nao-aparece"
@@ -272,12 +245,11 @@ export default function MarcaNaoAparece() {
         </h2>
 
         <div className="marca-composition" data-reveal>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/images/problema/problema.webp?v=20260717-165129"
             alt="Corte degradê visto de perfil mostrando a marca antes de ficar evidente"
-            width={1122}
-            height={1402}
+            width={1200}
+            height={1200}
             loading="lazy"
             decoding="async"
             sizes="(max-width: 639px) 92vw, (max-width: 1023px) 78vw, 690px"

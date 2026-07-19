@@ -97,14 +97,6 @@ export default function ProdutoPorDentro() {
     activeIndexRef.current = activeIndex;
   }, [activeIndex]);
 
-  React.useEffect(() => {
-    panels.forEach((panel) => {
-      const image = new window.Image();
-      image.decoding = 'async';
-      image.src = panel.src;
-    });
-  }, []);
-
   const goToPanel = React.useCallback(
     (nextIndex: number, nextDirection: Direction) => {
       const fromIndex = activeIndexRef.current;
@@ -238,31 +230,6 @@ export default function ProdutoPorDentro() {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [lightboxIndex, circularLightboxIndex]);
-
-  React.useEffect(() => {
-    const elements = Array.from(document.querySelectorAll<HTMLElement>('#material-por-dentro [data-reveal]'));
-    if (!elements.length) return;
-
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion) {
-      elements.forEach((element) => element.classList.add('is-visible'));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' }
-    );
-
-    elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
-  }, []);
 
   return (
     <>
@@ -770,12 +737,11 @@ export default function ProdutoPorDentro() {
                       className="inside-page"
                       src={panel.src}
                       alt={panel.alt}
-                      width={7430}
-                      height={10753}
-                      loading="eager"
-                      sizes="(max-width: 759px) 88vw, (max-width: 1119px) 58vw, 680px"
+                      width={1055}
+                      height={1491}
+                      loading="lazy"
+                      sizes="(max-width: 759px) 92vw, (max-width: 1119px) 58vw, 680px"
                       draggable={false}
-                      unoptimized
                     />
                   </button>
                 );
@@ -855,7 +821,6 @@ export default function ProdutoPorDentro() {
             height={10753}
             sizes="96vw"
             draggable={false}
-            unoptimized
           />
         </div>
       </div>
@@ -890,7 +855,6 @@ export default function ProdutoPorDentro() {
             height={1491}
             sizes="96vw"
             draggable={false}
-            unoptimized
           />
         </div>
       </div>

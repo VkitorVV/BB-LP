@@ -1,87 +1,6 @@
-'use client';
-
-import Image from 'next/image';
-import React from 'react';
-
-const testimonials = [
-  {
-    src: '/images/prova-social/prova-socialfeeds-05.webp',
-    width: 971,
-    height: 1620,
-    alt: 'Mensagem recebida de barbeiro sobre o material',
-  },
-  {
-    src: '/images/prova-social/prova-socialstory-04.webp',
-    width: 941,
-    height: 1571,
-    alt: 'Depoimento em mensagem sobre o Mapa do Degradê Sem Marca',
-  },
-  {
-    src: '/images/prova-social/prova-socialstory-01.webp',
-    width: 941,
-    height: 1577,
-    alt: 'Mensagem recebida sobre o material',
-  },
-  {
-    src: '/images/prova-social/prova-socialstory-02.webp',
-    width: 941,
-    height: 1571,
-    alt: 'Depoimento em mensagem de barbeiro',
-  },
-  {
-    src: '/images/prova-social/prova-socialstory-03.webp',
-    width: 941,
-    height: 1571,
-    alt: 'Mensagem sobre o Mapa do Degradê Sem Marca',
-  },
-] as const;
+import ProvaSocialCarousel from '@/components/ProvaSocialCarousel';
 
 export default function ProvaSocial() {
-  const [current, setCurrent] = React.useState(0);
-  const swipeStartRef = React.useRef<{ x: number; y: number } | null>(null);
-
-  React.useEffect(() => {
-    testimonials.forEach((testimonial) => {
-      const image = new window.Image();
-      image.decoding = 'async';
-      image.src = testimonial.src;
-    });
-  }, []);
-
-  const show = React.useCallback((index: number) => {
-    setCurrent((index + testimonials.length) % testimonials.length);
-  }, []);
-
-  const goNext = React.useCallback(() => show(current + 1), [current, show]);
-  const goPrevious = React.useCallback(() => show(current - 1), [current, show]);
-
-  const handlePointerDown = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === 'mouse' && event.button !== 0) return;
-    swipeStartRef.current = { x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  }, []);
-
-  const handlePointerUp = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const start = swipeStartRef.current;
-    swipeStartRef.current = null;
-
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    if (!start) return;
-    const deltaX = event.clientX - start.x;
-    const deltaY = event.clientY - start.y;
-    if (Math.abs(deltaX) < 38 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
-
-    if (deltaX < 0) goNext();
-    else goPrevious();
-  }, [goNext, goPrevious]);
-
-  const preventImageAction = React.useCallback((event: React.SyntheticEvent) => {
-    event.preventDefault();
-  }, []);
-
   return (
     <section
       id="prova-social"
@@ -165,19 +84,19 @@ export default function ProvaSocial() {
           -webkit-user-drag: none;
           -webkit-touch-callout: none;
           opacity: 0;
-          visibility: hidden;
+          pointer-events: none;
           transition: opacity 120ms ease;
         }
         #prova-social .social-print.is-active {
           opacity: 1;
-          visibility: visible;
+          pointer-events: auto;
         }
         #prova-social .social-arrow {
           position: absolute;
           top: 50%;
           z-index: 3;
-          width: 38px;
-          height: 38px;
+          width: 44px;
+          height: 44px;
           display: grid;
           place-items: center;
           border: 1px solid rgba(31, 24, 16, 0.16);
@@ -209,15 +128,27 @@ export default function ProvaSocial() {
           margin: 12px auto 0;
         }
         #prova-social .social-dot {
-          width: 7px;
-          height: 7px;
+          position: relative;
+          width: 44px;
+          height: 44px;
           border: 0;
           border-radius: 999px;
           padding: 0;
-          background: rgba(31, 24, 16, 0.24);
+          background: transparent;
           cursor: pointer;
         }
-        #prova-social .social-dot.is-active {
+        #prova-social .social-dot::before {
+          content: "";
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: rgba(31, 24, 16, 0.38);
+          transform: translate(-50%, -50%);
+        }
+        #prova-social .social-dot.is-active::before {
           width: 20px;
           background: var(--color-gold);
         }
@@ -247,10 +178,6 @@ export default function ProvaSocial() {
           #prova-social .social-frame {
             width: min(88vw, 540px);
           }
-          #prova-social .social-arrow {
-            width: 42px;
-            height: 42px;
-          }
         }
         @media (prefers-reduced-motion: reduce) {
           #prova-social .social-frame {
@@ -270,54 +197,7 @@ export default function ProvaSocial() {
         </p>
       </div>
 
-      <div
-        className="social-carousel"
-        aria-label="Depoimentos de barbeiros"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={() => { swipeStartRef.current = null; }}
-        onContextMenu={preventImageAction}
-        onDragStart={preventImageAction}
-      >
-        <button className="social-arrow prev" type="button" onClick={goPrevious} aria-label="Ver depoimento anterior">‹</button>
-        <div className="social-frame">
-          {testimonials.map((testimonial, index) => (
-            <Image
-              className={`social-print${index === current ? ' is-active' : ''}`}
-              key={testimonial.src}
-              src={testimonial.src}
-              alt={index === current ? testimonial.alt : ''}
-              width={testimonial.width}
-              height={testimonial.height}
-              priority={index === 0}
-              loading="eager"
-              decoding="async"
-              sizes="(max-width: 759px) 92vw, 540px"
-              draggable={false}
-              unoptimized
-              aria-hidden={index === current ? undefined : true}
-              onContextMenu={preventImageAction}
-              onDragStart={preventImageAction}
-            />
-          ))}
-        </div>
-        <button className="social-arrow next" type="button" onClick={goNext} aria-label="Ver próximo depoimento">›</button>
-      </div>
-
-      <div className="social-controls" aria-label="Selecionar depoimento">
-        {testimonials.map((testimonial, index) => (
-          <button
-            key={testimonial.src}
-            className={`social-dot${index === current ? ' is-active' : ''}`}
-            type="button"
-            onClick={() => show(index)}
-            aria-label={`Mostrar depoimento ${index + 1}`}
-            aria-current={index === current ? 'true' : undefined}
-          />
-        ))}
-      </div>
-      <p className="social-count">{current + 1} / {testimonials.length}</p>
-      <p className="social-hint">Arraste para ver mais</p>
+      <ProvaSocialCarousel />
     </section>
   );
 }

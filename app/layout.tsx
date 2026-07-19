@@ -32,68 +32,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={`${inter.variable} ${bebasNeue.variable}`}>
       <head>
-        <script
-          dangerouslySetInnerHTML={{ __html: `
-            (function(){
-              var ATTR = 'bis_skin_checked';
-              function clean(root){
-                try {
-                  if (!root || !root.querySelectorAll) return;
-                  if (root.hasAttribute && root.hasAttribute(ATTR)) root.removeAttribute(ATTR);
-                  root.querySelectorAll('[' + ATTR + ']').forEach(function(el){
-                    el.removeAttribute(ATTR);
-                  });
-                } catch (_) {}
-              }
-              clean(document.documentElement);
-              if (typeof MutationObserver === 'undefined') return;
-              var observer = new MutationObserver(function(mutations){
-                mutations.forEach(function(mutation){
-                  if (mutation.type === 'attributes' && mutation.attributeName === ATTR) {
-                    mutation.target.removeAttribute(ATTR);
-                  }
-                  mutation.addedNodes && mutation.addedNodes.forEach(function(node){
-                    if (node && node.nodeType === 1) clean(node);
-                  });
-                });
-              });
-              observer.observe(document.documentElement, {
-                attributes: true,
-                childList: true,
-                subtree: true,
-                attributeFilter: [ATTR]
-              });
-              if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function(){ clean(document.documentElement); }, { once: true });
-              } else {
-                clean(document.documentElement);
-              }
-              window.addEventListener('load', function(){
-                clean(document.documentElement);
-                setTimeout(function(){ observer.disconnect(); }, 3000);
-              }, { once: true });
-            })();
-          ` }}
-        />
-        {/* ── Preconnect para origens críticas de terceiros ──────────────────
-            Antecipa a conexão TCP+TLS antes dos scripts carregarem.
-            Economiza ~320–410ms de latência (api6.ipify, cdn.utmify, tracking.utmify).
-            NÃO altera ordem ou timing de execução dos scripts. ── */}
         <link rel="preconnect" href="https://cdn.utmify.com.br" />
         <link rel="preconnect" href="https://tracking.utmify.com.br" />
         <link rel="preconnect" href="https://api6.ipify.org" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
-        <script
-          src="https://cdn.utmify.com.br/scripts/utms/latest.js"
-          data-utmify-prevent-xcod-sck
-          data-utmify-prevent-subids
-          async
-          defer
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
+        {process.env.NODE_ENV === 'production' && (
+          <>
+            <script
+              src="https://cdn.utmify.com.br/scripts/utms/latest.js"
+              data-utmify-prevent-xcod-sck
+              data-utmify-prevent-subids
+              async
+              defer
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
               window.pixelId = "6a4b090cd0b0714e73bcc2f6";
               var a = document.createElement("script");
               a.setAttribute("async", "");
@@ -101,18 +56,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
               document.head.appendChild(a);
             `,
-          }}
-        />
+              }}
+            />
+          </>
+        )}
 
         {/* ── Preload da imagem LCP — tamanho real de exibição 648px ────── */}
-        <link
-          rel="preload"
-          as="image"
-          href="/images/hero/mockup-hero-sf.webp"
-          type="image/webp"
-          fetchPriority="high"
-        />
-
         {/* ── CSS crítico inline — elimina os ~170ms de render-blocking ───
             Contém apenas o necessário para pintar a primeira dobra
             (body bg, texto, badge, font-display) sem layout shift. ── */}
@@ -120,7 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           *,::after,::before{box-sizing:border-box}
           html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
           html,body{background:#0B0704}
-          body{margin:0;background:#0B0704;color:#F7F1E8;overflow-x:hidden;font-family:system-ui,sans-serif}
+          body{margin:0;background:#0B0704;color:#F7F1E8;overflow-x:hidden;font-family:var(--font-sans),system-ui,sans-serif}
           img{display:block;max-width:100%;height:auto}
           main{background:#0B0704;color:#F7F1E8}
           #hero{background:#0B0704!important;color:#F7F1E8!important}

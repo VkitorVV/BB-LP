@@ -1,29 +1,6 @@
-﻿'use client';
-
-import React from 'react';
-import { getSessionId, getUtmParams } from '@/lib/clientTracking';
-import { trackInternalCta } from '@/lib/trackInternalCta';
-import { OFFER_ANCHOR_ID } from '@/lib/trackingConfig';
+import InternalCta from '@/components/InternalCta';
 
 export default function CTAFinal() {
-  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    const target = document.getElementById(OFFER_ANCHOR_ID);
-    if (!target) return;
-
-    event.preventDefault();
-    trackInternalCta({
-      ctaLabel: 'CTA Final',
-      buttonLocation: 'cta-final',
-      sourceSectionId: 'cta-final',
-      sourceSectionTitle: '16 - CTA FINAL',
-      sourceSectionOrder: 16,
-      sessionId: getSessionId(),
-      utms: getUtmParams(),
-    });
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.history.replaceState(null, '', `#${OFFER_ANCHOR_ID}`);
-  };
-
   return (
     <section
       id="cta-final"
@@ -155,15 +132,18 @@ export default function CTAFinal() {
         <p className="cta-final-text">
           Tenha o Mapa do Degradê Sem Marca por perto para consultar, entender o que revisar e treinar seu olhar nos próximos cortes.
         </p>
-        <a
+        <InternalCta
           className="cta-final-button"
           href="#planos"
-          onClick={handleClick}
-          data-track-cta="CTA Final"
-          data-button-location="cta-final"
+          replaceHash
+          ctaLabel="CTA Final"
+          buttonLocation="cta-final"
+          sourceSectionId="cta-final"
+          sourceSectionTitle="16 - CTA FINAL"
+          sourceSectionOrder={16}
         >
           QUERO ESCOLHER MEU ACESSO
-        </a>
+        </InternalCta>
         <p className="cta-final-safe">
           Compra segura. Acesso após confirmação. Garantia de 7 dias.
         </p>

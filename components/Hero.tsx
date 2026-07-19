@@ -1,25 +1,7 @@
-'use client';
-
-import React from 'react';
 import Image from 'next/image';
-import { trackInternalCta } from '@/lib/trackInternalCta';
-import { getSessionId, getUtmParams } from '@/lib/clientTracking';
-import { OFFER_ANCHOR_ID } from '@/lib/trackingConfig';
+import InternalCta from '@/components/InternalCta';
 
 export default function Hero() {
-  const handleScrollToOffer = () => {
-    trackInternalCta({
-      ctaLabel: 'CTA Hero',
-      buttonLocation: 'hero',
-      sourceSectionId: 'hero',
-      sourceSectionTitle: '01 - HERO',
-      sourceSectionOrder: 1,
-      sessionId: getSessionId(),
-      utms: getUtmParams(),
-    });
-    document.getElementById(OFFER_ANCHOR_ID)?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
     <section
       id="hero"
@@ -321,14 +303,13 @@ export default function Hero() {
             <Image
               src="/images/hero/mockup-hero-sf.webp"
               alt="Cabeça de perfil com degradê dividido visualmente em peso, transição pesada e base"
-              width={1024}
-              height={1365}
-              unoptimized
+              width={1122}
+              height={1402}
               priority
               fetchPriority="high"
               loading="eager"
               decoding="async"
-              sizes="(max-width: 767px) 92vw, (max-width: 1199px) 50vw, 610px"
+              sizes="(max-width: 639px) 92vw, (max-width: 767px) 552px, (max-width: 1199px) 50vw, 610px"
               className="hero-main-image"
             />
 
@@ -341,14 +322,16 @@ export default function Hero() {
         </div>
 
         <div className="hero-cta-wrap">
-          <button
-            onClick={handleScrollToOffer}
+          <InternalCta
             className="hero-cta"
-            data-track-cta="CTA Hero"
-            data-button-location="hero"
+            ctaLabel="CTA Hero"
+            buttonLocation="hero"
+            sourceSectionId="hero"
+            sourceSectionTitle="01 - HERO"
+            sourceSectionOrder={1}
           >
             QUERO ACESSAR O MAPA
-          </button>
+          </InternalCta>
           <p className="hero-trust">
             <span className="hero-trust-item">GUIA VISUAL</span>
             <span className="hero-trust-item">ACESSO IMEDIATO</span>

@@ -1,12 +1,20 @@
 'use client';
 
 import React from 'react';
-import { Clock } from 'lucide-react';
 
 const TIMER_SECONDS = 30 * 60;
 
 function pad(value: number) {
   return String(value).padStart(2, '0');
+}
+
+function ClockIcon() {
+  return (
+    <svg className="timer-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.4" />
+      <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 export default function OfertaLimitadaTimer() {
@@ -152,7 +160,7 @@ export default function OfertaLimitadaTimer() {
 
       <div className="timer-shell">
         <div id="contador-oferta-title" className="timer-pill">
-          <Clock className="timer-icon" aria-hidden="true" />
+          <ClockIcon />
           Oferta Limitada - Termina em:
         </div>
 

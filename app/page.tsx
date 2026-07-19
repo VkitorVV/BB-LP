@@ -3,7 +3,6 @@ import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
 import MarcaNaoAparece from '@/components/MarcaNaoAparece';
 import ClientTrackers from '@/components/ClientTrackers';
-import OfertaLimitadaTimer from '@/components/OfertaLimitadaTimer';
 import VisualRedesignStyles from '@/components/VisualRedesignStyles';
 
 // Below-the-fold: code-split, SSR mantido para SEO
@@ -12,6 +11,7 @@ const CTAMaterialPorDentro = dynamic(() => import('@/components/CTAMaterialPorDe
 const MapaVai = dynamic(() => import('@/components/MapaVai'), { ssr: true });
 const CarrosselCortes = dynamic(() => import('@/components/CarrosselCortes'), { ssr: true });
 const TudoQueRecebe = dynamic(() => import('@/components/TudoQueRecebe'), { ssr: true });
+const OfertaLimitadaTimer = dynamic(() => import('@/components/OfertaLimitadaTimer'), { ssr: true });
 const PrecosAcesso = dynamic(() => import('@/components/PrecosAcesso'), { ssr: true });
 const ProvaSocial = dynamic(() => import('@/components/ProvaSocial'), { ssr: true });
 const Garantia = dynamic(() => import('@/components/Garantia'), { ssr: true });

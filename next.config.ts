@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 365, // 1 year for static images
     deviceSizes: [390, 640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 648],
+    localPatterns: [
+      {
+        pathname: '/images/**',
+      },
+    ],
     remotePatterns: [
       {
         protocol: 'https',
@@ -54,7 +59,7 @@ const nextConfig: NextConfig = {
 
   // Tree-shake heavy packages
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion'],
+    optimizePackageImports: ['framer-motion'],
   },
 
   webpack: (config, { dev }) => {

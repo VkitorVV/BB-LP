@@ -4,6 +4,12 @@
  */
 import { getOfferTrackingSection } from '@/lib/clientTracking';
 
+declare global {
+  interface Window {
+    __internalCtaJumpTimeout?: number;
+  }
+}
+
 export function trackInternalCta(params: {
   ctaLabel: string;
   buttonLocation: string;
@@ -38,6 +44,15 @@ export function trackInternalCta(params: {
       ctaLabel,
       startedAt: Date.now(),
     };
+
+    if (window.__internalCtaJumpTimeout) {
+      window.clearTimeout(window.__internalCtaJumpTimeout);
+    }
+
+    window.__internalCtaJumpTimeout = window.setTimeout(() => {
+      window.__internalCtaJump = null;
+      window.__internalCtaJumpTimeout = undefined;
+    }, 2500);
   }
 
   // GA4 event

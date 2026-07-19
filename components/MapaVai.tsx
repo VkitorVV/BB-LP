@@ -1,7 +1,3 @@
-'use client';
-
-import React from 'react';
-
 const items = [
   <>ENTENDER ONDE<br />A MARCA COMEÇA</>,
   <>RECONHECER QUANDO<br />A TRANSIÇÃO ESTÁ PESADA</>,
@@ -14,34 +10,6 @@ const items = [
 ] as const;
 
 export default function MapaVai() {
-  React.useEffect(() => {
-    const section = document.getElementById('com-o-mapa-voce-vai');
-    if (!section) return;
-
-    const revealItems = Array.from(section.querySelectorAll<HTMLElement>('[data-map-reveal]'));
-    if (!revealItems.length) return;
-
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion) {
-      revealItems.forEach((item) => item.classList.add('is-visible'));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.24, rootMargin: '0px 0px -10% 0px' }
-    );
-
-    revealItems.forEach((item) => observer.observe(item));
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <section
       id="com-o-mapa-voce-vai"

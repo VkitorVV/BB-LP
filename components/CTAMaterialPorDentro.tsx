@@ -1,29 +1,6 @@
-'use client';
-
-import React from 'react';
-import { getSessionId, getUtmParams } from '@/lib/clientTracking';
-import { trackInternalCta } from '@/lib/trackInternalCta';
-import { OFFER_ANCHOR_ID } from '@/lib/trackingConfig';
+import InternalCta from '@/components/InternalCta';
 
 export default function CTAMaterialPorDentro() {
-  const handleClick = React.useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
-    const target = document.getElementById(OFFER_ANCHOR_ID);
-    if (!target) return;
-
-    event.preventDefault();
-    trackInternalCta({
-      ctaLabel: 'CTA Material Por Dentro',
-      buttonLocation: 'cta-material-por-dentro',
-      sourceSectionId: 'cta-material-por-dentro',
-      sourceSectionTitle: '05 - CTA MATERIAL',
-      sourceSectionOrder: 5,
-      sessionId: getSessionId(),
-      utms: getUtmParams(),
-    });
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.history.replaceState(null, '', `#${OFFER_ANCHOR_ID}`);
-  }, []);
-
   return (
     <section
       id="cta-material-por-dentro"
@@ -166,15 +143,18 @@ export default function CTAMaterialPorDentro() {
             E ainda pode imprimir, pois as páginas vão em formato A4, perfeitas para impressão.
           </span>
         </p>
-        <a
+        <InternalCta
           className="cta-button"
           href="#planos"
-          onClick={handleClick}
-          data-track-cta="CTA Material Por Dentro"
-          data-button-location="cta-material-por-dentro"
+          replaceHash
+          ctaLabel="CTA Material Por Dentro"
+          buttonLocation="cta-material-por-dentro"
+          sourceSectionId="cta-material-por-dentro"
+          sourceSectionTitle="05 - CTA MATERIAL"
+          sourceSectionOrder={5}
         >
           QUERO USAR O MAPA NO PRÓXIMO CORTE
-        </a>
+        </InternalCta>
         <p className="cta-safe">
           🔒 Compra segura. Material digital. Acesso após confirmação.
         </p>

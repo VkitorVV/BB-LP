@@ -1,8 +1,4 @@
-'use client';
-
-import React from 'react';
 import Image from 'next/image';
-import { Sparkles } from 'lucide-react';
 
 const bonuses = [
   {
@@ -37,35 +33,16 @@ const bonuses = [
   },
 ] as const;
 
+function SparklesIcon() {
+  return (
+    <svg className="bonus-badge-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3Z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M19 15l.7 2.1L22 18l-2.3.9L19 21l-.7-2.1L16 18l2.3-.9L19 15Z" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function TudoQueRecebe() {
-  React.useEffect(() => {
-    const section = document.getElementById('veja-tudo-que-recebe');
-    if (!section) return;
-
-    const revealItems = Array.from(section.querySelectorAll<HTMLElement>('[data-recebe-reveal]'));
-    if (!revealItems.length) return;
-
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion) {
-      revealItems.forEach((item) => item.classList.add('is-visible'));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' }
-    );
-
-    revealItems.forEach((item) => observer.observe(item));
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <section
       id="veja-tudo-que-recebe"
@@ -348,7 +325,7 @@ export default function TudoQueRecebe() {
               alt="Mockup do guia principal Mapa do Degradê Sem Marca"
               width={1200}
               height={900}
-              loading="eager"
+              loading="lazy"
               sizes="(max-width: 640px) 92vw, (max-width: 1024px) 70vw, 660px"
               style={{ width: '100%', height: 'auto', display: 'block' }}
             />
@@ -385,7 +362,7 @@ export default function TudoQueRecebe() {
           {bonuses.map((bonus) => (
             <article className="bonus-item" key={bonus.title} data-recebe-reveal>
               <div className="bonus-badge">
-                <Sparkles className="bonus-badge-icon" aria-hidden="true" />
+                <SparklesIcon />
                 <span>INCLUSO NO KIT COMPLETO</span>
               </div>
 
