@@ -2840,6 +2840,15 @@ h1 {
   overscroll-behavior-x: contain;
 }
 
+.look-card,
+.proof-card,
+.product-card,
+.look-card *,
+.proof-card *,
+.product-card * {
+  touch-action: pan-y;
+}
+
 .dots span {
   display: block;
   flex: 0 0 auto;
@@ -2899,6 +2908,60 @@ h1 {
   .guarantee h2,
   .faq .section-heading h2 {
     font-size: 1.58rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .look-track,
+  .proof-track,
+  .product-track {
+    overflow-x: hidden !important;
+    scroll-behavior: smooth;
+  }
+
+  .page-glow {
+    display: none !important;
+  }
+
+  .hero__halo,
+  .plan-glow,
+  .mockup,
+  .mockup--back,
+  .plan-mockup-img,
+  .book,
+  .upgrade-modal-visual img {
+    filter: none !important;
+  }
+
+  .look-card,
+  .proof-card,
+  .product-card,
+  .panel,
+  .problem,
+  .plan-card,
+  .price-card,
+  .cta-strip,
+  .offer,
+  .footer-panel {
+    box-shadow: none !important;
+  }
+
+  [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  [class*="shadow-"] {
+    box-shadow: none !important;
+  }
+
+  .button,
+  .cta,
+  .look-card,
+  .proof-card,
+  .product-card,
+  .plan-mockup-img {
+    transition-duration: 120ms !important;
   }
 }
 

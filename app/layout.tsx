@@ -19,6 +19,10 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="pt-BR">
       <head>
+        <link rel="preload" as="image" href="/image/hero/hero.webp" />
+        <link rel="preload" as="image" href="/image/o-problema/problema.webp" />
+        <link rel="preload" as="image" href="/image/popup-upgrade-mockup/plano-completo.webp" />
+
         <Script id="checkout-safety-net" strategy="beforeInteractive">
           {`
             (function () {
@@ -35,7 +39,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
                   if (document.visibilityState === 'visible') {
                     window.location.href = url;
                   }
-                }, 900);
+                }, 400);
               }, true);
             })();
           `}

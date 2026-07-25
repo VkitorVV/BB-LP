@@ -222,9 +222,10 @@ function BarberImage({ src, alt, className = '', loading = 'lazy', priority = fa
       width={600}
       height={800}
       sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 300px"
+      unoptimized
       referrerPolicy="no-referrer"
       {...(priority ? { priority: true } : { loading })}
-      className={`${className} transition-all duration-300`}
+      className={`${className} transition-opacity duration-150`}
       onError={() => setHasError(true)}
     />
   );
@@ -369,7 +370,7 @@ export default function SalesPage() {
   // Carousel active states
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
   const carouselTrackRef = useRef<HTMLDivElement>(null);
-  const carouselTouchStartRef = useRef({ x: 0, y: 0 });
+  const carouselTouchStartRef = useRef({ x: 0, y: 0, handled: false });
 
   // Lightbox overlay states
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -507,7 +508,7 @@ export default function SalesPage() {
   const centerTrackItem = (
     trackRef: React.RefObject<HTMLDivElement | null>,
     index: number,
-    behavior: ScrollBehavior = 'auto',
+    behavior: ScrollBehavior = 'smooth',
   ) => {
     const track = trackRef.current;
     const targetCard = track?.children[index] as HTMLElement | undefined;
@@ -532,30 +533,32 @@ export default function SalesPage() {
   ) => {
     const wrappedIndex = getWrappedIndex(nextIndex, length);
     setIndex(wrappedIndex);
-    centerTrackItem(trackRef, wrappedIndex);
+    window.requestAnimationFrame(() => centerTrackItem(trackRef, wrappedIndex, 'smooth'));
   };
 
   const handleSwipeStart = (
-    event: React.TouchEvent,
-    startRef: React.MutableRefObject<{ x: number; y: number }>,
+    touch: Touch,
+    startRef: React.MutableRefObject<{ x: number; y: number; handled: boolean }>,
   ) => {
-    const touch = event.touches[0];
-    startRef.current = { x: touch.clientX, y: touch.clientY };
+    startRef.current = { x: touch.clientX, y: touch.clientY, handled: false };
   };
 
-  const handleSwipeEnd = (
-    event: React.TouchEvent,
-    startRef: React.MutableRefObject<{ x: number; y: number }>,
+  const maybeHandleSwipe = (
+    touch: Touch,
+    startRef: React.MutableRefObject<{ x: number; y: number; handled: boolean }>,
     activeIndex: number,
     length: number,
     setIndex: React.Dispatch<React.SetStateAction<number>>,
     trackRef: React.RefObject<HTMLDivElement | null>,
   ) => {
-    const touch = event.changedTouches[0];
+    if (startRef.current.handled) return;
+
     const deltaX = touch.clientX - startRef.current.x;
     const deltaY = touch.clientY - startRef.current.y;
 
-    if (Math.abs(deltaX) < 38 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
+    if (Math.abs(deltaX) < 34 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+
+    startRef.current.handled = true;
 
     moveCarouselTo(
       trackRef,
@@ -597,7 +600,7 @@ export default function SalesPage() {
   // Proof Carousel States
   const [activeProofIndex, setActiveProofIndex] = useState(0);
   const proofTrackRef = useRef<HTMLDivElement>(null);
-  const proofTouchStartRef = useRef({ x: 0, y: 0 });
+  const proofTouchStartRef = useRef({ x: 0, y: 0, handled: false });
 
   const proofItems = [
     { id: 0, src: '/image/prova-social/ps01.webp', alt: 'Relato de barbeiro sobre a lógica do método M.A.P.A.' },
@@ -639,7 +642,7 @@ export default function SalesPage() {
   // Product Bundle Carousel States
   const [activeProductIndex, setActiveProductIndex] = useState(0);
   const productTrackRef = useRef<HTMLDivElement>(null);
-  const productTouchStartRef = useRef({ x: 0, y: 0 });
+  const productTouchStartRef = useRef({ x: 0, y: 0, handled: false });
 
   const productItems = [
     {
@@ -780,19 +783,94 @@ export default function SalesPage() {
   });
 
   useEffect(() => {
+    const bindings = [
+      {
+        trackRef: carouselTrackRef,
+        startRef: carouselTouchStartRef,
+        activeIndex: activeCarouselIndex,
+        length: carouselItems.length,
+        setIndex: setActiveCarouselIndex,
+      },
+      {
+        trackRef: proofTrackRef,
+        startRef: proofTouchStartRef,
+        activeIndex: activeProofIndex,
+        length: proofItems.length,
+        setIndex: setActiveProofIndex,
+      },
+      {
+        trackRef: productTrackRef,
+        startRef: productTouchStartRef,
+        activeIndex: activeProductIndex,
+        length: productItems.length,
+        setIndex: setActiveProductIndex,
+      },
+    ];
+
+    const cleanups = bindings.flatMap(({ trackRef, startRef, activeIndex, length, setIndex }) => {
+      const track = trackRef.current;
+      if (!track) return [];
+
+      const onTouchStart = (event: TouchEvent) => {
+        const touch = event.touches[0];
+        if (touch) handleSwipeStart(touch, startRef);
+      };
+
+      const onTouchEnd = (event: TouchEvent) => {
+        const touch = event.changedTouches[0];
+        if (touch) maybeHandleSwipe(touch, startRef, activeIndex, length, setIndex, trackRef);
+      };
+
+      const onTouchMove = (event: TouchEvent) => {
+        const touch = event.touches[0];
+        if (touch) maybeHandleSwipe(touch, startRef, activeIndex, length, setIndex, trackRef);
+      };
+
+      track.addEventListener('touchstart', onTouchStart, { passive: true });
+      track.addEventListener('touchmove', onTouchMove, { passive: true });
+      track.addEventListener('touchend', onTouchEnd, { passive: true });
+
+      return [
+        () => {
+          track.removeEventListener('touchstart', onTouchStart);
+          track.removeEventListener('touchmove', onTouchMove);
+          track.removeEventListener('touchend', onTouchEnd);
+        },
+      ];
+    });
+
+    return () => {
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }, [activeCarouselIndex, activeProofIndex, activeProductIndex, carouselItems.length, proofItems.length, productItems.length]);
+
+  useEffect(() => {
     const priorityPreloadImages = [
+      '/image/hero/hero.webp',
+      '/image/o-problema/problema.webp',
+      '/image/a-solucao-e-clareza/img0.webp',
+      '/image/a-solucao-e-clareza/img1.webp',
+      '/image/a-solucao-e-clareza/img2.webp',
+      '/image/a-solucao-e-clareza/img3.webp',
+      '/image/a-solucao-e-clareza/img4.webp',
       '/image/popup-upgrade-mockup/plano-completo.webp',
+      '/image/mockup-planos/plano-basico.webp',
       '/image/mockup-planos/plano-completo.webp',
       carouselItems[0]?.src,
+      carouselItems[1]?.src,
       proofItems[0]?.src,
+      proofItems[1]?.src,
+      proofItems[2]?.src,
+      proofItems[3]?.src,
+      proofItems[4]?.src,
       productItems[0]?.src,
+      productItems[1]?.src,
     ].filter(Boolean) as string[];
 
     const deferredPreloadImages = [
-      ...carouselItems.slice(1).map((item) => item.src),
-      ...proofItems.slice(1).map((item) => item.src),
-      ...productItems.slice(1).map((item) => item.src),
-    ];
+      ...carouselItems.slice(2).map((item) => item.src),
+      ...productItems.slice(2).map((item) => item.src),
+    ].filter((src) => !priorityPreloadImages.includes(src));
 
     const preloadImage = (src: string) => {
       const image = new window.Image();
@@ -810,7 +888,7 @@ export default function SalesPage() {
         timeoutIds.push(
           window.setTimeout(() => {
             chunk.forEach(preloadImage);
-          }, 2500 + index * 500),
+          }, 500 + index * 140),
         );
       }
     };
@@ -821,14 +899,14 @@ export default function SalesPage() {
     };
 
     if (idleWindow.requestIdleCallback && idleWindow.cancelIdleCallback) {
-      const callbackId = idleWindow.requestIdleCallback(runPreload, { timeout: 1600 });
+      const callbackId = idleWindow.requestIdleCallback(runPreload, { timeout: 700 });
       return () => {
         idleWindow.cancelIdleCallback?.(callbackId);
         timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
       };
     }
 
-    const timeoutId = window.setTimeout(runPreload, 1200);
+    const timeoutId = window.setTimeout(runPreload, 450);
     return () => {
       window.clearTimeout(timeoutId);
       timeoutIds.forEach((deferredTimeoutId) => window.clearTimeout(deferredTimeoutId));
@@ -904,9 +982,8 @@ export default function SalesPage() {
         <section className="hero pt-10 pb-6 sm:pt-16 sm:pb-10" id="inicio">
           <div className="container max-w-4xl mx-auto px-4 flex flex-col items-center text-center">
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
               className="flex flex-col items-center"
             >
               <div className="eyebrow mb-6" style={{fontSize: '0.6rem', whiteSpace: 'nowrap', padding: '7px 12px'}}>
@@ -925,9 +1002,8 @@ export default function SalesPage() {
 
             {/* MOCKUP (SUBIDO PARA ABAIXO DA SUBHEADLINE) */}
             <motion.div 
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={false}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
               className="relative w-full max-w-xs mx-auto my-6 flex justify-center items-center select-none"
               aria-label="Mockup do guia Degradê sem Marca"
             >
@@ -937,17 +1013,18 @@ export default function SalesPage() {
                   alt="Mockup do guia Degradê sem Marca"
                   width={600}
                   height={800}
+                  sizes="(max-width: 640px) 320px, 360px"
                   className="w-full h-auto object-cover"
                   priority
+                  unoptimized
                 />
               </div>
             </motion.div>
 
             {/* BULLETS ABAIXO DO MOCKUP */}
             <motion.div 
-              initial={{ opacity: 0, y: 15 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.25 }}
               className="w-full max-w-lg mx-auto bg-[#0a0a0a]/80 border border-[#d6a84c]/20 rounded-xl p-5 sm:p-6 shadow-xl backdrop-blur-md mt-6"
             >
               <ul className="flex flex-col gap-3.5 text-left">
@@ -972,10 +1049,8 @@ export default function SalesPage() {
         <section className="section section--tight" id="marca-nao-aparece">
           <div className="container">
             <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
               className="problem"
             >
               <div className="problem__image relative" role="img" aria-label="Exemplo de excesso de peso na zona alta">
@@ -1004,10 +1079,8 @@ export default function SalesPage() {
             <div className="solution-grid">
               {/* Card 1: ZONA ALTA */}
               <motion.article 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
+                initial={false}
+                animate={{ opacity: 1, y: 0 }}
                 className="solution-card cursor-pointer"
                 onClick={() => openLightbox('/image/a-solucao-e-clareza/img0.webp', 'Zona alta: onde o peso acumula e o degradê pesa.', 'zona-alta')}
               >
@@ -1016,16 +1089,14 @@ export default function SalesPage() {
                   <p>Onde o peso acumula e o degradê pesa.</p>
                 </div>
                 <div className="rounded-lg overflow-hidden border border-white/10 hover:border-[#d6a84c]/50 transition-all">
-                  <BarberImage src="/image/a-solucao-e-clareza/img0.webp" alt="Página 11 — Zona alta" type="zona-alta" />
+                  <BarberImage src="/image/a-solucao-e-clareza/img0.webp" alt="Página 11 — Zona alta" type="zona-alta" loading="eager" />
                 </div>
               </motion.article>
 
               {/* Card 2: MARCAÇÃO */}
               <motion.article 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.1 }}
+                initial={false}
+                animate={{ opacity: 1, y: 0 }}
                 className="solution-card cursor-pointer"
                 onClick={() => openLightbox('/image/a-solucao-e-clareza/img1.webp', 'Marcação: o limite inicial que define um degradê limpo.', 'linha-base')}
               >
@@ -1034,16 +1105,14 @@ export default function SalesPage() {
                   <p>O limite inicial que define um degradê limpo.</p>
                 </div>
                 <div className="rounded-lg overflow-hidden border border-white/10 hover:border-[#d6a84c]/50 transition-all">
-                  <BarberImage src="/image/a-solucao-e-clareza/img1.webp" alt="Página 29 — Linha Base / Marcação" type="linha-base" />
+                  <BarberImage src="/image/a-solucao-e-clareza/img1.webp" alt="Página 29 — Linha Base / Marcação" type="linha-base" loading="eager" />
                 </div>
               </motion.article>
 
               {/* Card 3: ALTURAS */}
               <motion.article 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+                initial={false}
+                animate={{ opacity: 1, y: 0 }}
                 className="solution-card cursor-pointer"
                 onClick={() => openLightbox('/image/a-solucao-e-clareza/img2.webp', 'Alturas: onde cada pente entra e como uma faixa se conecta à outra.', 'pentes')}
               >
@@ -1052,16 +1121,14 @@ export default function SalesPage() {
                   <p>Onde cada pente entra e como uma faixa se conecta à outra.</p>
                 </div>
                 <div className="rounded-lg overflow-hidden border border-white/10 hover:border-[#d6a84c]/50 transition-all">
-                  <BarberImage src="/image/a-solucao-e-clareza/img2.webp" alt="Tabela dos Pentes e Alturas" type="pentes" />
+                  <BarberImage src="/image/a-solucao-e-clareza/img2.webp" alt="Tabela dos Pentes e Alturas" type="pentes" loading="eager" />
                 </div>
               </motion.article>
 
               {/* Card 4: TRANSIÇÃO */}
               <motion.article 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.3 }}
+                initial={false}
+                animate={{ opacity: 1, y: 0 }}
                 className="solution-card cursor-pointer"
                 onClick={() => openLightbox('/image/a-solucao-e-clareza/img3.webp', 'Transição: onde as alturas se misturam e a marca começa a desaparecer.', 'suavizacao')}
               >
@@ -1070,16 +1137,14 @@ export default function SalesPage() {
                   <p>Onde as alturas se misturam e a marca começa a desaparecer.</p>
                 </div>
                 <div className="rounded-lg overflow-hidden border border-white/10 hover:border-[#d6a84c]/50 transition-all">
-                  <BarberImage src="/image/a-solucao-e-clareza/img3.webp" alt="Página 33 — Suavização" type="suavizacao" />
+                  <BarberImage src="/image/a-solucao-e-clareza/img3.webp" alt="Página 33 — Suavização" type="suavizacao" loading="eager" />
                 </div>
               </motion.article>
 
               {/* Card 5: ACABAMENTO */}
               <motion.article 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.4 }}
+                initial={false}
+                animate={{ opacity: 1, y: 0 }}
                 className="solution-card cursor-pointer"
                 onClick={() => openLightbox('/image/a-solucao-e-clareza/img4.webp', 'Acabamento: os ajustes finais que deixam o corte mais limpo e bem apresentado.', 'acabamento')}
               >
@@ -1088,7 +1153,7 @@ export default function SalesPage() {
                   <p>Os ajustes finais que deixam o corte mais limpo e bem apresentado.</p>
                 </div>
                 <div className="rounded-lg overflow-hidden border border-white/10 hover:border-[#d6a84c]/50 transition-all">
-                  <BarberImage src="/image/a-solucao-e-clareza/img4.webp" alt="Ajustes e Acabamento Final" type="acabamento" />
+                  <BarberImage src="/image/a-solucao-e-clareza/img4.webp" alt="Ajustes e Acabamento Final" type="acabamento" loading="eager" />
                 </div>
               </motion.article>
             </div>
@@ -1188,8 +1253,6 @@ export default function SalesPage() {
                 className="look-track" 
                 id="lookTrack"
                 ref={carouselTrackRef}
-                onTouchStart={(event) => handleSwipeStart(event, carouselTouchStartRef)}
-                onTouchEnd={(event) => handleSwipeEnd(event, carouselTouchStartRef, activeCarouselIndex, carouselItems.length, setActiveCarouselIndex, carouselTrackRef)}
               >
                 {carouselItems.map((item, index) => (
                   <button 
@@ -1198,7 +1261,7 @@ export default function SalesPage() {
                     type="button"
                     onClick={() => openLightbox(item.src, item.title, item.type)}
                   >
-                    <BarberImage src={item.src} alt={item.title} type={item.type} loading={index === 0 ? 'eager' : 'lazy'} />
+                    <BarberImage src={item.src} alt={item.title} type={item.type} loading={index < 2 ? 'eager' : 'lazy'} />
                   </button>
                 ))}
               </div>
@@ -1255,8 +1318,6 @@ export default function SalesPage() {
               <div 
                 className="carousel-track proof-track flex gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory py-2"
                 ref={proofTrackRef}
-                onTouchStart={(event) => handleSwipeStart(event, proofTouchStartRef)}
-                onTouchEnd={(event) => handleSwipeEnd(event, proofTouchStartRef, activeProofIndex, proofItems.length, setActiveProofIndex, proofTrackRef)}
               >
                 {proofItems.map((item, index) => (
                   <button 
@@ -1266,7 +1327,7 @@ export default function SalesPage() {
                     onClick={() => openLightbox(item.src, item.alt, 'prova')}
                   >
                     <div className="relative w-full">
-                      <BarberImage src={item.src} alt={item.alt} type="prova" className="w-full h-auto object-contain" loading={index === 0 ? 'eager' : 'lazy'} />
+                      <BarberImage src={item.src} alt={item.alt} type="prova" className="w-full h-auto object-contain" loading={index < 2 ? 'eager' : 'lazy'} />
                     </div>
                   </button>
                 ))}
@@ -1324,8 +1385,6 @@ export default function SalesPage() {
               <div 
                 className="carousel-track product-track flex gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory py-2"
                 ref={productTrackRef}
-                onTouchStart={(event) => handleSwipeStart(event, productTouchStartRef)}
-                onTouchEnd={(event) => handleSwipeEnd(event, productTouchStartRef, activeProductIndex, productItems.length, setActiveProductIndex, productTrackRef)}
               >
                 {productItems.map((item, index) => (
                   <article 
@@ -1338,7 +1397,7 @@ export default function SalesPage() {
                       <span className="included">INCLUSO NO KIT COMPLETO</span>
                     )}
                     <div className="book rounded-md overflow-hidden bg-white/5 p-1 border border-white/5 mb-3">
-                      <BarberImage src={item.src} alt={item.title} type={item.type} className="w-full h-full object-cover" loading={index === 0 ? 'eager' : 'lazy'} />
+                      <BarberImage src={item.src} alt={item.title} type={item.type} className="w-full h-full object-cover" loading={index < 2 ? 'eager' : 'lazy'} />
                     </div>
                     <h3>{item.title}</h3>
                     <p>{item.desc}</p>
@@ -1407,6 +1466,8 @@ export default function SalesPage() {
                       height={800}
                       sizes="(max-width: 768px) 90vw, 408px"
                       className="plan-mockup-img"
+                      priority
+                      unoptimized
                     />
                   </div>
                 </div>
@@ -1460,6 +1521,8 @@ export default function SalesPage() {
                       height={800}
                       sizes="(max-width: 768px) 90vw, 408px"
                       className="plan-mockup-img"
+                      priority
+                      unoptimized
                     />
                   </div>
                 </div>
@@ -1697,12 +1760,12 @@ export default function SalesPage() {
       {/* UPGRADE MODAL POPUP (BACKREDIRECT FOR PLANO BÁSICO) */}
       <AnimatePresence>
         {isUpgradeOpen && (
-          <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 md:p-6 backdrop-blur-md overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={false}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.08, ease: 'linear' }}
               className="relative bg-[#0d0d0d] border border-[#d6a84c]/30 rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden my-auto"
             >
               {/* Close Button */}
@@ -1731,6 +1794,7 @@ export default function SalesPage() {
                       width={600}
                       height={400}
                       priority
+                      unoptimized
                       sizes="(max-width: 768px) 90vw, 500px"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = "/image/mockup-planos/plano-completo.webp";
