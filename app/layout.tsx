@@ -19,6 +19,28 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="pt-BR">
       <head>
+        <Script id="checkout-safety-net" strategy="beforeInteractive">
+          {`
+            (function () {
+              document.addEventListener('click', function (event) {
+                var el = event.target;
+                while (el && el.tagName !== 'A') el = el.parentElement;
+                if (!el) return;
+
+                var href = el.getAttribute('href') || '';
+                if (href.indexOf('pay.wiapy.com') === -1) return;
+
+                var url = el.href;
+                setTimeout(function () {
+                  if (document.visibilityState === 'visible') {
+                    window.location.href = url;
+                  }
+                }, 900);
+              }, true);
+            })();
+          `}
+        </Script>
+
         {/* Required by UTMify pixel.js. Keep before the pixel and do not async-load it separately. */}
         <Script
           id="utmify-sha256"

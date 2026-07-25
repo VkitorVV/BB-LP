@@ -441,12 +441,6 @@ export default function SalesPage() {
     }
   };
 
-  const scheduleCheckoutFallback = (targetUrl: string) => {
-    window.setTimeout(() => {
-      window.location.href = targetUrl;
-    }, 800);
-  };
-
   const trackOfferJump = () => {
     const offerSection = getOfferTrackingSection();
     trackInternalCta({
@@ -498,7 +492,6 @@ export default function SalesPage() {
           : 'kit_desconto_popup';
       const buttonLocation = type === 'completo' ? 'oferta' : 'popup_upgrade';
       trackCheckoutClick(checkoutType, targetUrl, buttonLocation);
-      scheduleCheckoutFallback(targetUrl);
     };
   };
 
@@ -1789,7 +1782,6 @@ export default function SalesPage() {
                           const nativeEvent = e.nativeEvent as MouseEvent & { flagged?: boolean };
                           if (nativeEvent.flagged !== true && nativeEvent.isTrusted !== false) {
                             trackCheckoutClick('kit_desconto_popup', targetUrl, 'popup_upgrade');
-                            scheduleCheckoutFallback(targetUrl);
                           }
                         }
                       }}
@@ -1817,7 +1809,6 @@ export default function SalesPage() {
                           const nativeEvent = e.nativeEvent as MouseEvent & { flagged?: boolean };
                           if (nativeEvent.flagged !== true && nativeEvent.isTrusted !== false) {
                             trackCheckoutClick('plano_basico', targetUrl, 'popup_upgrade');
-                            scheduleCheckoutFallback(targetUrl);
                           }
                         }
                       }}
