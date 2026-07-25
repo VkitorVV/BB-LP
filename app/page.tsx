@@ -441,21 +441,12 @@ export default function SalesPage() {
     }
   };
 
-  const isExternalSyntheticClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    const nativeEvent = event.nativeEvent as MouseEvent & { flagged?: boolean };
-    return nativeEvent.flagged === true || nativeEvent.isTrusted === false;
-  };
-
-  const openCheckoutImmediately = (url: string) => {
-    const opened = window.open(url, '_blank');
-    if (opened) {
-      opened.opener = null;
-      return;
-    }
-
-    if (!opened) {
-      window.location.assign(url);
-    }
+  const scheduleCheckoutFallback = (targetUrl: string) => {
+    window.setTimeout(() => {
+      if (document.visibilityState === 'visible' && window.location.href !== targetUrl) {
+        window.location.assign(targetUrl);
+      }
+    }, 1200);
   };
 
   const trackOfferJump = () => {
@@ -489,10 +480,9 @@ export default function SalesPage() {
 
     return (e: React.MouseEvent<HTMLAnchorElement>) => {
       const currentUrl = type === 'completo' ? checkoutUrl : type === 'basico' ? checkoutUrlBasico : checkoutUrlDesconto;
-      if (isExternalSyntheticClick(e)) {
-        e.preventDefault();
-        return;
-      }
+      const targetUrl = e.currentTarget.href || currentUrl;
+      const nativeEvent = e.nativeEvent as MouseEvent & { flagged?: boolean };
+      if (nativeEvent.flagged === true || nativeEvent.isTrusted === false) return;
 
       if (currentUrl.includes('seu-checkout-aqui') || currentUrl.includes('seu-checkout-basico') || currentUrl.includes('seu-checkout-desconto')) {
         e.preventDefault();
@@ -509,10 +499,8 @@ export default function SalesPage() {
           ? 'plano_basico'
           : 'kit_desconto_popup';
       const buttonLocation = type === 'completo' ? 'oferta' : 'popup_upgrade';
-      const targetUrl = e.currentTarget.href || currentUrl;
       trackCheckoutClick(checkoutType, targetUrl, buttonLocation);
-      e.preventDefault();
-      openCheckoutImmediately(targetUrl);
+      scheduleCheckoutFallback(targetUrl);
     };
   };
 
@@ -1535,8 +1523,6 @@ export default function SalesPage() {
                   <a 
                     className="cta cta-primary cursor-pointer" 
                     href={checkoutUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     onClick={handleCheckoutClick('completo')}
                   >
                     <svg viewBox="0 0 48 48" aria-hidden="true" className="w-6 h-6 stroke-current fill-none">
@@ -1642,8 +1628,6 @@ export default function SalesPage() {
               </p>
               <a 
                 href={checkoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
                 onClick={handleCheckoutClick('completo')}
                 className="cta cta-primary w-full py-4 text-sm md:text-base font-black flex items-center justify-center gap-2"
               >
@@ -1788,8 +1772,6 @@ export default function SalesPage() {
                   <div className="upgrade-modal-actions">
                     <a 
                       href={checkoutUrlDesconto}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="upgrade-modal-primary" 
                       data-checkout-type="kit_desconto_popup" 
                       data-checkout-label="Kit Completo com Desconto" 
@@ -1798,11 +1780,6 @@ export default function SalesPage() {
                       data-popup-action="accept_upgrade" 
                       id="5a05d5a2-b60b-bcb0-2aac-20cf2002e1af"
                       onClick={(e) => {
-                        if (isExternalSyntheticClick(e)) {
-                          e.preventDefault();
-                          return;
-                        }
-
                         if (checkoutUrlDesconto.includes('seu-checkout-desconto')) {
                           e.preventDefault();
                           setTempCheckoutUrl(checkoutUrl);
@@ -1811,10 +1788,11 @@ export default function SalesPage() {
                           setIsEditingCheckout(true);
                         } else {
                           const targetUrl = e.currentTarget.href || checkoutUrlDesconto;
-                          trackCheckoutClick('kit_desconto_popup', targetUrl, 'popup_upgrade');
-                          e.preventDefault();
-                          openCheckoutImmediately(targetUrl);
-                          setIsUpgradeOpen(false);
+                          const nativeEvent = e.nativeEvent as MouseEvent & { flagged?: boolean };
+                          if (nativeEvent.flagged !== true && nativeEvent.isTrusted !== false) {
+                            trackCheckoutClick('kit_desconto_popup', targetUrl, 'popup_upgrade');
+                            scheduleCheckoutFallback(targetUrl);
+                          }
                         }
                       }}
                     >
@@ -1822,8 +1800,6 @@ export default function SalesPage() {
                     </a>
                     <a 
                       href={checkoutUrlBasico}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="upgrade-modal-secondary" 
                       data-checkout-type="plano_basico" 
                       data-checkout-label="Plano Básico" 
@@ -1832,11 +1808,6 @@ export default function SalesPage() {
                       data-popup-action="decline_upgrade" 
                       id="55386d6f-317a-449d-103c-c48fff34d3e0"
                       onClick={(e) => {
-                        if (isExternalSyntheticClick(e)) {
-                          e.preventDefault();
-                          return;
-                        }
-
                         if (checkoutUrlBasico.includes('seu-checkout-basico')) {
                           e.preventDefault();
                           setTempCheckoutUrl(checkoutUrl);
@@ -1845,10 +1816,11 @@ export default function SalesPage() {
                           setIsEditingCheckout(true);
                         } else {
                           const targetUrl = e.currentTarget.href || checkoutUrlBasico;
-                          trackCheckoutClick('plano_basico', targetUrl, 'popup_upgrade');
-                          e.preventDefault();
-                          openCheckoutImmediately(targetUrl);
-                          setIsUpgradeOpen(false);
+                          const nativeEvent = e.nativeEvent as MouseEvent & { flagged?: boolean };
+                          if (nativeEvent.flagged !== true && nativeEvent.isTrusted !== false) {
+                            trackCheckoutClick('plano_basico', targetUrl, 'popup_upgrade');
+                            scheduleCheckoutFallback(targetUrl);
+                          }
                         }
                       }}
                     >
