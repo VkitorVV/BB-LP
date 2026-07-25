@@ -443,10 +443,8 @@ export default function SalesPage() {
 
   const scheduleCheckoutFallback = (targetUrl: string) => {
     window.setTimeout(() => {
-      if (document.visibilityState === 'visible' && window.location.href !== targetUrl) {
-        window.location.assign(targetUrl);
-      }
-    }, 1200);
+      window.location.href = targetUrl;
+    }, 800);
   };
 
   const trackOfferJump = () => {
