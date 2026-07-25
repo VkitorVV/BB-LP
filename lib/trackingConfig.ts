@@ -12,31 +12,33 @@ export const UTM_KEYS = [
 ] as const;
 
 export const TRACKING_SECTIONS = [
-  { id: 'hero', title: '01 - HERO', order: 1 },
-  { id: 'marca-nao-aparece', title: '02 - ELA COMECA ANTES', order: 2 },
-  { id: 'material-por-dentro', title: '03 - MATERIAL POR DENTRO', order: 3 },
-  { id: 'material-carrossel-3d', title: '04 - CARROSSEL 3D DO MATERIAL', order: 4 },
-  { id: 'cta-material-por-dentro', title: '05 - CTA MATERIAL', order: 5 },
-  { id: 'com-o-mapa-voce-vai', title: '06 - COM O MAPA VOCE VAI', order: 6 },
-  { id: 'carrossel-cortes', title: '07 - TA DUVIDANDO', order: 7 },
-  { id: 'veja-tudo-que-recebe', title: '08 - VEJA TUDO QUE VOCE VAI RECEBER', order: 8 },
-  { id: 'veja-tudo-produto-principal', title: '09 - PRODUTO PRINCIPAL', order: 9 },
-  { id: 'veja-tudo-bonus', title: '10 - BONUS', order: 10 },
-  { id: 'contador-oferta', title: '11 - OFERTA LIMITADA', order: 11 },
-  { id: 'precos-acesso', title: '12 - PRECOS / PLANOS', order: 12 },
-  { id: 'prova-social', title: '13 - PROVA SOCIAL', order: 13 },
-  { id: 'garantia', title: '14 - GARANTIA', order: 14 },
-  { id: 'faq', title: '15 - FAQ', order: 15 },
-  { id: 'cta-final', title: '16 - CTA FINAL', order: 16 },
-  { id: 'rodape', title: '17 - RODAPE', order: 17 },
+  { id: 'hero', title: '01 - HERO', order: 1, domId: 'inicio' },
+  { id: 'marca-nao-aparece', title: '02 - O PROBLEMA NAO APARECE DO NADA', order: 2, domId: 'marca-nao-aparece' },
+  { id: 'material-por-dentro', title: '03 - A SOLUCAO E CLAREZA', order: 3, domId: 'material-por-dentro' },
+  { id: 'cta-material-por-dentro', title: '04 - CTA INTERMEDIARIO', order: 4, domId: 'chamada-oferta' },
+  { id: 'com-o-mapa-voce-vai', title: '05 - COM O MAPA VOCE VAI', order: 5, domId: 'com-o-mapa-voce-vai' },
+  { id: 'carrossel-cortes', title: '06 - TA DUVIDANDO', order: 6, domId: 'por-dentro' },
+  { id: 'prova-social', title: '07 - BARBEIROS APROVARAM', order: 7, domId: 'depoimentos' },
+  { id: 'veja-tudo-que-recebe', title: '08 - VEJA TUDO QUE VOCE VAI RECEBER', order: 8, domId: 'conteudo' },
+  { id: 'precos-acesso', title: '09 - PRECOS / PLANOS', order: 9, domId: 'oferta' },
+  { id: 'garantia', title: '10 - GARANTIA', order: 10, domId: 'garantia' },
+  { id: 'faq', title: '11 - FAQ', order: 11, domId: 'faq' },
+  { id: 'cta-final', title: '12 - CTA FINAL', order: 12, domId: 'chamada-final' },
+  { id: 'rodape', title: '13 - RODAPE', order: 13, domId: 'rodape' },
 ] as const;
 
 export type TrackingSection = typeof TRACKING_SECTIONS[number];
 export type TrackingSectionId = TrackingSection['id'];
 
 export const SECTION_ALIASES: Record<string, TrackingSectionId> = {
+  inicio: 'hero',
   oferta: 'precos-acesso',
   planos: 'precos-acesso',
+  'chamada-oferta': 'cta-material-por-dentro',
+  'por-dentro': 'carrossel-cortes',
+  depoimentos: 'prova-social',
+  conteudo: 'veja-tudo-que-recebe',
+  'chamada-final': 'cta-final',
 };
 
 export const OFFER_SECTION_ID = 'precos-acesso' as const;

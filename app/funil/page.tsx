@@ -87,15 +87,21 @@ function secsAgo(sec:number){if(sec<5)return 'agora';if(sec<60)return `há ${sec
 const WINDOWS=[{v:'now',l:'Agora/25s'},{v:'30m',l:'30 min'},{v:'1h',l:'1 hora'},{v:'2h',l:'2 horas'},{v:'4h',l:'4 horas'},{v:'12h',l:'12 horas'},{v:'24h',l:'24 horas'},{v:'today',l:'Hoje'}];
 const TABS:[Tab,string][]=[['geral','Visão Geral'],['usuarios','Usuários'],['campanhas','Campanhas'],['exportacoes','Exportações']];
 type UserFilter='todos'|'novos'|'retornaram'|'online'|'recentes'|'saíram'|'compraram'|'clicaram'|'chegaram_oferta'|'nao_oferta';
-const OFFER_SECTION_ORDER = getTrackingSection(OFFER_SECTION_ID)?.order || 10;
+const OFFER_SECTION_ORDER = getTrackingSection(OFFER_SECTION_ID)?.order || 9;
 const isOfferSection = (sectionId: string) => sectionId === OFFER_SECTION_ID || sectionId === 'oferta';
+const getInitialSearchParams=()=>typeof window==='undefined'?new URLSearchParams():new URLSearchParams(window.location.search);
+const getInitialToken=()=>getInitialSearchParams().get('token')||'';
+const getInitialTab=():Tab=>{
+  const tab=getInitialSearchParams().get('tab') as Tab|null;
+  return tab&&TABS.some(([value])=>value===tab)?tab:'geral';
+};
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function FunilPage() {
-  const [token,setToken]=useState('');
+  const [token,setToken]=useState(getInitialToken);
   const [date,setDate]=useState(brazilToday());
   const [win,setWin]=useState('today');
-  const [tab,setTab]=useState<Tab>('geral');
+  const [tab,setTab]=useState<Tab>(getInitialTab);
   const [data,setData]=useState<DashData|null>(null);
   const [err,setErr]=useState('');
   const [loading,setLoading]=useState(false);
@@ -117,7 +123,6 @@ export default function FunilPage() {
   const tickIv=useRef<ReturnType<typeof setInterval>|null>(null);
 
   useEffect(()=>{tickIv.current=setInterval(()=>setTick(p=>p+1),1000);return()=>{if(tickIv.current)clearInterval(tickIv.current);};},[]);
-  useEffect(()=>{const p=new URLSearchParams(window.location.search);setToken(p.get('token')||'');const t=p.get('tab');if(t)setTab(t as Tab);},[]);
 
   const load=useCallback(async(tok:string,d:string,w:string)=>{
     if(!tok)return;setLoading(true);

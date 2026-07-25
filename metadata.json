@@ -1,6 +1,6 @@
 {
-  "name": "Mapa do Degradê Sem Marca",
-  "description": "Página de vendas oficial do guia visual prático de degradê sem marcações para barbeiros iniciantes e intermediários.",
+  "name": "Mapa do Degrade Sem Marca",
+  "description": "Guia visual para barbeiros entenderem pentes, alturas e transicoes no degrade.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

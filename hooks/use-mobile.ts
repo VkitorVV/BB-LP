@@ -11,12 +11,12 @@ export function useIsMobile() {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }
     mql.addEventListener("change", onChange)
-    const timeoutId = setTimeout(() => {
+    const timer = setTimeout(() => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }, 0)
     return () => {
       mql.removeEventListener("change", onChange)
-      clearTimeout(timeoutId)
+      clearTimeout(timer)
     }
   }, [])
 

@@ -1,8 +1,0 @@
-# Target modern browsers only — removes Array.at, Object.fromEntries, etc. polyfills
-chrome >= 90
-firefox >= 90
-safari >= 14
-edge >= 90
-not dead
-not IE 11
-not op_mini all

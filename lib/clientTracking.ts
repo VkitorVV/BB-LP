@@ -162,18 +162,12 @@ export function getUtmParams(): TrackingUtms {
 export function buildCheckoutUrl(checkoutType: CheckoutRedirectType): string {
   const baseUrl = CHECKOUT_URLS[checkoutType];
   const url = new URL(baseUrl);
-  const sessionId = getSessionId();
   const params = new URLSearchParams(window.location.search);
   const storedAttribution = readStoredAttribution();
   const cleanParam = (value: string | undefined | null) => {
     const cleaned = value?.trim();
     return cleaned || undefined;
   };
-
-  if (sessionId) {
-    url.searchParams.set('session_id', sessionId);
-    url.searchParams.set('sid', sessionId);
-  }
 
   UTM_KEYS.forEach((key) => {
     const fromUrl = cleanParam(params.get(key));
@@ -188,8 +182,8 @@ export function buildCheckoutUrl(checkoutType: CheckoutRedirectType): string {
 export function getOfferTrackingSection() {
   return getTrackingSection(OFFER_SECTION_ID) || {
     id: OFFER_SECTION_ID,
-    title: '12 - PRECOS / PLANOS',
-    order: 12,
+    title: '09 - PRECOS / PLANOS',
+    order: 9,
   };
 }
 

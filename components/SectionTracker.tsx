@@ -117,7 +117,7 @@ export default function SectionTracker() {
     function maybeStopTracking() {
       if (typeof window.gtag !== 'function') return;
 
-      const existingSections = TRACKING_SECTIONS.filter(({ id }) => document.getElementById(id));
+      const existingSections = TRACKING_SECTIONS.filter(({ id, domId }) => document.getElementById(domId || id));
       if (!existingSections.length) return;
 
       const allSectionsSent = existingSections.every(({ id }) => panelFiredThisLoad.has(id));
@@ -136,8 +136,8 @@ export default function SectionTracker() {
       const jump = window.__internalCtaJump;
       const isJumping = jump?.active && (Date.now() - (jump?.startedAt || 0)) < 2500;
 
-      TRACKING_SECTIONS.forEach(({ id, title, order }) => {
-        const el = document.getElementById(id);
+      TRACKING_SECTIONS.forEach(({ id, title, order, domId }) => {
+        const el = document.getElementById(domId || id);
         if (!el) return;
 
         const top = el.getBoundingClientRect().top + window.scrollY;
